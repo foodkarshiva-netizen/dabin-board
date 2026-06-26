@@ -10,7 +10,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%}
 body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#e6eaf3;color:var(--ink);font-size:15px;line-height:1.5}
-.app{max-width:480px;margin:0 auto;height:100vh;background:var(--bg);position:relative;display:flex;flex-direction:column;box-shadow:0 0 30px rgba(0,0,0,.08)}
+.app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;background:var(--bg);position:relative;display:flex;flex-direction:column;box-shadow:0 0 30px rgba(0,0,0,.08)}
 header{background:linear-gradient(120deg,#2563eb,#3b82f6);color:#fff;padding:13px 18px;flex:0 0 auto;display:flex;justify-content:space-between;align-items:center}
 header h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.5px}
 header .who{font-size:11px;opacity:.92;cursor:pointer}
@@ -44,8 +44,8 @@ nav button.on{color:var(--b)}
 .bmeta{font-size:10px;color:var(--mut);margin-top:3px;display:flex;gap:8px;align-items:center}
 .bmeta .a{cursor:pointer;color:var(--b)}
 .composer{flex:0 0 auto;display:flex;gap:8px;padding-top:8px;align-items:flex-end;border-top:1px solid var(--line)}
-.composer textarea{flex:1;min-height:60px;max-height:200px;border-radius:12px}
-.composer .btn{height:60px;white-space:nowrap}
+.composer textarea{flex:1;min-height:46px;max-height:130px;border-radius:12px}
+.composer .btn{height:46px;white-space:nowrap}
 /* today */
 .todo{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:7px;background:#fff}
 .todo.done{opacity:.5}.todo.done .tt{text-decoration:line-through}
@@ -108,7 +108,8 @@ nav button.on{color:var(--b)}
 .ssum .ss .sl{font-size:12px;color:var(--mut);display:block}
 .ssum .ss .sv{font-size:19px;font-weight:800;margin-top:4px;display:block;letter-spacing:-.3px}
 .ssum .ss.net .sv{color:var(--b2)}
-.scard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:9px}
+#salesBreak{display:grid;grid-template-columns:1fr;gap:9px}
+.scard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px}
 .scard .sname{font-weight:800;font-size:14px;margin-bottom:8px;color:#26303f}
 .smet{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .smet>div{display:flex;justify-content:space-between;align-items:baseline;background:#f6f8fc;border-radius:8px;padding:6px 10px}
@@ -128,7 +129,7 @@ nav button .ic svg{width:21px;height:21px;display:block}
 /* ===== desktop ===== */
 @media(min-width:760px){
   body{background:#dfe4ee}
-  .app{max-width:1280px;height:100vh;flex-direction:row;align-items:stretch}
+  .app{max-width:none;width:100%;margin:0;height:100vh;height:100dvh;flex-direction:row;align-items:stretch}
   header{display:none}
   nav{position:fixed;left:0;top:0;bottom:0;transform:none;width:210px;max-width:210px;flex-direction:column;border-top:none;border-right:1px solid var(--line);padding:0 12px 18px;gap:4px;justify-content:flex-start;background:linear-gradient(180deg,#1d4ed8,#2563eb)}
   nav::before{content:"다빈 보드";display:block;color:#fff;font-weight:800;font-size:19px;padding:22px 12px 18px}
@@ -136,7 +137,7 @@ nav button .ic svg{width:21px;height:21px;display:block}
   nav button .ic{font-size:18px}
   nav button:hover{background:rgba(255,255,255,.12);color:#fff}
   nav button.on{background:#fff;color:var(--b)}
-  main{margin-left:210px;margin-right:280px;width:auto;flex:1;height:100vh;min-width:0}
+  main{margin-left:210px;margin-right:280px;width:auto;flex:1;height:100vh;height:100dvh;min-width:0}
   .deskhead{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,#2563eb,#60a5fa);color:#fff;padding:18px 28px;flex:0 0 auto}
   .deskhead h2{margin:0;font-size:21px;font-weight:800}
   .deskhead .dw{font-size:12px;opacity:.9;cursor:pointer}
@@ -146,6 +147,7 @@ nav button .ic svg{width:21px;height:21px;display:block}
   .cal .cell{min-height:92px;padding:6px}
   .cal .cell .n{font-size:14px}
   .cal .cell .mk{font-size:11px;white-space:normal;line-height:1.3}
+  #salesBreak{grid-template-columns:repeat(3,1fr)}
   .rrail{display:flex;flex-direction:column;position:fixed;right:0;top:0;bottom:0;width:280px;background:#fff;border-left:1px solid var(--line);z-index:25}
   .rrail .rh{background:linear-gradient(120deg,#0d8a5f,#22b07d);color:#fff;padding:18px 18px;font-weight:800;font-size:15px;flex:0 0 auto}
   .rrail .rb{flex:1;min-height:0;overflow-y:auto;padding:12px 14px}
@@ -169,7 +171,7 @@ nav button .ic svg{width:21px;height:21px;display:block}
   <div class="pagewrap">
   <section class="page on" id="p-talk">
     <div class="chat" id="chat"><div class="empty">불러오는 중…</div></div>
-    <div class="composer"><textarea id="msg" rows="3" placeholder="메시지 입력 — 남겨두면 클로드가 확인해요"></textarea><button class="btn p" onclick="sendMsg()">전송</button></div>
+    <div class="composer"><textarea id="msg" rows="2" placeholder="메시지 입력 — 남겨두면 클로드가 확인해요"></textarea><button class="btn p" onclick="sendMsg()">전송</button></div>
   </section>
   <section class="page" id="p-today">
     <div class="rowsb"><h2 class="t" id="todayHd" style="margin:0">오늘</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="prog"></span><button class="btn o sm" id="hideBtn" onclick="toggleHide()">완료 숨기기</button></div></div>
@@ -184,7 +186,7 @@ nav button .ic svg{width:21px;height:21px;display:block}
     <div id="monEvents"></div>
   </section>
   <section class="page" id="p-people">
-    <div class="rowsb"><h2 class="t" style="margin:0">인원관리</h2><button class="btn o sm" id="payBtn" onclick="togglePay()">💰 급여 보기</button></div>
+    <div class="rowsb"><h2 class="t" style="margin:0">인원관리</h2><div style="display:flex;gap:6px"><button class="btn o sm" id="goalBtn" onclick="toggleGoalOnly()">🎯 목표만</button><button class="btn o sm" id="payBtn" onclick="togglePay()">💰 급여 보기</button></div></div>
     <input id="pSearch" placeholder="검색 (이름·소속·사업자·연락처)" oninput="renderPeople()" style="margin-bottom:10px">
     <div class="ppl" id="peopleBody"><div class="empty">불러오는 중…</div></div>
     <details style="margin-top:12px"><summary class="muted small" style="cursor:pointer;padding:6px">+ 인원 직접 추가</summary>
@@ -241,10 +243,10 @@ function iso(d){var z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z
 var KWD=['일','월','화','수','목','금','토'];
 var HOL={"2026-01-01":1,"2026-02-16":1,"2026-02-17":1,"2026-02-18":1,"2026-03-01":1,"2026-03-02":1,"2026-05-01":1,"2026-05-05":1,"2026-05-24":1,"2026-05-25":1,"2026-06-06":1,"2026-08-15":1,"2026-09-24":1,"2026-09-25":1,"2026-09-26":1,"2026-09-28":1,"2026-10-03":1,"2026-10-09":1,"2026-12-25":1};
 var WEEKLY=[{t:"채널1팀장 회의",d:[1,2,3,4,5],s:"10:30"},{t:"개인PT",d:[2,4],s:"11:00"}];
-var WSKIP=[{t:"개인PT",date:"2026-07-21"}];
+var WSKIP=[{t:"개인PT",date:"2026-06-30"}];
 var MF=[{t:"(주)원광 1천만원 상환체크",s:"09:00"},{t:"김혜지 당근 정산 요청하기",s:"09:00"}];
 var ML=[{t:"고려신용정보 권순화 팀장 유선회의",s:"09:00"}];
-var ONE=[{date:"2026-06-26",s:"09:00",t:"지원·성완·종현에게 김혜지 얘기하기"},{date:"2026-06-26",s:"11:00",t:"황주원 커피 마시기"},{date:"2026-06-26",s:"13:00",t:"김혜지 민형사상 소장 작성"},{date:"2026-06-27",s:"10:00",t:"출근"},{date:"2026-07-01",allday:1,t:"김혜지 KPP보증금 + 당근 상환요청"},{date:"2026-07-01",allday:1,t:"[월초] 7월 변론기일 안내"},{date:"2026-07-02",s:"11:00",t:"변론기일 (춘천지법 강릉지원)"},{date:"2026-07-07",s:"15:40",t:"변론기일 (서울남부지법)"},{date:"2026-07-16",s:"16:00",t:"광고가격 낮추기"},{date:"2026-07-16",s:"18:00",t:"광고가격 낮추기"},{date:"2026-07-16",s:"20:00",t:"광고가격 낮추기"},{date:"2026-07-17",allday:1,t:"주말근무"},{date:"2026-07-18",allday:1,t:"주말근무"},{date:"2026-07-19",s:"17:00",t:"천안 이동"},{date:"2026-07-19",allday:1,t:"군산방문"},{date:"2026-07-20",allday:1,t:"군산방문"},{date:"2026-07-21",allday:1,t:"군산방문"},{date:"2026-08-01",allday:1,t:"싸스 약속"}];
+var ONE=[{date:"2026-06-26",s:"09:00",t:"지원·성완·종현에게 김혜지 얘기하기"},{date:"2026-06-26",s:"11:00",t:"황주원 커피 마시기"},{date:"2026-06-26",s:"13:00",t:"김혜지 민형사상 소장 작성"},{date:"2026-06-27",s:"10:00",t:"출근"},{date:"2026-07-01",allday:1,t:"김혜지 KPP보증금 + 당근 상환요청"},{date:"2026-07-01",allday:1,t:"[월초] 7월 변론기일 안내"},{date:"2026-07-02",s:"11:00",t:"변론기일 (춘천지법 강릉지원)"},{date:"2026-07-07",s:"15:40",t:"변론기일 (서울남부지법)"},{date:"2026-07-16",s:"16:00",t:"광고가격 낮추기"},{date:"2026-07-16",s:"18:00",t:"광고가격 낮추기"},{date:"2026-07-16",s:"20:00",t:"광고가격 낮추기"},{date:"2026-07-17",allday:1,t:"주말근무"},{date:"2026-07-18",allday:1,t:"주말근무"},{date:"2026-06-28",s:"17:00",t:"천안 이동"},{date:"2026-06-28",allday:1,t:"군산방문"},{date:"2026-06-29",allday:1,t:"군산방문"},{date:"2026-06-30",allday:1,t:"군산방문"},{date:"2026-08-01",allday:1,t:"싸스 약속"}];
 var JOBS=[{sc:"d",s:"05:30",t:"일정 브리핑"},{sc:"d",s:"18:00",t:"채널사 매출 보고"},{sc:"d",s:"20:00",t:"유통사 매출 보고"},{sc:"wd",s:"06:02",t:"유통의견·잔여발주 전송"},{sc:"wd",s:"06:08",t:"보고서 미작성자 체크"},{sc:[2,3,4,5,6],s:"10:07",t:"채널1팀 순익 보고"},{sc:[2,3,4,5,6],s:"10:11",t:"밴드광고 주별 순익"}];
 function isBiz(d){var w=d.getDay();return w>=1&&w<=5&&!HOL[iso(d)]}
 function firstBiz(y,m){var d=new Date(y,m,1);while(!isBiz(d))d.setDate(d.getDate()+1);return iso(d)}
@@ -304,7 +306,9 @@ function selDay(s){selDate=(selDate===s?'':s);renderCal()}
 function renderMonList(){var label=document.getElementById('monLabel'),box=document.getElementById('monEvents');var list=[];if(selDate){var d=new Date(selDate+'T00:00');label.textContent=(d.getMonth()+1)+'/'+d.getDate()+'('+KWD[d.getDay()]+') 일정';oneoffFor(d).forEach(function(e){list.push({date:selDate,e:e})})}else{label.textContent=(calM+1)+'월 단발성 일정 모아보기';for(var i=0;i<ONE.length;i++){var o=ONE[i];var dt=new Date(o.date+'T00:00');if(dt.getFullYear()===calY&&dt.getMonth()===calM)list.push({date:o.date,e:{s:o.allday?'종일':o.s,t:o.t,allday:o.allday}})}list.sort(function(a,b){return a.date.localeCompare(b.date)||((a.e.allday?'00:00':a.e.s).localeCompare(b.e.allday?'00:00':b.e.s))})}box.innerHTML=list.length?list.map(function(x){var dt=new Date(x.date+'T00:00');return '<div class="ev"><span class="ed">'+(dt.getMonth()+1)+'/'+dt.getDate()+'('+KWD[dt.getDay()]+')</span><span class="et">'+(x.e.allday?'종일':x.e.s)+'</span><span>'+esc(x.e.t)+'</span></div>'}).join(''):'<div class="empty">이 '+(selDate?'날':'달')+' 단발성 일정 없음</div>'}
 var GROUP_ORDER=["관리팀","채널1팀","채널2팀","채널3팀","채널4팀","채널5팀","채널프리랜서","마덕","마찬","마경","마황","마우","마동","마영","마팩","동해창고팀","아르바이트","일산팀","채널협력사","유통협력사"];
 function togglePay(){var a=document.getElementById('appRoot');a.classList.toggle('showpay');document.getElementById('payBtn').textContent=a.classList.contains('showpay')?'💰 급여 숨김':'💰 급여 보기'}
-function renderPeople(){var body=document.getElementById('peopleBody');var q=(document.getElementById('pSearch').value||'').trim();var arr=PEOPLE.slice();if(q)arr=arr.filter(function(p){return ((p.name||'')+(p.team||'')+(p.biz||'')+(p.tel||'')).indexOf(q)>=0});if(!arr.length){body.innerHTML='<div class="empty">'+(q?'검색 결과 없음':'인원 데이터 없음')+'</div>';return}arr.sort(function(a,b){var ga=GROUP_ORDER.indexOf(a.team),gb=GROUP_ORDER.indexOf(b.team);if(ga<0)ga=99;if(gb<0)gb=99;return ga-gb||(a.team||'').localeCompare(b.team||'')||(a.name||'').localeCompare(b.name||'')});var html='',lastTeam=null;arr.forEach(function(p){if(p.team!==lastTeam){html+='<div class="grp">'+esc(p.team||'-')+'</div>';lastTeam=p.team}var tel=(p.tel||'').replace(/[^0-9]/g,'');html+='<div class="prow"><span class="delp" onclick="delDoc(\'people\',\''+p.id+'\')">✕</span><div class="l1"><span class="biz">'+esc(p.biz||'')+'</span><span class="nm">'+esc(p.name||'')+'</span>'+(p.tel?'<a class="tel" href="tel:'+tel+'">'+esc(p.tel)+'</a>':'')+'</div>'+(p.goal?'<span class="goal">'+esc(p.goal)+'</span>':'')+(p.pay?'<span class="pay">월급여 '+esc(p.pay)+'</span>':'')+'</div>'});body.innerHTML=html}
+var GOALONLY=false;
+function toggleGoalOnly(){GOALONLY=!GOALONLY;var b=document.getElementById('goalBtn');b.textContent=GOALONLY?'🎯 전체 보기':'🎯 목표만';b.classList.toggle('p',GOALONLY);b.classList.toggle('o',!GOALONLY);renderPeople()}
+function renderPeople(){var body=document.getElementById('peopleBody');var q=(document.getElementById('pSearch').value||'').trim();var arr=PEOPLE.slice();if(q)arr=arr.filter(function(p){return ((p.name||'')+(p.team||'')+(p.biz||'')+(p.tel||'')).indexOf(q)>=0});if(GOALONLY)arr=arr.filter(function(p){return (p.goal||'').trim()});if(!arr.length){body.innerHTML='<div class="empty">'+(q?'검색 결과 없음':'인원 데이터 없음')+'</div>';return}arr.sort(function(a,b){var ga=GROUP_ORDER.indexOf(a.team),gb=GROUP_ORDER.indexOf(b.team);if(ga<0)ga=99;if(gb<0)gb=99;return ga-gb||(a.team||'').localeCompare(b.team||'')||(a.name||'').localeCompare(b.name||'')});var html='',lastTeam=null;arr.forEach(function(p){if(p.team!==lastTeam){html+='<div class="grp">'+esc(p.team||'-')+'</div>';lastTeam=p.team}var tel=(p.tel||'').replace(/[^0-9]/g,'');html+='<div class="prow"><span class="delp" onclick="delDoc(\'people\',\''+p.id+'\')">✕</span><div class="l1"><span class="biz">'+esc(p.biz||'')+'</span><span class="nm">'+esc(p.name||'')+'</span>'+(p.tel?'<a class="tel" href="tel:'+tel+'">'+esc(p.tel)+'</a>':'')+'</div>'+(p.goal?'<span class="goal">'+esc(p.goal)+'</span>':'')+(p.pay?'<span class="pay">월급여 '+esc(p.pay)+'</span>':'')+'</div>'});body.innerHTML=html}
 function addPerson(){var n=v('pName');if(!n)return;db.collection('people').add({biz:v('pBiz'),team:v('pTeam'),name:n,tel:v('pTel'),goal:v('pGoal'),pay:v('pPay')});['pBiz','pTeam','pName','pTel','pGoal','pPay'].forEach(function(x){document.getElementById(x).value=''})}
 var SHOWDONE=false;
 function toggleOrderDone(){SHOWDONE=!SHOWDONE;document.getElementById('odoneBtn').textContent=SHOWDONE?'진행중 보기':'완료내역 보기';renderOrder()}
@@ -327,7 +331,7 @@ function srcItems(){var out={};var keys=curSrc==='all'?['channel','ext','inner']
 function renderSales(){segT.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===curPer)});segP.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===curSrc)});var pf=PERIODS.filter(function(p){return p[0]===curPer})[0];var days=periodDays(curPer);var items=srcItems();var keys=Object.keys(items);var TR=0,TN=0,rows=[];keys.forEach(function(k){var dRev=items[k][0]/30,dNet=items[k][1]/30;var rev=Math.round(dRev*days),net=Math.round(dNet*days);TR+=rev;TN+=net;rows.push({k:k,rev:rev,arev:Math.round(dRev),net:net,anet:Math.round(dNet)})});var aTR=days?Math.round(TR/days):TR,aTN=days?Math.round(TN/days):TN;var srcName=curSrc==='all'?'전체':SALES[curSrc].name;document.getElementById('salesRange').textContent=srcName+' · '+pf[1]+' ('+days+'일 기준)';document.getElementById('salesSum').innerHTML='<div class="ssum"><div class="ss"><span class="sl">매출</span><span class="sv">'+fmtWon(TR)+'</span></div><div class="ss"><span class="sl">일평균매출</span><span class="sv">'+fmtWon(aTR)+'</span></div><div class="ss net"><span class="sl">순익</span><span class="sv">'+fmtWon(TN)+'</span></div><div class="ss net"><span class="sl">일평균순익</span><span class="sv">'+fmtWon(aTN)+'</span></div></div>';document.getElementById('salesBreak').innerHTML=rows.length?rows.map(function(r){return '<div class="scard"><div class="sname">'+esc(r.k)+'</div><div class="smet"><div><span class="sl">매출</span><span class="sv">'+fmtWon(r.rev)+'</span></div><div><span class="sl">일평균매출</span><span class="sv">'+fmtWon(r.arev)+'</span></div><div class="net"><span class="sl">순익</span><span class="sv">'+fmtWon(r.net)+'</span></div><div class="net"><span class="sl">일평균순익</span><span class="sv">'+fmtWon(r.anet)+'</span></div></div></div>'}).join(''):'<div class="empty">데이터 없음</div>'}
 function customRange(){var a=v('d1'),b=v('d2');if(!a)return;segT.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});document.getElementById('salesRange').textContent=(b?a+' ~ '+b:a)+' (지정조회 · 연동 후)';document.getElementById('salesSum').innerHTML='';document.getElementById('salesBreak').innerHTML='<div class="muted small">지정기간 실데이터는 연동 후 표시됩니다.</div>'}
 var mEl=document.getElementById('msg');
-mEl.addEventListener('input',function(){mEl.style.height='auto';mEl.style.height=Math.min(mEl.scrollHeight,200)+'px'});
+mEl.addEventListener('input',function(){mEl.style.height='auto';mEl.style.height=Math.min(mEl.scrollHeight,130)+'px'});
 if(!IS_MOBILE){mEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}})}
 </script>
 </body>
