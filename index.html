@@ -277,7 +277,7 @@ function renderChat(){var c=document.getElementById('chat');c.innerHTML=CHAT.len
 function sendMsg(){var el=document.getElementById('msg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
 function editMsg(id){var m=CHAT.filter(function(x){return x.id===id})[0];if(!m)return;var nv=prompt('메시지 수정',m.text||'');if(nv===null)return;nv=nv.trim();if(!nv){db.collection('chat').doc(id).delete();return}db.collection('chat').doc(id).update({text:nv})}
 function delMsg(id){if(confirm('이 메시지를 삭제할까요?'))db.collection('chat').doc(id).delete()}
-var HIDE=true;
+var HIDE=false;
 function buildToday(){var items=[];recurringFor(todayD).forEach(function(e){items.push({time:e.s,title:e.t,kind:'cal'})});oneoffFor(todayD).forEach(function(e){items.push({time:e.allday?'':e.s,title:e.t,kind:'cal'})});jobsFor(todayD).forEach(function(e){items.push({time:e.s,title:e.t,kind:'job'})});TODOS.forEach(function(t){items.push({time:t.time||'',title:t.title,kind:'todo',id:t.id})});items.forEach(function(it){it.status=DAYSTAT[it.title]||''});items.sort(function(a,b){return ((a.time||'99')+'').localeCompare((b.time||'99')+'')});return items}
 var KN={cal:'일정',job:'클로드',todo:'할일'};
 function renderToday(){
