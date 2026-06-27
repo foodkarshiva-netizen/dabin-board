@@ -84,7 +84,8 @@ nav button.on{color:var(--b)}
 .prow .nm{font-weight:800;font-size:14px}
 .prow a.tel{color:var(--b);font-weight:700;text-decoration:none;font-size:13px}
 .gbtn2{background:#eaf6ef;color:var(--goal);border:1px solid #cfe6d6;border-radius:999px;font-size:11px;font-weight:800;padding:2px 9px;cursor:pointer;white-space:nowrap}
-.prow .goal{display:block;color:var(--goal);font-size:12.5px;font-weight:700;margin-top:3px;line-height:1.35}
+.prow .goalwrap{display:inline-flex;align-items:baseline;gap:7px}
+.prow .goal{background:#fff3c4;color:#8a6200;font-weight:800;font-size:12px;padding:1px 8px;border-radius:7px;line-height:1.55}
 .prow .pay{display:none;color:var(--amber);font-size:12px;font-weight:700;margin-top:2px}
 .app.showpay .prow .pay{display:block}
 /* order */
@@ -156,7 +157,7 @@ nav button .ic svg{width:21px;height:21px;display:block}
   .ritem .rt{font-weight:700;color:var(--b2);font-size:11px}
   .ritem.ing{border-left-color:var(--amber);background:#fdf8ee}
 }
-@media(max-width:759px){.rrail{display:none!important}}
+@media(max-width:759px){.rrail{display:none!important}.prow .goalwrap{flex-basis:100%;margin-top:3px}}
 </style>
 </head>
 <body>
@@ -310,7 +311,7 @@ var GROUP_ORDER=["관리팀","채널1팀","채널2팀","채널3팀","채널4팀"
 function togglePay(){var a=document.getElementById('appRoot');a.classList.toggle('showpay');document.getElementById('payBtn').textContent=a.classList.contains('showpay')?'💰 급여 숨김':'💰 급여 보기'}
 var GOALONLY=false;
 function toggleGoalOnly(){GOALONLY=!GOALONLY;var b=document.getElementById('goalBtn');b.textContent=GOALONLY?'🎯 전체 보기':'🎯 목표만';b.classList.toggle('p',GOALONLY);b.classList.toggle('o',!GOALONLY);renderPeople()}
-function renderPeople(){var body=document.getElementById('peopleBody');var q=(document.getElementById('pSearch').value||'').trim();var arr=PEOPLE.slice();if(q)arr=arr.filter(function(p){return ((p.name||'')+(p.team||'')+(p.biz||'')+(p.tel||'')).indexOf(q)>=0});if(GOALONLY)arr=arr.filter(function(p){return (p.goal||'').trim()});if(!arr.length){body.innerHTML='<div class="empty">'+(q?'검색 결과 없음':'인원 데이터 없음')+'</div>';return}arr.sort(function(a,b){var ga=GROUP_ORDER.indexOf(a.team),gb=GROUP_ORDER.indexOf(b.team);if(ga<0)ga=99;if(gb<0)gb=99;return ga-gb||(a.team||'').localeCompare(b.team||'')||(a.name||'').localeCompare(b.name||'')});var html='',lastTeam=null;arr.forEach(function(p){if(p.team!==lastTeam){html+='<div class="grp">'+esc(p.team||'-')+'</div>';lastTeam=p.team}var tel=(p.tel||'').replace(/[^0-9]/g,'');html+='<div class="prow"><span class="delp" onclick="delDoc(\'people\',\''+p.id+'\')">✕</span><div class="l1"><span class="biz">'+esc(p.biz||'')+'</span><span class="nm">'+esc(p.name||'')+'</span>'+(p.tel?'<a class="tel" href="tel:'+tel+'">'+esc(p.tel)+'</a>':'')+'<button class="gbtn2" onclick="editGoal(\''+p.id+'\')">'+(p.goal?'목표수정':'목표추가')+'</button></div>'+(p.goal?'<span class="goal">'+esc(p.goal)+'</span>':'')+(p.pay?'<span class="pay">월급여 '+esc(p.pay)+'</span>':'')+'</div>'});body.innerHTML=html}
+function renderPeople(){var body=document.getElementById('peopleBody');var q=(document.getElementById('pSearch').value||'').trim();var arr=PEOPLE.slice();if(q)arr=arr.filter(function(p){return ((p.name||'')+(p.team||'')+(p.biz||'')+(p.tel||'')).indexOf(q)>=0});if(GOALONLY)arr=arr.filter(function(p){return (p.goal||'').trim()});if(!arr.length){body.innerHTML='<div class="empty">'+(q?'검색 결과 없음':'인원 데이터 없음')+'</div>';return}arr.sort(function(a,b){var ga=GROUP_ORDER.indexOf(a.team),gb=GROUP_ORDER.indexOf(b.team);if(ga<0)ga=99;if(gb<0)gb=99;return ga-gb||(a.team||'').localeCompare(b.team||'')||(a.name||'').localeCompare(b.name||'')});var html='',lastTeam=null;arr.forEach(function(p){if(p.team!==lastTeam){html+='<div class="grp">'+esc(p.team||'-')+'</div>';lastTeam=p.team}var tel=(p.tel||'').replace(/[^0-9]/g,'');html+='<div class="prow"><span class="delp" onclick="delDoc(\'people\',\''+p.id+'\')">✕</span><div class="l1"><span class="biz">'+esc(p.biz||'')+'</span><span class="nm">'+esc(p.name||'')+'</span>'+(p.tel?'<a class="tel" href="tel:'+tel+'">'+esc(p.tel)+'</a>':'')+'<span class="goalwrap">'+(p.goal?'<span class="goal">'+esc(p.goal)+'</span>':'')+'<button class="gbtn2" onclick="editGoal(\''+p.id+'\')">'+(p.goal?'목표수정':'목표추가')+'</button></span></div>'+(p.pay?'<span class="pay">월급여 '+esc(p.pay)+'</span>':'')+'</div>'});body.innerHTML=html}
 function addPerson(){var n=v('pName');if(!n)return;db.collection('people').add({biz:v('pBiz'),team:v('pTeam'),name:n,tel:v('pTel'),goal:v('pGoal'),pay:v('pPay')});['pBiz','pTeam','pName','pTel','pGoal','pPay'].forEach(function(x){document.getElementById(x).value=''})}
 function editGoal(id){var p=PEOPLE.filter(function(x){return x.id===id})[0];if(!p)return;var nv=prompt((p.name||'')+' 목표 입력 (비우면 삭제)',p.goal||'');if(nv===null)return;db.collection('people').doc(id).update({goal:nv.trim()})}
 var SHOWDONE=false;
