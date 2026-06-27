@@ -222,6 +222,13 @@ nav button .ic svg{width:21px;height:21px;display:block}
     <div class="seclbl">팀별</div>
     <div id="salesBreak"></div>
   </section>
+  <section class="page" id="p-memo">
+    <h2 class="t">기억사항</h2>
+    <div class="small muted" style="margin:0 2px 8px">ID/PW 등은 기본으로 가려져 있어요(•••). '보기'로 확인, '복사'로 복사. 소통에 "기억사항"이라고 남기면 클로드가 여기에 저장해줘요.</div>
+    <input id="mSearch" placeholder="검색 (제목·내용)" oninput="renderMemo()" style="margin-bottom:10px">
+    <div id="memoList"><div class="empty">불러오는 중…</div></div>
+    <div class="card"><label class="fl">제목</label><input id="mTitle" placeholder="예: 마스터 관리자 로그인"><label class="fl">내용 (ID/PW 등, 줄바꿈 가능)</label><textarea id="mBody" rows="3" placeholder="여기에 정보 입력"></textarea><button class="btn p" style="margin-top:10px;width:100%" onclick="addMemo()">저장</button></div>
+  </section>
   </div>
 </main>
 <div class="rrail" id="rrail"><div class="rh">📌 오늘 남은 업무</div><div class="rb" id="railBody"></div></div>
@@ -262,13 +269,14 @@ function recurringFor(dt){var s=iso(dt),w=dt.getDay(),out=[];WEEKLY.forEach(func
 function oneoffFor(dt){var s=iso(dt);return ONE.filter(function(o){return o.date===s}).map(function(o){return {s:o.allday?'종일':o.s,t:o.t,allday:o.allday}})}
 function jobsFor(dt){var w=dt.getDay();return JOBS.filter(function(j){return j.sc==='d'||(j.sc==='wd'&&w>=1&&w<=5)||(Array.isArray(j.sc)&&j.sc.indexOf(w)>=0)}).map(function(j){return {s:j.s,t:j.t}})}
 var todayD=new Date(),todayISO=iso(todayD);
-var TABS=[['talk','💬','소통'],['today','◎','오늘'],['cal','▦','캘린더'],['people','◍','인원관리'],['order','◆','오더사항'],['proj','★','장기업무'],['sales','▤','매출']];
+var TABS=[['talk','💬','소통'],['today','◎','오늘'],['cal','▦','캘린더'],['people','◍','인원관리'],['order','◆','오더사항'],['proj','★','장기업무'],['sales','▤','매출'],['memo','🔑','기억사항']];
 function ic(p){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>'}
-var ICONS={talk:ic('<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.7 8.7 0 0 1-3.9-.9L3 21l1.9-5.1a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>'),today:ic('<circle cx="12" cy="12" r="9"/><path d="M8.4 12.4l2.4 2.4 4.8-5.4"/>'),cal:ic('<rect x="3" y="4.5" width="18" height="16" rx="2.2"/><path d="M3 9.2h18M8 2.6v3.6M16 2.6v3.6"/>'),people:ic('<circle cx="9" cy="8.4" r="3.2"/><path d="M3.4 19.6c0-3.1 2.6-5.2 5.6-5.2s5.6 2.1 5.6 5.2"/><path d="M16.2 6.1a2.9 2.9 0 0 1 0 5.7M17.6 14.5c2.3.4 4 2.3 4 5.1"/>'),order:ic('<rect x="5" y="4" width="14" height="17" rx="2.2"/><rect x="9" y="2.4" width="6" height="3.6" rx="1.1"/><path d="M8.5 11h7M8.5 15h5"/>'),proj:ic('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.7 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/>'),sales:ic('<path d="M3 20.5h18"/><path d="M6.5 20.5v-5.5M11.5 20.5v-10M16.5 20.5v-7"/>')};
+var ICONS={talk:ic('<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.7 8.7 0 0 1-3.9-.9L3 21l1.9-5.1a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>'),today:ic('<circle cx="12" cy="12" r="9"/><path d="M8.4 12.4l2.4 2.4 4.8-5.4"/>'),cal:ic('<rect x="3" y="4.5" width="18" height="16" rx="2.2"/><path d="M3 9.2h18M8 2.6v3.6M16 2.6v3.6"/>'),people:ic('<circle cx="9" cy="8.4" r="3.2"/><path d="M3.4 19.6c0-3.1 2.6-5.2 5.6-5.2s5.6 2.1 5.6 5.2"/><path d="M16.2 6.1a2.9 2.9 0 0 1 0 5.7M17.6 14.5c2.3.4 4 2.3 4 5.1"/>'),order:ic('<rect x="5" y="4" width="14" height="17" rx="2.2"/><rect x="9" y="2.4" width="6" height="3.6" rx="1.1"/><path d="M8.5 11h7M8.5 15h5"/>'),proj:ic('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.7 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/>'),sales:ic('<path d="M3 20.5h18"/><path d="M6.5 20.5v-5.5M11.5 20.5v-10M16.5 20.5v-7"/>'),memo:ic('<circle cx="8.5" cy="8.5" r="4.5"/><path d="M11.8 11.8L20 20M16 18l2-2M18.5 15.5l2-2"/>')};
 var nav=document.getElementById('nav');
 TABS.forEach(function(t){var b=document.createElement('button');b.dataset.id=t[0];b.innerHTML='<span class="ic">'+ICONS[t[0]]+'</span>'+t[2];b.onclick=function(){go(t[0])};nav.appendChild(b)});
 function go(id){document.querySelectorAll('.page').forEach(function(p){p.classList.toggle('on',p.id==='p-'+id)});nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===id)});var nm=TABS.filter(function(t){return t[0]===id})[0][2];document.getElementById('ttl').textContent=nm;document.getElementById('dttl').textContent=nm;if(id==='cal')renderCal();if(id==='sales')renderSales()}
 var PEOPLE=[],ORDERS=[],PROJ=[],TODOS=[],DAYSTAT={},CHAT=[];
+var MEMOS=[],MEMOSHOW={};
 function startApp(){
   unsub.forEach(function(f){f&&f()});unsub=[];
   unsub.push(db.collection('chat').orderBy('ts').onSnapshot(function(snap){CHAT=[];snap.forEach(function(d){CHAT.push(Object.assign({id:d.id},d.data()))});renderChat()}));
@@ -277,6 +285,7 @@ function startApp(){
   unsub.push(db.collection('people').onSnapshot(function(s){PEOPLE=[];s.forEach(function(d){PEOPLE.push(Object.assign({id:d.id},d.data()))});renderPeople()}));
   unsub.push(db.collection('orders').orderBy('ts','desc').onSnapshot(function(s){ORDERS=[];s.forEach(function(d){ORDERS.push(Object.assign({id:d.id},d.data()))});renderOrder()}));
   unsub.push(db.collection('projects').orderBy('ts','desc').onSnapshot(function(s){PROJ=[];s.forEach(function(d){PROJ.push(Object.assign({id:d.id},d.data()))});renderProj()}));
+  unsub.push(db.collection('memos').orderBy('ts','desc').onSnapshot(function(s){MEMOS=[];s.forEach(function(d){MEMOS.push(Object.assign({id:d.id},d.data()))});renderMemo()}));
   renderSales();
 }
 function renderChat(){var c=document.getElementById('chat');c.innerHTML=CHAT.length?CHAT.map(function(m){var ctrl=m.who==='me'?'<span class="a" onclick="editMsg(\''+m.id+'\')">수정</span><span class="a" onclick="delMsg(\''+m.id+'\')">삭제</span>':'';return '<div class="brow '+(m.who==='me'?'me':'cl')+'"><div class="bub">'+esc(m.text||'')+'</div><div class="bmeta">'+(m.t||'')+ctrl+'</div></div>'}).join(''):'<div class="empty">메시지를 남겨보세요</div>';c.scrollTop=c.scrollHeight}
@@ -330,6 +339,11 @@ function editProj(id){var p=PROJ.filter(function(x){return x.id===id})[0];if(!p)
 function saveProj(id){var t=document.getElementById('ept_'+id).value.trim(),m=document.getElementById('epm_'+id).value;if(!t)return;db.collection('projects').doc(id).update({title:t,memo:m})}
 function addProj(){var t=v('jTitle');if(!t)return;db.collection('projects').add({title:t,memo:document.getElementById('jMemo').value,tstr:dstr(),ts:Date.now()});document.getElementById('jTitle').value='';document.getElementById('jMemo').value=''}
 function delDoc(col,id){db.collection(col).doc(id).delete()}
+function renderMemo(){var box=document.getElementById('memoList');if(!box)return;var q=(document.getElementById('mSearch').value||'').trim();var list=MEMOS.slice();if(q)list=list.filter(function(m){return ((m.title||'')+(m.body||'')).indexOf(q)>=0});box.innerHTML=list.length?list.map(function(m){var shown=MEMOSHOW[m.id];var body=shown?esc(m.body||''):'••••••••••';return '<div class="oitem"><div class="top"><div style="font-weight:800">'+esc(m.title||'(제목없음)')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn o sm" onclick="revMemo(\''+m.id+'\')">'+(shown?'가리기':'보기')+'</button><button class="btn o sm" onclick="copyMemo(\''+m.id+'\')">복사</button><button class="btn o sm" onclick="editMemo(\''+m.id+'\')">수정</button><span class="x" onclick="delDoc(\'memos\',\''+m.id+'\')">✕</span></div></div><div class="memo" style="margin-top:8px">'+body+'</div><div class="small muted" style="margin-top:6px">'+esc(m.tstr||'')+'</div></div>'}).join(''):'<div class="empty">'+(q?'검색 결과 없음':'저장된 기억사항이 없어요')+'</div>'}
+function revMemo(id){MEMOSHOW[id]=!MEMOSHOW[id];renderMemo()}
+function copyMemo(id){var m=MEMOS.filter(function(x){return x.id===id})[0];if(!m)return;if(navigator.clipboard){navigator.clipboard.writeText(m.body||'');var el=event&&event.target;if(el){var o=el.textContent;el.textContent='복사됨';setTimeout(function(){el.textContent=o},1000)}}}
+function addMemo(){var t=v('mTitle'),b=document.getElementById('mBody').value;if(!t&&!b.trim())return;db.collection('memos').add({title:t,body:b,tstr:dstr(),ts:Date.now()});document.getElementById('mTitle').value='';document.getElementById('mBody').value=''}
+function editMemo(id){var m=MEMOS.filter(function(x){return x.id===id})[0];if(!m)return;var nt=prompt('제목',m.title||'');if(nt===null)return;var nb=prompt('내용',m.body||'');if(nb===null)return;db.collection('memos').doc(id).update({title:nt.trim(),body:nb})}
 var SALES={channel:{name:'자체채널',items:{'1팀':[127000000,16900000],'2팀':[120000000,13000000],'3팀':[9000000,1100000],'4팀':[6000000,780000],'5팀':[5000000,600000]}},ext:{name:'외부유통',items:{'마덕':[127412500,11333816],'마찬':[83213300,10512670],'마경':[74406500,9211850],'마영':[12000000,1400000],'마황':[18000000,1600000],'마동':[9000000,900000],'마팩':[8000000,700000],'마우':[15000000,1500000]}},inner:{name:'내부유통',items:{'유통사→마스터':[40000000,4000000]}}};
 var PERIODS=[['today','오늘'],['yest','어제'],['week','이번주'],['month','이번달'],['lmonth','지난달'],['year','올해']];
 var curPer='today',curSrc='all';
