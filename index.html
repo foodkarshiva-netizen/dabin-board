@@ -165,7 +165,7 @@ nav button .ic svg{width:21px;height:21px;display:block}
 @media(max-width:759px){.rrail{display:none!important}.prow .goalwrap{flex-basis:100%;margin-top:3px}}
 /* partner sales */
 .pwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:12px;-webkit-overflow-scrolling:touch}
-.ptbl{width:100%;border-collapse:collapse;font-size:12px;min-width:430px}
+.ptbl{width:100%;border-collapse:collapse;font-size:12px;min-width:620px}
 .ptbl th,.ptbl td{padding:6px 8px;border-bottom:1px solid #eef1f0;text-align:right;white-space:nowrap}
 .ptbl th{color:var(--mut);font-weight:700;background:#f6f8fc}
 .ptbl td.nm,.ptbl th.nm{text-align:left;font-weight:800;position:sticky;left:0;z-index:1}
@@ -417,6 +417,10 @@ function pMonthVal(m,w){if(!m)return null;if(w==='net')return m[3];if(w==='rate'
 function pTotVal(a,w){if(w==='net')return a.net;if(w==='rate')return a.rev?a.net/a.rev*100:0;return a.rev;}
 function pFmt(v,w){if(v==null)return '-';if(w==='rate')return v.toFixed(1)+'%';return wonS(v);}
 function setPMetric(w){partnerMetric=w;renderPartner();}
+var MDAYS=[31,28,31,30,31,30];
+function pDays(arr){var d=0;arr.forEach(function(m,i){if(m)d+=MDAYS[i];});return d;}
+function pAvgMon(r,w){var a=r.a;if(w==='rate'){var vals=[];PSALES[r.nm].forEach(function(m){if(m&&m[0])vals.push(m[3]/m[0]*100);});return vals.length?vals.reduce(function(s,x){return s+x;},0)/vals.length:0;}return (w==='net'?a.net:a.rev)/(a.cnt||1);}
+function pAvgDay(r,w){if(w==='rate')return null;var d=pDays(PSALES[r.nm])||1;return (w==='net'?r.a.net:r.a.rev)/d;}
 function wonS(n){n=Math.round(Number(n)||0);var a=Math.abs(n);if(a>=100000000)return (n/100000000).toFixed(2)+'억';if(a>=10000)return Math.round(n/10000).toLocaleString('ko-KR')+'만';return n.toLocaleString('ko-KR');}
 function pAgg(arr){var t=[0,0,0,0],c=0;arr.forEach(function(m){if(m){c++;for(var i=0;i<4;i++)t[i]+=m[i];}});return {rev:t[0],buy:t[1],ad:t[2],net:t[3],cnt:c};}
 function renderPartner(){
@@ -433,8 +437,8 @@ function renderPartner(){
  h+='<div class="pnote">외부 협력사 '+rows.length+'개사 · 2026년 1~6월 · 억/만원 · 행 클릭 시 분석 리포트</div>';
  h+='<div class="seg">'+['rev','net','rate'].map(function(k){return '<button class="'+(W===k?'on':'')+'" onclick="setPMetric(\''+k+'\')">'+({rev:'매출',net:'순익',rate:'순익률'}[k])+'</button>';}).join('')+'</div>';
  h+='<div class="seclbl">월별 '+MN+' 추이</div><div class="pwrap"><table class="ptbl"><tr><th class="nm">협력사</th>';
- PMONTHS.forEach(function(m){h+='<th>'+m+'</th>';});h+='<th>합계</th></tr>';
- rows.forEach(function(r){h+='<tr class="clk" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><td class="nm">'+esc(r.nm)+'</td>';PSALES[r.nm].forEach(function(m){h+='<td>'+pFmt(pMonthVal(m,W),W)+'</td>';});h+='<td class="tot">'+pFmt(pTotVal(r.a,W),W)+'</td></tr>';});
+ PMONTHS.forEach(function(m){h+='<th>'+m+'</th>';});h+='<th>합계</th><th>월평균</th><th>일평균</th></tr>';
+ rows.forEach(function(r){h+='<tr class="clk" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><td class="nm">'+esc(r.nm)+'</td>';PSALES[r.nm].forEach(function(m){h+='<td>'+pFmt(pMonthVal(m,W),W)+'</td>';});var ad=pAvgDay(r,W);h+='<td class="tot">'+pFmt(pTotVal(r.a,W),W)+'</td><td>'+pFmt(pAvgMon(r,W),W)+'</td><td>'+(ad==null?'-':pFmt(ad,W))+'</td></tr>';});
  h+='</table></div>';
  h+='<div class="seclbl">6개월 '+MN+' 비교</div><div class="pnote">협력사별 6개월 '+MN+(W==='rate'?'(누적 기준)':' 누적')+' · 막대 길이 = 최댓값 대비 상대 비율</div>';
  rows.forEach(function(r){var v=pTotVal(r.a,W);var pct=maxV>0?Math.max(0,Math.round(v/maxV*100)):0;h+='<div class="pbar" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><span class="pbn">'+esc(r.nm)+'</span><span class="pbt"><span class="pbf" style="width:'+pct+'%"></span></span><span class="pbv">'+pFmt(v,W)+'</span></div>';});
@@ -462,7 +466,7 @@ function partnerRepHTML(nm){
  var netAvg=a.cnt?a.net/a.cnt:0;
  var h='<div class="prep-h"><span class="bk" onclick="partnerBack()">‹ 목록</span><h2 class="t" style="margin:0">'+esc(nm)+'</h2></div>';
  h+='<div class="pnote">책임자 '+esc(own)+' · 2026년 1~6월 · 단위 억/만원 · 외부 15개사 중 매출 '+rk+'위</div>';
- h+='<div class="card" style="background:#f4f8ff;border-color:#d6e6ff"><div style="font-weight:800;margin-bottom:6px">📌 총평</div><div style="font-size:13.5px;line-height:1.65">6개월 누적 <b>매출 '+wonS(a.rev)+'</b> · 순익 <b>'+wonS(a.net)+'</b>(순익률 '+rate.toFixed(1)+'%), 월평균 매출 '+wonS(avg)+' · 순익 '+wonS(netAvg)+'. 매출은 상반기 대비 <b>'+trend+'</b>('+(growth>=0?'+':'')+growth.toFixed(0)+'%)이며, 최고 실적은 '+(maxM.i+1)+'월('+wonS(maxM.v)+'), 최저는 '+(minM.i+1)+'월('+wonS(minM.v)+'). 원가율 '+cor.toFixed(1)+'% · 광고비율 '+adr.toFixed(1)+'% 수준.</div></div>';
+ h+='<div class="card" style="background:#f4f8ff;border-color:#d6e6ff"><div style="font-weight:800;margin-bottom:6px">📌 총평</div><div style="font-size:13.5px;line-height:1.65">6개월 누적 <b>매출 '+wonS(a.rev)+'</b> · 순익 <b>'+wonS(a.net)+'</b>(순익률 '+rate.toFixed(1)+'%), 월평균 매출 '+wonS(avg)+' · 순익 '+wonS(netAvg)+', 일평균 매출 '+wonS(a.rev/(pDays(arr)||1))+' · 순익 '+wonS(a.net/(pDays(arr)||1))+'. 매출은 상반기 대비 <b>'+trend+'</b>('+(growth>=0?'+':'')+growth.toFixed(0)+'%)이며, 최고 실적은 '+(maxM.i+1)+'월('+wonS(maxM.v)+'), 최저는 '+(minM.i+1)+'월('+wonS(minM.v)+'). 원가율 '+cor.toFixed(1)+'% · 광고비율 '+adr.toFixed(1)+'% 수준.</div></div>';
  h+='<div class="ssum" style="grid-template-columns:1fr 1fr 1fr"><div class="ss net"><span class="sl">순익률</span><span class="sv">'+rate.toFixed(1)+'%</span></div><div class="ss"><span class="sl">원가율</span><span class="sv">'+cor.toFixed(1)+'%</span></div><div class="ss"><span class="sl">광고비율</span><span class="sv">'+adr.toFixed(1)+'%</span></div></div>';
  h+='<div class="seclbl">월별 실적</div><div class="pwrap"><table class="ptbl"><tr><th class="nm">항목</th>';
  PMONTHS.forEach(function(m){h+='<th>'+m+'</th>';});h+='<th>합계</th></tr>';
