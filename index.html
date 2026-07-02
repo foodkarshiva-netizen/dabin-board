@@ -432,38 +432,56 @@ function renderPartner(){
  rows.forEach(function(r){var pct=maxRev?Math.round(r.rev/maxRev*100):0;h+='<div class="pbar" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><span class="pbn">'+esc(r.nm)+'</span><span class="pbt"><span class="pbf" style="width:'+pct+'%"></span></span><span class="pbv">'+wonS(r.rev)+'</span></div>';});
  box.innerHTML=h;
 }
-function partnerOpen(enc){partnerSel=decodeURIComponent(enc);renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}
-function partnerBack(){partnerSel=null;renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}
+function partnerOpen(enc){partnerSel=decodeURIComponent(enc);renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;try{history.pushState({prep:1},'')}catch(e){}}
+function partnerBack(){if(history.state&&history.state.prep){history.back();return;}partnerSel=null;renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}
+window.addEventListener('popstate',function(){if(partnerSel){partnerSel=null;renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}});
+function partnerRank(nm){var a=Object.keys(PSALES).map(function(n){return {n:n,rev:pAgg(PSALES[n]).rev};});a.sort(function(x,y){return y.rev-x.rev;});for(var i=0;i<a.length;i++)if(a[i].n===nm)return i+1;return 0;}
 function partnerRepHTML(nm){
- var arr=PSALES[nm];var a=pAgg(arr);var rate=a.rev?a.net/a.rev*100:0;var adr=a.rev?a.ad/a.rev*100:0;var own=POWN[nm]||'';
+ var arr=PSALES[nm];var a=pAgg(arr);var rate=a.rev?a.net/a.rev*100:0;var adr=a.rev?a.ad/a.rev*100:0;var cor=a.rev?a.buy/a.rev*100:0;var own=POWN[nm]||'';var rk=partnerRank(nm);
+ var mrev=[];arr.forEach(function(m,i){if(m)mrev.push({i:i,v:m[0]});});
+ var avg=mrev.length?a.rev/mrev.length:0;
+ var sortedM=mrev.slice().sort(function(x,y){return y.v-x.v;});var maxM=sortedM[0]||{i:0,v:0},minM=sortedM[sortedM.length-1]||{i:0,v:0};
+ var revs=mrev.map(function(x){return x.v;});
+ var recent=revs.slice(-3),early=revs.slice(0,3);
+ var rAvg=recent.reduce(function(s,x){return s+x;},0)/(recent.length||1);
+ var eAvg=early.reduce(function(s,x){return s+x;},0)/(early.length||1);
+ var growth=eAvg?(rAvg-eAvg)/eAvg*100:0;
+ var lastTwo=revs.slice(-2);
+ var negMonths=arr.filter(function(m){return m&&m[3]<0;}).length;
+ var adE=0,adR=0,cE=0,cR=0;arr.forEach(function(m,i){if(!m)return;if(i<3){adE+=m[2];cE+=m[0];}else{adR+=m[2];cR+=m[0];}});
+ var adrE=cE?adE/cE*100:0,adrR=cR?adR/cR*100:0;
+ var trend=growth>=10?'상승세':growth<=-10?'하락세':'보합세';
+ var netAvg=a.cnt?a.net/a.cnt:0;
  var h='<div class="prep-h"><span class="bk" onclick="partnerBack()">‹ 목록</span><h2 class="t" style="margin:0">'+esc(nm)+'</h2></div>';
- h+='<div class="pnote">책임자 '+esc(own)+' · 2026년 1~6월 · 단위 억/만원</div>';
- h+='<div class="pwrap"><table class="ptbl"><tr><th class="nm">항목</th>';
+ h+='<div class="pnote">책임자 '+esc(own)+' · 2026년 1~6월 · 단위 억/만원 · 외부 15개사 중 매출 '+rk+'위</div>';
+ h+='<div class="card" style="background:#f4f8ff;border-color:#d6e6ff"><div style="font-weight:800;margin-bottom:6px">📌 총평</div><div style="font-size:13.5px;line-height:1.65">6개월 누적 <b>매출 '+wonS(a.rev)+'</b> · 순익 <b>'+wonS(a.net)+'</b>(순익률 '+rate.toFixed(1)+'%), 월평균 매출 '+wonS(avg)+' · 순익 '+wonS(netAvg)+'. 매출은 상반기 대비 <b>'+trend+'</b>('+(growth>=0?'+':'')+growth.toFixed(0)+'%)이며, 최고 실적은 '+(maxM.i+1)+'월('+wonS(maxM.v)+'), 최저는 '+(minM.i+1)+'월('+wonS(minM.v)+'). 원가율 '+cor.toFixed(1)+'% · 광고비율 '+adr.toFixed(1)+'% 수준.</div></div>';
+ h+='<div class="ssum" style="grid-template-columns:1fr 1fr 1fr"><div class="ss net"><span class="sl">순익률</span><span class="sv">'+rate.toFixed(1)+'%</span></div><div class="ss"><span class="sl">원가율</span><span class="sv">'+cor.toFixed(1)+'%</span></div><div class="ss"><span class="sl">광고비율</span><span class="sv">'+adr.toFixed(1)+'%</span></div></div>';
+ h+='<div class="seclbl">월별 실적</div><div class="pwrap"><table class="ptbl"><tr><th class="nm">항목</th>';
  PMONTHS.forEach(function(m){h+='<th>'+m+'</th>';});h+='<th>합계</th></tr>';
  var labels=['매출','매입','광고비','순익'];var tots=[a.rev,a.buy,a.ad,a.net];
  for(var f=0;f<4;f++){h+='<tr><td class="nm">'+labels[f]+'</td>';arr.forEach(function(m){h+='<td>'+(m?wonS(m[f]):'-')+'</td>';});h+='<td class="tot">'+wonS(tots[f])+'</td></tr>';}
  h+='<tr><td class="nm">순익률</td>';arr.forEach(function(m){h+='<td>'+(m&&m[0]?(m[3]/m[0]*100).toFixed(1)+'%':'-')+'</td>';});h+='<td class="tot">'+rate.toFixed(1)+'%</td></tr>';
  h+='</table></div>';
- var revs=arr.map(function(m){return m?m[0]:null;}).filter(function(x){return x!=null;});
- var recent=revs.slice(-3),early=revs.slice(0,3);
- var rAvg=recent.reduce(function(s,x){return s+x;},0)/recent.length;
- var eAvg=early.reduce(function(s,x){return s+x;},0)/early.length;
- var growth=eAvg?(rAvg-eAvg)/eAvg*100:0;
- var negMonths=arr.filter(function(m){return m&&m[3]<0;}).length;
- var lastTwo=revs.slice(-2);
  var good=[],warn=[];
- if(a.rev>=500000000)good.push('6개월 매출 '+wonS(a.rev)+'로 규모 상위권');
- if(rate>=13)good.push('평균 순익률 '+rate.toFixed(1)+'%로 견조');
- if(growth>=10)good.push('매출 성장세 (전반 대비 +'+growth.toFixed(0)+'%)');
- if(adr<3)good.push('광고비율 '+adr.toFixed(1)+'%로 광고 효율 우수');
- if(negMonths===0&&a.cnt>=3)good.push('집계 전 기간 흑자 유지');
- if(!good.length)good.push('6개월 매출 '+wonS(a.rev)+', 순익 '+wonS(a.net)+' 유지');
- if(growth<=-10)warn.push('매출 하락세 (전반 대비 '+growth.toFixed(0)+'%)');
+ good.push('6개월 누적 매출 '+wonS(a.rev)+'로 외부 15개사 중 '+rk+'위 규모');
+ if(rate>=17)good.push('평균 순익률 '+rate.toFixed(1)+'%로 수익성 최상위권');
+ else if(rate>=13)good.push('평균 순익률 '+rate.toFixed(1)+'%로 견조');
+ else if(rate>=10)good.push('평균 순익률 '+rate.toFixed(1)+'%로 안정적');
+ if(growth>=10)good.push('매출 성장세 — 하반기 3개월 평균이 상반기 대비 +'+growth.toFixed(0)+'% ('+wonS(eAvg)+'→'+wonS(rAvg)+')');
+ if(adr<3)good.push('광고비율 '+adr.toFixed(1)+'%로 광고 의존도 낮고 효율 우수');
+ else if(adrR<adrE-1)good.push('광고비율 개선세 ('+adrE.toFixed(1)+'%→'+adrR.toFixed(1)+'%)');
+ if(cor<80)good.push('원가율 '+cor.toFixed(1)+'%로 마진 구조 양호');
+ if(negMonths===0&&a.cnt>=3)good.push('집계 전 기간('+a.cnt+'개월) 흑자 유지');
+ good.push('최고 실적월: '+(maxM.i+1)+'월 매출 '+wonS(maxM.v)+'(순익률 '+(arr[maxM.i][0]?(arr[maxM.i][3]/arr[maxM.i][0]*100).toFixed(1):'0')+'%)');
+ if(growth<=-10)warn.push('매출 하락세 — 하반기 3개월 평균이 상반기 대비 '+growth.toFixed(0)+'% ('+wonS(eAvg)+'→'+wonS(rAvg)+')');
  if(rate<8)warn.push('순익률 '+rate.toFixed(1)+'%로 수익성 개선 필요');
- if(adr>15)warn.push('광고비 부담 큼 (광고비율 '+adr.toFixed(1)+'%)');
- if(lastTwo.length===2&&lastTwo[1]<lastTwo[0]*0.85)warn.push('최근월 매출 감소 ('+wonS(lastTwo[0])+'→'+wonS(lastTwo[1])+')');
- if(negMonths>0)warn.push('적자 발생 '+negMonths+'개월');
- if(a.cnt<6)warn.push((6-a.cnt)+'개월 데이터 없음(신규/미집계)');
+ if(cor>=82)warn.push('원가율 '+cor.toFixed(1)+'%로 매입원가 부담 큼 — 매입단가 협상 여지');
+ if(adr>15)warn.push('광고비율 '+adr.toFixed(1)+'%로 광고비 부담 큼');
+ else if(adrR>adrE+2)warn.push('광고비율 상승세 ('+adrE.toFixed(1)+'%→'+adrR.toFixed(1)+'%) — 광고 효율 점검 필요');
+ if(lastTwo.length===2&&lastTwo[1]<lastTwo[0]*0.85)warn.push('최근월 매출 급감 ('+wonS(lastTwo[0])+'→'+wonS(lastTwo[1])+', '+((lastTwo[1]/lastTwo[0]-1)*100).toFixed(0)+'%)');
+ warn.push('최저 실적월: '+(minM.i+1)+'월 매출 '+wonS(minM.v));
+ if(negMonths>0)warn.push('적자 발생 '+negMonths+'개월 — 원가·광고 점검 필요');
+ if(a.cnt<6)warn.push((6-a.cnt)+'개월 데이터 없음(신규 입점/미집계)');
  h+='<div class="seclbl">강점</div>';good.forEach(function(t){h+='<span class="ptag good">👍 '+esc(t)+'</span>';});
  h+='<div class="seclbl">개선·우려</div>';if(warn.length)warn.forEach(function(t){h+='<span class="ptag warn">⚠ '+esc(t)+'</span>';});else h+='<span class="ptag good">특이 우려사항 없음</span>';
  return h;
