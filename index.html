@@ -174,8 +174,8 @@ nav button .ic svg{width:21px;height:21px;display:block}
 .ptbl tr.clk{cursor:pointer}.ptbl tr.clk:hover td{background:#f3f7ff}.ptbl tr.clk:hover td.nm{background:#f3f7ff}
 .pbar{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer}
 .pbar .pbn{width:70px;font-size:12px;font-weight:700;flex:0 0 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pbar .pbt{flex:1;background:#eef2f8;border-radius:6px;height:15px;overflow:hidden}
-.pbar .pbf{height:100%;background:linear-gradient(90deg,#60a5fa,#2563eb);border-radius:6px}
+.pbar .pbt{flex:1;background:#e8edf5;border-radius:6px;height:20px;overflow:hidden;display:block}
+.pbar .pbf{display:block;height:100%;min-width:4px;background:linear-gradient(90deg,#3b82f6,#1d4ed8);border-radius:6px}
 .pbar .pbv{font-size:11px;font-weight:800;color:var(--b2);flex:0 0 auto;width:52px;text-align:right}
 .prep-h{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .prep-h .bk{cursor:pointer;font-weight:800;color:var(--b2);font-size:13px}
@@ -429,7 +429,7 @@ function renderPartner(){
  PMONTHS.forEach(function(m){h+='<th>'+m+'</th>';});h+='<th>합계</th></tr>';
  rows.forEach(function(r){h+='<tr class="clk" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><td class="nm">'+esc(r.nm)+'</td>';PSALES[r.nm].forEach(function(m){h+='<td>'+(m?wonS(m[0]):'-')+'</td>';});h+='<td class="tot">'+wonS(r.rev)+'</td></tr>';});
  h+='</table></div>';
- h+='<div class="seclbl">6개월 매출 비교</div>';
+ h+='<div class="seclbl">6개월 매출 비교</div><div class="pnote">협력사별 6개월 누적 매출 · 막대 길이 = 1위 대비 상대 비율</div>';
  rows.forEach(function(r){var pct=maxRev?Math.round(r.rev/maxRev*100):0;h+='<div class="pbar" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><span class="pbn">'+esc(r.nm)+'</span><span class="pbt"><span class="pbf" style="width:'+pct+'%"></span></span><span class="pbv">'+wonS(r.rev)+'</span></div>';});
  box.innerHTML=h;
 }
