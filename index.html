@@ -332,6 +332,42 @@ function renderChat(){var c=document.getElementById('chat');c.innerHTML=CHAT.len
 function sendMsg(){var el=document.getElementById('msg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
 function editMsg(id){var m=CHAT.filter(function(x){return x.id===id})[0];if(!m)return;var nv=prompt('메시지 수정',m.text||'');if(nv===null)return;nv=nv.trim();if(!nv){db.collection('chat').doc(id).delete();return}db.collection('chat').doc(id).update({text:nv})}
 function delMsg(id){if(confirm('이 메시지를 삭제할까요?'))db.collection('chat').doc(id).delete()}
+/* 인원관리(people) */
+var GOALONLY=false;
+function pField(p,keys){for(var i=0;i<keys.length;i++){var v=p[keys[i]];if(v!=null&&String(v).trim()!=='')return String(v);}return '';}
+function payTxt(v){if(v==null||String(v).trim()==='')return '';var s=String(v).replace(/,/g,'');return /^[0-9]+$/.test(s)?wonS(Number(s))+'원':String(v);}
+function renderPeople(){
+ var box=document.getElementById('peopleBody');if(!box)return;
+ var q=((document.getElementById('pSearch')||{}).value||'').trim().toLowerCase();
+ var list=PEOPLE.slice();
+ if(q)list=list.filter(function(p){return [pField(p,['name','nm']),pField(p,['team','group']),pField(p,['biz']),pField(p,['tel','phone'])].join(' ').toLowerCase().indexOf(q)>=0;});
+ if(GOALONLY)list=list.filter(function(p){return pField(p,['goal'])!=='';});
+ if(!list.length){box.innerHTML='<div class="empty">'+(PEOPLE.length?'조건에 맞는 인원이 없어요':'등록된 인원이 없어요')+'</div>';return;}
+ var groups={},order=[];
+ list.forEach(function(p){var g=pField(p,['team','group'])||'미지정';if(!groups[g]){groups[g]=[];order.push(g);}groups[g].push(p);});
+ order.sort(function(a,b){return a.localeCompare(b,'ko');});
+ var h='';
+ order.forEach(function(g){
+  var arr=groups[g];arr.sort(function(a,b){return pField(a,['name','nm']).localeCompare(pField(b,['name','nm']),'ko');});
+  h+='<div class="grp">'+esc(g)+' <span style="font-weight:600;opacity:.55">('+arr.length+')</span></div>';
+  arr.forEach(function(p){
+   var nm=esc(pField(p,['name','nm'])||'(이름 없음)');
+   var biz=pField(p,['biz']);var bizH=biz?'<span class="biz">'+esc(biz)+'</span>':'';
+   var tel=pField(p,['tel','phone']);var telH=tel?'<a class="tel" href="tel:'+esc(tel.replace(/[^0-9+]/g,''))+'">'+esc(tel)+'</a>':'';
+   var goal=pField(p,['goal']);
+   var goalBadge=goal?'<span class="goal">🎯 '+esc(goal)+'</span>':'';
+   var goalBtn='<span class="gbtn2" onclick="editGoal(\''+p.id+'\')">'+(goal?'목표 수정':'목표 설정')+'</span>';
+   var pt=payTxt(pField(p,['pay']));var payH=pt?'<div class="pay">💰 월급여 '+esc(pt)+'</div>':'';
+   h+='<div class="prow"><span class="delp" onclick="delPerson(\''+p.id+'\')">✕</span><div class="l1"><span class="nm">'+nm+'</span>'+bizH+telH+'<span class="goalwrap">'+goalBadge+goalBtn+'</span></div>'+payH+'</div>';
+  });
+ });
+ box.innerHTML=h;
+}
+function toggleGoalOnly(){GOALONLY=!GOALONLY;var b=document.getElementById('goalBtn');if(b)b.classList.toggle('on',GOALONLY);renderPeople();}
+function togglePay(){var a=document.getElementById('appRoot');var on=a?a.classList.toggle('showpay'):false;var b=document.getElementById('payBtn');if(b)b.classList.toggle('on',on);}
+function addPerson(){var g=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};var name=g('pName');if(!name){alert('이름을 입력하세요');return;}db.collection('people').add({biz:g('pBiz'),team:g('pTeam'),name:name,tel:g('pTel'),goal:g('pGoal'),pay:g('pPay'),ts:Date.now()}).then(function(){['pBiz','pTeam','pName','pTel','pGoal','pPay'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});});}
+function editGoal(id){var p=PEOPLE.filter(function(x){return x.id===id})[0];if(!p)return;var nv=prompt('목표 (비우면 삭제)',pField(p,['goal']));if(nv===null)return;db.collection('people').doc(id).update({goal:nv.trim()});}
+function delPerson(id){var p=PEOPLE.filter(function(x){return x.id===id})[0];var nm=p?pField(p,['name','nm']):'';if(confirm((nm||'이 인원')+' 삭제할까요?'))db.collection('people').doc(id).delete();}
 var HIDE=false;
 function buildToday(){var items=[];recurringFor(todayD).forEach(function(e){items.push({time:e.s,title:e.t,kind:'cal'})});oneoffFor(todayD).forEach(function(e){items.push({time:e.allday?'':e.s,title:e.t,kind:'cal'})});jobsFor(todayD).forEach(function(e){items.push({time:e.s,title:e.t,kind:'job'})});TODOS.forEach(function(t){items.push({time:t.time||'',title:t.title,kind:'todo',id:t.id})});items.forEach(function(it){it.status=DAYSTAT[it.title]||''});items.sort(function(a,b){return ((a.time||'99')+'').localeCompare((b.time||'99')+'')});return items}
 var KN={cal:'일정',job:'클로드',todo:'할일'};
@@ -393,7 +429,9 @@ var mEl=document.getElementById('msg');
 mEl.addEventListener('input',function(){mEl.style.height='auto';mEl.style.height=Math.min(mEl.scrollHeight,130)+'px'});
 if(!IS_MOBILE){mEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}})}
 /* ===== 협력사 매출관리 ===== */
-var PMONTHS=['1월','2월','3월','4월','5월','6월'];
+var MDAYS_Y=[31,28,31,30,31,30,31,31,30,31,30,31];
+var PMCOUNT=6,PMONTHS=['1월','2월','3월','4월','5월','6월'],MDAYS=[31,28,31,30,31,30];
+function pInitMonths(){PMCOUNT=Math.max.apply(null,Object.keys(PSALES).map(function(k){return PSALES[k].length}).concat([1]));PMONTHS=[];MDAYS=[];for(var i=0;i<PMCOUNT;i++){PMONTHS.push((i+1)+'월');MDAYS.push(MDAYS_Y[i]||30);}}
 var POWN={'코아마켓':'마진창고','백정닷컴':'오준형','수짱푸드':'김반석','오오푸드':'박상준','바다베개':'이미선','미식가푸드':'김주환','먹과사전':'전상우','수가파':'황채승','게구쟁이':'강경준','새벽소리':'최지훈','온늘농수산':'전인국','바다꼭대기':'정진우','수사장':'최우석','바보푸드':'류진우','한잔푸드':'정슬기'};
 var PSALES={
 '코아마켓':[[114521546,82144500,17657254,14719792],[154052874,110897300,15630126,27525448],[118640164,88009980,20148545,10481639],[130477091,97118175,25849765,7509151],[109400508,80050050,22673750,6676708],[192069492,142231314,36264260,13573918]],
@@ -412,12 +450,12 @@ var PSALES={
 '바보푸드':[[80266500,62280500,3859815,14126185],[53963800,41807900,3744888,8411012],[56069600,42307500,4769148,8992952],[60431800,46990600,3209258,10231942],[50738000,39952400,2927074,7858526],[38041000,30017700,1260490,6762810]],
 '한잔푸드':[null,null,null,null,null,[27869350,21709300,2350287,3809763]]
 };
+pInitMonths();
 var partnerSel=null,partnerMetric='rev';
 function pMonthVal(m,w){if(!m)return null;if(w==='net')return m[3];if(w==='rate')return m[0]?m[3]/m[0]*100:0;return m[0];}
 function pTotVal(a,w){if(w==='net')return a.net;if(w==='rate')return a.rev?a.net/a.rev*100:0;return a.rev;}
 function pFmt(v,w){if(v==null)return '-';if(w==='rate')return v.toFixed(1)+'%';return wonS(v);}
 function setPMetric(w){partnerMetric=w;renderPartner();}
-var MDAYS=[31,28,31,30,31,30];
 function pDays(arr){var d=0;arr.forEach(function(m,i){if(m)d+=MDAYS[i];});return d;}
 function pAvgMon(r,w){var a=r.a;if(w==='rate'){var vals=[];PSALES[r.nm].forEach(function(m){if(m&&m[0])vals.push(m[3]/m[0]*100);});return vals.length?vals.reduce(function(s,x){return s+x;},0)/vals.length:0;}return (w==='net'?a.net:a.rev)/(a.cnt||1);}
 function pAvgDay(r,w){if(w==='rate')return null;var d=pDays(PSALES[r.nm])||1;return (w==='net'?r.a.net:r.a.rev)/d;}
@@ -433,14 +471,14 @@ function renderPartner(){
  rows.sort(function(x,y){return pTotVal(y.a,W)-pTotVal(x.a,W);});
  var maxV=Math.max.apply(null,rows.map(function(r){return pTotVal(r.a,W);}).concat([0]));
  var h=(PREPORT&&PREPORT.text?'<div class="card" style="background:#eef7f0;border-color:#cfe6d6"><div style="font-weight:800;margin-bottom:4px">📰 최근 일별 리포트 <span class="muted small">('+esc(PREPORT.date||'')+')</span></div><div class="memo" style="font-size:12.5px;line-height:1.55">'+esc(PREPORT.text)+'</div></div>':'');
- h+='<div class="ssum" style="grid-template-columns:1fr 1fr 1fr"><div class="ss"><span class="sl">6개월 매출</span><span class="sv">'+wonS(TR)+'</span></div><div class="ss net"><span class="sl">6개월 순익</span><span class="sv">'+wonS(TN)+'</span></div><div class="ss"><span class="sl">순익률</span><span class="sv">'+TRT.toFixed(1)+'%</span></div></div>';
- h+='<div class="pnote">외부 협력사 '+rows.length+'개사 · 2026년 1~6월 · 억/만원 · 행 클릭 시 분석 리포트</div>';
+ h+='<div class="ssum" style="grid-template-columns:1fr 1fr 1fr"><div class="ss"><span class="sl">'+PMCOUNT+'개월 매출</span><span class="sv">'+wonS(TR)+'</span></div><div class="ss net"><span class="sl">'+PMCOUNT+'개월 순익</span><span class="sv">'+wonS(TN)+'</span></div><div class="ss"><span class="sl">순익률</span><span class="sv">'+TRT.toFixed(1)+'%</span></div></div>';
+ h+='<div class="pnote">외부 협력사 '+rows.length+'개사 · 2026년 1~'+PMCOUNT+'월 · 억/만원 · 행 클릭 시 분석 리포트</div>';
  h+='<div class="seg">'+['rev','net','rate'].map(function(k){return '<button class="'+(W===k?'on':'')+'" onclick="setPMetric(\''+k+'\')">'+({rev:'매출',net:'순익',rate:'순익률'}[k])+'</button>';}).join('')+'</div>';
  h+='<div class="seclbl">월별 '+MN+' 추이</div><div class="pwrap"><table class="ptbl"><tr><th class="nm">협력사</th>';
  PMONTHS.forEach(function(m){h+='<th>'+m+'</th>';});h+='<th>합계</th><th>월평균</th><th>일평균</th></tr>';
- rows.forEach(function(r){h+='<tr class="clk" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><td class="nm">'+esc(r.nm)+'</td>';PSALES[r.nm].forEach(function(m){h+='<td>'+pFmt(pMonthVal(m,W),W)+'</td>';});var ad=pAvgDay(r,W);h+='<td class="tot">'+pFmt(pTotVal(r.a,W),W)+'</td><td>'+pFmt(pAvgMon(r,W),W)+'</td><td>'+(ad==null?'-':pFmt(ad,W))+'</td></tr>';});
+ rows.forEach(function(r){h+='<tr class="clk" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><td class="nm">'+esc(r.nm)+'</td>';for(var _i=0;_i<PMCOUNT;_i++){h+='<td>'+pFmt(pMonthVal(PSALES[r.nm][_i],W),W)+'</td>';}var ad=pAvgDay(r,W);h+='<td class="tot">'+pFmt(pTotVal(r.a,W),W)+'</td><td>'+pFmt(pAvgMon(r,W),W)+'</td><td>'+(ad==null?'-':pFmt(ad,W))+'</td></tr>';});
  h+='</table></div>';
- h+='<div class="seclbl">6개월 '+MN+' 비교</div><div class="pnote">협력사별 6개월 '+MN+(W==='rate'?'(누적 기준)':' 누적')+' · 막대 길이 = 최댓값 대비 상대 비율</div>';
+ h+='<div class="seclbl">'+PMCOUNT+'개월 '+MN+' 비교</div><div class="pnote">협력사별 '+PMCOUNT+'개월 '+MN+(W==='rate'?'(누적 기준)':' 누적')+' · 막대 길이 = 최댓값 대비 상대 비율</div>';
  rows.forEach(function(r){var v=pTotVal(r.a,W);var pct=maxV>0?Math.max(0,Math.round(v/maxV*100)):0;h+='<div class="pbar" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><span class="pbn">'+esc(r.nm)+'</span><span class="pbt"><span class="pbf" style="width:'+pct+'%"></span></span><span class="pbv">'+pFmt(v,W)+'</span></div>';});
  box.innerHTML=h;
 }
@@ -449,12 +487,12 @@ function partnerBack(){if(history.state&&history.state.prep){history.back();retu
 window.addEventListener('popstate',function(){if(partnerSel){partnerSel=null;renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}});
 function partnerRank(nm){var a=Object.keys(PSALES).map(function(n){return {n:n,rev:pAgg(PSALES[n]).rev};});a.sort(function(x,y){return y.rev-x.rev;});for(var i=0;i<a.length;i++)if(a[i].n===nm)return i+1;return 0;}
 function partnerRepHTML(nm){
- var arr=PSALES[nm];var a=pAgg(arr);var rate=a.rev?a.net/a.rev*100:0;var adr=a.rev?a.ad/a.rev*100:0;var cor=a.rev?a.buy/a.rev*100:0;var own=POWN[nm]||'';var rk=partnerRank(nm);
+ var arr=PSALES[nm];var pcnt=Object.keys(PSALES).length;var a=pAgg(arr);var rate=a.rev?a.net/a.rev*100:0;var adr=a.rev?a.ad/a.rev*100:0;var cor=a.rev?a.buy/a.rev*100:0;var own=POWN[nm]||'';var rk=partnerRank(nm);
  var mrev=[];arr.forEach(function(m,i){if(m)mrev.push({i:i,v:m[0]});});
  var avg=mrev.length?a.rev/mrev.length:0;
  var sortedM=mrev.slice().sort(function(x,y){return y.v-x.v;});var maxM=sortedM[0]||{i:0,v:0},minM=sortedM[sortedM.length-1]||{i:0,v:0};
  var revs=mrev.map(function(x){return x.v;});
- var recent=revs.slice(-3),early=revs.slice(0,3);
+ var _half=Math.floor(revs.length/2);var early=_half?revs.slice(0,_half):revs.slice(),recent=_half?revs.slice(revs.length-_half):revs.slice();
  var rAvg=recent.reduce(function(s,x){return s+x;},0)/(recent.length||1);
  var eAvg=early.reduce(function(s,x){return s+x;},0)/(early.length||1);
  var growth=eAvg?(rAvg-eAvg)/eAvg*100:0;
@@ -465,27 +503,28 @@ function partnerRepHTML(nm){
  var trend=growth>=10?'상승세':growth<=-10?'하락세':'보합세';
  var netAvg=a.cnt?a.net/a.cnt:0;
  var h='<div class="prep-h"><span class="bk" onclick="partnerBack()">‹ 목록</span><h2 class="t" style="margin:0">'+esc(nm)+'</h2></div>';
- h+='<div class="pnote">책임자 '+esc(own)+' · 2026년 1~6월 · 단위 억/만원 · 외부 15개사 중 매출 '+rk+'위</div>';
- h+='<div class="card" style="background:#f4f8ff;border-color:#d6e6ff"><div style="font-weight:800;margin-bottom:6px">📌 총평</div><div style="font-size:13.5px;line-height:1.65">6개월 누적 <b>매출 '+wonS(a.rev)+'</b> · 순익 <b>'+wonS(a.net)+'</b>(순익률 '+rate.toFixed(1)+'%), 월평균 매출 '+wonS(avg)+' · 순익 '+wonS(netAvg)+', 일평균 매출 '+wonS(a.rev/(pDays(arr)||1))+' · 순익 '+wonS(a.net/(pDays(arr)||1))+'. 매출은 상반기 대비 <b>'+trend+'</b>('+(growth>=0?'+':'')+growth.toFixed(0)+'%)이며, 최고 실적은 '+(maxM.i+1)+'월('+wonS(maxM.v)+'), 최저는 '+(minM.i+1)+'월('+wonS(minM.v)+'). 원가율 '+cor.toFixed(1)+'% · 광고비율 '+adr.toFixed(1)+'% 수준.</div></div>';
+ h+='<div class="pnote">책임자 '+esc(own)+' · 2026년 1~'+PMCOUNT+'월 · 단위 억/만원 · 외부 '+pcnt+'개사 중 매출 '+rk+'위</div>';
+ h+='<div class="card" style="background:#f4f8ff;border-color:#d6e6ff"><div style="font-weight:800;margin-bottom:6px">📌 총평</div><div style="font-size:13.5px;line-height:1.65">'+PMCOUNT+'개월 누적 <b>매출 '+wonS(a.rev)+'</b> · 순익 <b>'+wonS(a.net)+'</b>(순익률 '+rate.toFixed(1)+'%), 월평균 매출 '+wonS(avg)+' · 순익 '+wonS(netAvg)+', 일평균 매출 '+wonS(a.rev/(pDays(arr)||1))+' · 순익 '+wonS(a.net/(pDays(arr)||1))+'. 매출은 전반 대비 <b>'+trend+'</b>('+(growth>=0?'+':'')+growth.toFixed(0)+'%)이며, 최고 실적은 '+(maxM.i+1)+'월('+wonS(maxM.v)+'), 최저는 '+(minM.i+1)+'월('+wonS(minM.v)+'). 원가율 '+cor.toFixed(1)+'% · 광고비율 '+adr.toFixed(1)+'% 수준.</div></div>';
  h+='<div class="ssum" style="grid-template-columns:1fr 1fr 1fr"><div class="ss net"><span class="sl">순익률</span><span class="sv">'+rate.toFixed(1)+'%</span></div><div class="ss"><span class="sl">원가율</span><span class="sv">'+cor.toFixed(1)+'%</span></div><div class="ss"><span class="sl">광고비율</span><span class="sv">'+adr.toFixed(1)+'%</span></div></div>';
  h+='<div class="seclbl">월별 실적</div><div class="pwrap"><table class="ptbl"><tr><th class="nm">항목</th>';
  PMONTHS.forEach(function(m){h+='<th>'+m+'</th>';});h+='<th>합계</th></tr>';
  var labels=['매출','매입','광고비','순익'];var tots=[a.rev,a.buy,a.ad,a.net];
- for(var f=0;f<4;f++){h+='<tr><td class="nm">'+labels[f]+'</td>';arr.forEach(function(m){h+='<td>'+(m?wonS(m[f]):'-')+'</td>';});h+='<td class="tot">'+wonS(tots[f])+'</td></tr>';}
- h+='<tr><td class="nm">순익률</td>';arr.forEach(function(m){h+='<td>'+(m&&m[0]?(m[3]/m[0]*100).toFixed(1)+'%':'-')+'</td>';});h+='<td class="tot">'+rate.toFixed(1)+'%</td></tr>';
+ for(var f=0;f<4;f++){h+='<tr><td class="nm">'+labels[f]+'</td>';for(var _j=0;_j<PMCOUNT;_j++){var _m=arr[_j];h+='<td>'+(_m?wonS(_m[f]):'-')+'</td>';}h+='<td class="tot">'+wonS(tots[f])+'</td></tr>';}
+ h+='<tr><td class="nm">순익률</td>';for(var _k=0;_k<PMCOUNT;_k++){var _m=arr[_k];h+='<td>'+(_m&&_m[0]?(_m[3]/_m[0]*100).toFixed(1)+'%':'-')+'</td>';}h+='<td class="tot">'+rate.toFixed(1)+'%</td></tr>';
  h+='</table></div>';
  var good=[],warn=[];
- good.push('6개월 누적 매출 '+wonS(a.rev)+'로 외부 15개사 중 '+rk+'위 규모');
+ good.push(PMCOUNT+'개월 누적 매출 '+wonS(a.rev)+'로 외부 '+pcnt+'개사 중 '+rk+'위 규모');
  if(rate>=17)good.push('평균 순익률 '+rate.toFixed(1)+'%로 수익성 최상위권');
  else if(rate>=13)good.push('평균 순익률 '+rate.toFixed(1)+'%로 견조');
  else if(rate>=10)good.push('평균 순익률 '+rate.toFixed(1)+'%로 안정적');
- if(growth>=10)good.push('매출 성장세 — 하반기 3개월 평균이 상반기 대비 +'+growth.toFixed(0)+'% ('+wonS(eAvg)+'→'+wonS(rAvg)+')');
+ else if(rate>=8)good.push('평균 순익률 '+rate.toFixed(1)+'%로 보통 수준');
+ if(growth>=10)good.push('매출 성장세 — 후반 매출이 전반 대비 +'+growth.toFixed(0)+'% ('+wonS(eAvg)+'→'+wonS(rAvg)+')');
  if(adr<3)good.push('광고비율 '+adr.toFixed(1)+'%로 광고 의존도 낮고 효율 우수');
  else if(adrR<adrE-1)good.push('광고비율 개선세 ('+adrE.toFixed(1)+'%→'+adrR.toFixed(1)+'%)');
  if(cor<80)good.push('원가율 '+cor.toFixed(1)+'%로 마진 구조 양호');
  if(negMonths===0&&a.cnt>=3)good.push('집계 전 기간('+a.cnt+'개월) 흑자 유지');
  good.push('최고 실적월: '+(maxM.i+1)+'월 매출 '+wonS(maxM.v)+'(순익률 '+(arr[maxM.i][0]?(arr[maxM.i][3]/arr[maxM.i][0]*100).toFixed(1):'0')+'%)');
- if(growth<=-10)warn.push('매출 하락세 — 하반기 3개월 평균이 상반기 대비 '+growth.toFixed(0)+'% ('+wonS(eAvg)+'→'+wonS(rAvg)+')');
+ if(growth<=-10)warn.push('매출 하락세 — 후반 매출이 전반 대비 '+growth.toFixed(0)+'% ('+wonS(eAvg)+'→'+wonS(rAvg)+')');
  if(rate<8)warn.push('순익률 '+rate.toFixed(1)+'%로 수익성 개선 필요');
  if(cor>=82)warn.push('원가율 '+cor.toFixed(1)+'%로 매입원가 부담 큼 — 매입단가 협상 여지');
  if(adr>15)warn.push('광고비율 '+adr.toFixed(1)+'%로 광고비 부담 큼');
@@ -493,7 +532,7 @@ function partnerRepHTML(nm){
  if(lastTwo.length===2&&lastTwo[1]<lastTwo[0]*0.85)warn.push('최근월 매출 급감 ('+wonS(lastTwo[0])+'→'+wonS(lastTwo[1])+', '+((lastTwo[1]/lastTwo[0]-1)*100).toFixed(0)+'%)');
  warn.push('최저 실적월: '+(minM.i+1)+'월 매출 '+wonS(minM.v));
  if(negMonths>0)warn.push('적자 발생 '+negMonths+'개월 — 원가·광고 점검 필요');
- if(a.cnt<6)warn.push((6-a.cnt)+'개월 데이터 없음(신규 입점/미집계)');
+ if(a.cnt<PMCOUNT)warn.push((PMCOUNT-a.cnt)+'개월 데이터 없음(신규 입점/미집계)');
  h+='<div class="seclbl">강점</div>';good.forEach(function(t){h+='<span class="ptag good">👍 '+esc(t)+'</span>';});
  h+='<div class="seclbl">개선·우려</div>';if(warn.length)warn.forEach(function(t){h+='<span class="ptag warn">⚠ '+esc(t)+'</span>';});else h+='<span class="ptag good">특이 우려사항 없음</span>';
  return h;
