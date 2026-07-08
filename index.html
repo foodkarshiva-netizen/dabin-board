@@ -396,20 +396,10 @@ var BIZ=[
 {id:'order',e:'🧾',t:'발주정산 보드',d:'발주 내역과 정산을 매칭·집계하는 관리 보드',u:'https://service.masterc.co.kr/masterc-order/'},
 {id:'access',e:'🛡️',t:'관리보드',d:'리모컨·매크로 접속 감시 등 운영을 총괄',u:'https://service.masterc.co.kr/mastercco-access/login.php'}
 ];
-var bizSel=null;
-function bizOpen(id){bizSel=id;renderBiz();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}
-function bizBack(){bizSel=null;renderBiz();}
 function renderBiz(){
  var box=document.getElementById('bizBody');if(!box)return;
- if(bizSel){
-  var b=BIZ.filter(function(x){return x.id===bizSel;})[0];if(!b){bizSel=null;return renderBiz();}
-  box.innerHTML='<div class="bizbar"><button class="bizback" onclick="bizBack()">‹ 목록</button><span class="biznow">'+b.e+' '+esc(b.t)+'</span><a class="biznew" href="'+esc(b.u)+'" target="_blank" rel="noopener">새 탭으로 ↗</a></div>'+
-   '<div class="bizhint">프레임 안이 로그아웃 상태로 보이면 프레임 안에서 한 번 로그인하세요. (안 되면 우측 상단 ‘새 탭으로’)</div>'+
-   '<iframe class="bizframe" src="'+esc(b.u)+'"></iframe>';
-  return;
- }
- var h='<div class="bizhead">(주)마스터 운영 보드 · 카드를 누르면 아래에서 바로 열립니다 (로그인 필요)</div><div class="bizgrid">';
- BIZ.forEach(function(b){h+='<div class="bizcard" onclick="bizOpen(\''+b.id+'\')"><span class="bemo">'+b.e+'</span><span class="btit">'+esc(b.t)+'</span><span class="bdesc">'+esc(b.d)+'</span><span class="bgo">열기 →</span></div>';});
+ var h='<div class="bizhead">(주)마스터 운영 보드 · 카드를 누르면 새 탭에서 열립니다 (로그인 필요)</div><div class="bizgrid">';
+ BIZ.forEach(function(b){h+='<a class="bizcard" href="'+esc(b.u)+'" target="_blank" rel="noopener"><span class="bemo">'+b.e+'</span><span class="btit">'+esc(b.t)+'</span><span class="bdesc">'+esc(b.d)+'</span><span class="bgo">바로가기 ↗</span></a>';});
  h+='</div>';
  box.innerHTML=h;
 }
