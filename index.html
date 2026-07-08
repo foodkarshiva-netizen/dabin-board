@@ -96,12 +96,18 @@ nav button.on{color:var(--b)}
 .bizhead{color:var(--mut);font-size:12.5px;margin:2px 0 12px;line-height:1.5}
 .bizgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:560px){.bizgrid{grid-template-columns:1fr}}
-.bizcard{display:flex;flex-direction:column;gap:3px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;text-decoration:none;box-shadow:0 1px 3px rgba(20,40,80,.05);transition:transform .15s,box-shadow .15s,border-color .15s}
+.bizcard{display:flex;flex-direction:column;gap:3px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;text-decoration:none;cursor:pointer;box-shadow:0 1px 3px rgba(20,40,80,.05);transition:transform .15s,box-shadow .15s,border-color .15s}
 .bizcard:hover{border-color:var(--b);box-shadow:0 5px 16px rgba(29,78,216,.13);transform:translateY(-1px)}
 .bizcard .bemo{font-size:22px;line-height:1}
 .bizcard .btit{font-weight:800;font-size:15px;color:#17233b;margin-top:4px}
 .bizcard .bdesc{font-size:12px;color:var(--mut);line-height:1.5;min-height:2.5em}
 .bizcard .bgo{margin-top:6px;font-size:12.5px;font-weight:800;color:var(--b)}
+.bizbar{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bizback{background:#eef3fe;border:1px solid var(--line);color:var(--b);font-weight:800;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
+.biznow{font-weight:800;font-size:15px;color:#17233b;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.biznew{font-size:12.5px;font-weight:800;color:var(--b);text-decoration:none;white-space:nowrap}
+.bizhint{font-size:11.5px;color:var(--mut);margin-bottom:8px;line-height:1.5}
+.bizframe{width:100%;height:78vh;min-height:420px;border:1px solid var(--line);border-radius:12px;background:#fff}
 /* order */
 .oitem{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff}
 .oitem.done{opacity:.62}
@@ -271,15 +277,7 @@ nav button .ic svg{width:21px;height:21px;display:block}
   </section>
   <section class="page" id="p-biz">
     <h2 class="t">통합 사업 보드</h2>
-    <div class="bizhead">(주)마스터 운영 보드로 바로 이동합니다 · 로그인 필요 · 새 탭에서 열림</div>
-    <div class="bizgrid">
-      <a class="bizcard" href="https://service.masterc.co.kr/mastercco-cash-daily/admin/login.php" target="_blank" rel="noopener"><span class="bemo">💰</span><span class="btit">자금일보</span><span class="bdesc">일자별 입·출금과 자금 흐름을 정리하는 일일 자금 보고</span><span class="bgo">바로가기 →</span></a>
-      <a class="bizcard" href="https://service.masterc.co.kr/mastercco-ch/" target="_blank" rel="noopener"><span class="bemo">📣</span><span class="btit">자체채널 마케팅 보드</span><span class="bdesc">자체 판매 채널의 마케팅 진행 현황과 성과</span><span class="bgo">바로가기 →</span></a>
-      <a class="bizcard" href="https://service.masterc.co.kr/mastercco-ext/" target="_blank" rel="noopener"><span class="bemo">🚚</span><span class="btit">외부유통 현황 보드</span><span class="bdesc">외부 유통 채널별 판매·유통 현황을 한눈에</span><span class="bgo">바로가기 →</span></a>
-      <a class="bizcard" href="https://service.masterc.co.kr/mastercco-monthly/admin/login.php" target="_blank" rel="noopener"><span class="bemo">📅</span><span class="btit">월간공유서 종합보드</span><span class="bdesc">월간 공유서를 종합해 실적과 지표를 정리</span><span class="bgo">바로가기 →</span></a>
-      <a class="bizcard" href="https://service.masterc.co.kr/masterc-order/" target="_blank" rel="noopener"><span class="bemo">🧾</span><span class="btit">발주정산 보드</span><span class="bdesc">발주 내역과 정산을 매칭·집계하는 관리 보드</span><span class="bgo">바로가기 →</span></a>
-      <a class="bizcard" href="https://service.masterc.co.kr/mastercco-access/login.php" target="_blank" rel="noopener"><span class="bemo">🛡️</span><span class="btit">관리보드</span><span class="bdesc">리모컨·매크로 접속 감시 등 운영을 총괄</span><span class="bgo">바로가기 →</span></a>
-    </div>
+    <div id="bizBody"></div>
   </section>
   </div>
 </main>
@@ -330,7 +328,7 @@ function ic(p){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 var ICONS={talk:ic('<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.7 8.7 0 0 1-3.9-.9L3 21l1.9-5.1a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>'),today:ic('<circle cx="12" cy="12" r="9"/><path d="M8.4 12.4l2.4 2.4 4.8-5.4"/>'),cal:ic('<rect x="3" y="4.5" width="18" height="16" rx="2.2"/><path d="M3 9.2h18M8 2.6v3.6M16 2.6v3.6"/>'),people:ic('<circle cx="9" cy="8.4" r="3.2"/><path d="M3.4 19.6c0-3.1 2.6-5.2 5.6-5.2s5.6 2.1 5.6 5.2"/><path d="M16.2 6.1a2.9 2.9 0 0 1 0 5.7M17.6 14.5c2.3.4 4 2.3 4 5.1"/>'),order:ic('<rect x="5" y="4" width="14" height="17" rx="2.2"/><rect x="9" y="2.4" width="6" height="3.6" rx="1.1"/><path d="M8.5 11h7M8.5 15h5"/>'),proj:ic('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.7 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/>'),sales:ic('<path d="M3 20.5h18"/><path d="M6.5 20.5v-5.5M11.5 20.5v-10M16.5 20.5v-7"/>'),misu:ic('<rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>'),memo:ic('<circle cx="8.5" cy="8.5" r="4.5"/><path d="M11.8 11.8L20 20M16 18l2-2M18.5 15.5l2-2"/>'),partner:ic('<path d="M3 20.5h18"/><path d="M4 16l4.5-4.5 3.5 3 5-6"/><circle cx="20" cy="8.5" r="1.4"/>'),biz:ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>')};
 var nav=document.getElementById('nav');
 TABS.forEach(function(t){var b=document.createElement('button');b.dataset.id=t[0];b.innerHTML='<span class="ic">'+ICONS[t[0]]+'</span>'+t[2];b.onclick=function(){go(t[0])};nav.appendChild(b)});
-function go(id){document.querySelectorAll('.page').forEach(function(p){p.classList.toggle('on',p.id==='p-'+id)});nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===id)});var nm=TABS.filter(function(t){return t[0]===id})[0][2];document.getElementById('ttl').textContent=nm;document.getElementById('dttl').textContent=nm;if(id==='cal')renderCal();if(id==='sales')renderSales();if(id==='partner'){partnerSel=null;renderPartner()}}
+function go(id){document.querySelectorAll('.page').forEach(function(p){p.classList.toggle('on',p.id==='p-'+id)});nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===id)});var nm=TABS.filter(function(t){return t[0]===id})[0][2];document.getElementById('ttl').textContent=nm;document.getElementById('dttl').textContent=nm;if(id==='cal')renderCal();if(id==='sales')renderSales();if(id==='partner'){partnerSel=null;renderPartner()}if(id==='biz')renderBiz()}
 var PEOPLE=[],ORDERS=[],PROJ=[],TODOS=[],DAYSTAT={},CHAT=[];
 var MEMOS=[],MEMOSHOW={};
 var MISU=[],CUSTOM=null,PREPORT=null;
@@ -389,6 +387,32 @@ function togglePay(){var a=document.getElementById('appRoot');var on=a?a.classLi
 function addPerson(){var g=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};var name=g('pName');if(!name){alert('이름을 입력하세요');return;}db.collection('people').add({biz:g('pBiz'),team:g('pTeam'),name:name,tel:g('pTel'),goal:g('pGoal'),pay:g('pPay'),ts:Date.now()}).then(function(){['pBiz','pTeam','pName','pTel','pGoal','pPay'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});});}
 function editGoal(id){var p=PEOPLE.filter(function(x){return x.id===id})[0];if(!p)return;var nv=prompt('목표 (비우면 삭제)',pField(p,['goal']));if(nv===null)return;db.collection('people').doc(id).update({goal:nv.trim()});}
 function delPerson(id){var p=PEOPLE.filter(function(x){return x.id===id})[0];var nm=p?pField(p,['name','nm']):'';if(confirm((nm||'이 인원')+' 삭제할까요?'))db.collection('people').doc(id).delete();}
+/* 통합보드(biz) */
+var BIZ=[
+{id:'cash',e:'💰',t:'자금일보',d:'일자별 입·출금과 자금 흐름 일일 보고',u:'https://service.masterc.co.kr/mastercco-cash-daily/admin/login.php'},
+{id:'ch',e:'📣',t:'자체채널 마케팅 보드',d:'자체 판매 채널의 마케팅 진행 현황과 성과',u:'https://service.masterc.co.kr/mastercco-ch/'},
+{id:'ext',e:'🚚',t:'외부유통 현황 보드',d:'외부 유통 채널별 판매·유통 현황을 한눈에',u:'https://service.masterc.co.kr/mastercco-ext/'},
+{id:'monthly',e:'📅',t:'월간공유서 종합보드',d:'월간 공유서를 종합해 실적과 지표를 정리',u:'https://service.masterc.co.kr/mastercco-monthly/admin/login.php'},
+{id:'order',e:'🧾',t:'발주정산 보드',d:'발주 내역과 정산을 매칭·집계하는 관리 보드',u:'https://service.masterc.co.kr/masterc-order/'},
+{id:'access',e:'🛡️',t:'관리보드',d:'리모컨·매크로 접속 감시 등 운영을 총괄',u:'https://service.masterc.co.kr/mastercco-access/login.php'}
+];
+var bizSel=null;
+function bizOpen(id){bizSel=id;renderBiz();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}
+function bizBack(){bizSel=null;renderBiz();}
+function renderBiz(){
+ var box=document.getElementById('bizBody');if(!box)return;
+ if(bizSel){
+  var b=BIZ.filter(function(x){return x.id===bizSel;})[0];if(!b){bizSel=null;return renderBiz();}
+  box.innerHTML='<div class="bizbar"><button class="bizback" onclick="bizBack()">‹ 목록</button><span class="biznow">'+b.e+' '+esc(b.t)+'</span><a class="biznew" href="'+esc(b.u)+'" target="_blank" rel="noopener">새 탭으로 ↗</a></div>'+
+   '<div class="bizhint">프레임 안이 로그아웃 상태로 보이면 프레임 안에서 한 번 로그인하세요. (안 되면 우측 상단 ‘새 탭으로’)</div>'+
+   '<iframe class="bizframe" src="'+esc(b.u)+'"></iframe>';
+  return;
+ }
+ var h='<div class="bizhead">(주)마스터 운영 보드 · 카드를 누르면 아래에서 바로 열립니다 (로그인 필요)</div><div class="bizgrid">';
+ BIZ.forEach(function(b){h+='<div class="bizcard" onclick="bizOpen(\''+b.id+'\')"><span class="bemo">'+b.e+'</span><span class="btit">'+esc(b.t)+'</span><span class="bdesc">'+esc(b.d)+'</span><span class="bgo">열기 →</span></div>';});
+ h+='</div>';
+ box.innerHTML=h;
+}
 var HIDE=false;
 function buildToday(){var items=[];recurringFor(todayD).forEach(function(e){items.push({time:e.s,title:e.t,kind:'cal'})});oneoffFor(todayD).forEach(function(e){items.push({time:e.allday?'':e.s,title:e.t,kind:'cal'})});jobsFor(todayD).forEach(function(e){items.push({time:e.s,title:e.t,kind:'job'})});TODOS.forEach(function(t){items.push({time:t.time||'',title:t.title,kind:'todo',id:t.id})});items.forEach(function(it){it.status=DAYSTAT[it.title]||''});items.sort(function(a,b){return ((a.time||'99')+'').localeCompare((b.time||'99')+'')});return items}
 var KN={cal:'일정',job:'클로드',todo:'할일'};
