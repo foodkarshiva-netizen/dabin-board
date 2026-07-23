@@ -34,8 +34,9 @@ input,textarea,select{font-family:inherit;font-size:14px;border:1px solid var(--
 textarea{resize:vertical}
 label.fl{display:block;font-size:12px;color:var(--mut);font-weight:700;margin:8px 2px 4px}
 .pill{display:inline-block;background:var(--bl);color:var(--b2);font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--line);display:flex;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;background:none;border:none;padding:7px 0 8px;color:#9aa6ae;font-size:10px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--line);display:flex;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:0 0 auto;min-width:66px;background:none;border:none;padding:10px 6px 11px;color:#9aa6ae;font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap}
 nav button .ic{font-size:16px;line-height:1}
 nav button.on{color:var(--b)}
 .rrail{display:none}
@@ -138,7 +139,7 @@ nav button.on{color:var(--b)}
 .smet .sl{color:var(--mut);font-size:11.5px}
 .smet .sv{font-weight:800;font-size:13.5px;letter-spacing:-.3px}
 .smet .net .sv{color:var(--b2)}
-nav button .ic svg{width:21px;height:21px;display:block}
+nav button .ic svg{width:24px;height:24px;display:block}
 .memo{white-space:pre-wrap;word-break:break-word}
 .rowsb{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap}
 /* login */
@@ -313,7 +314,7 @@ var MF=[{t:"(주)원광 1천만원 상환체크",s:"09:00"},{t:"김혜지 당근
 var ML=[{t:"고려신용정보 권순화 팀장 유선회의",s:"09:00"}];
 var ONE=[{date:"2026-06-26",s:"09:00",t:"지원·성완·종현에게 김혜지 얘기하기"},{date:"2026-06-26",s:"11:00",t:"황주원 커피 마시기"},{date:"2026-06-26",s:"13:00",t:"김혜지 민형사상 소장 작성"},{date:"2026-06-27",s:"10:00",t:"출근"},{date:"2026-07-01",allday:1,t:"김혜지 KPP보증금 + 당근 상환요청"},{date:"2026-07-01",allday:1,t:"[월초] 7월 변론기일 안내"},{date:"2026-07-02",s:"11:00",t:"변론기일 (춘천지법 강릉지원)"},{date:"2026-07-07",s:"15:40",t:"변론기일 (서울남부지법)"},{date:"2026-07-16",s:"16:00",t:"광고가격 낮추기"},{date:"2026-07-16",s:"18:00",t:"광고가격 낮추기"},{date:"2026-07-16",s:"20:00",t:"광고가격 낮추기"},{date:"2026-07-17",allday:1,t:"주말근무"},{date:"2026-07-18",allday:1,t:"주말근무"},{date:"2026-06-28",s:"17:00",t:"천안 이동"},{date:"2026-06-28",allday:1,t:"군산방문"},{date:"2026-06-29",allday:1,t:"군산방문"},{date:"2026-06-30",allday:1,t:"군산방문"},{date:"2026-08-01",allday:1,t:"싸스 약속"}];
 var EVENTS=ONE.map(function(o){return {id:null,date:o.date,t:o.t,s:o.s||"",allday:!!o.allday};});
-var JOBS=[{sc:"d",s:"05:30",t:"일정 브리핑"},{sc:"d",s:"09:00",t:"협력사 일별 리포트"},{sc:"d",s:"18:00",t:"채널사 매출 보고"},{sc:"d",s:"20:00",t:"유통사 매출 보고"},{sc:"wd",s:"06:02",t:"유통의견·잔여발주 전송"},{sc:"wd",s:"06:08",t:"보고서 미작성자 체크"},{sc:[2,3,4,5,6],s:"10:11",t:"밴드광고 주별 순익"}];
+var JOBS=[{sc:"d",s:"05:30",t:"일정 브리핑"},{sc:"d",s:"18:00",t:"채널사 매출 보고"},{sc:"d",s:"20:00",t:"유통사 매출 보고"},{sc:"wd",s:"06:02",t:"유통의견·잔여발주 전송"},{sc:"wd",s:"06:08",t:"보고서 미작성자 체크"},{sc:[2,3,4,5,6],s:"10:11",t:"밴드광고 주별 순익"}];
 function isBiz(d){var w=d.getDay();return w>=1&&w<=5&&!HOL[iso(d)]}
 function firstBiz(y,m){var d=new Date(y,m,1);while(!isBiz(d))d.setDate(d.getDate()+1);return iso(d)}
 function lastBiz(y,m){var d=new Date(y,m+1,0);while(!isBiz(d))d.setDate(d.getDate()-1);return iso(d)}
@@ -349,7 +350,7 @@ function startApp(){
   unsub.push(db.collection('events').onSnapshot(function(s){EVENTS=[];s.forEach(function(d){var m=d.data();EVENTS.push({id:d.id,date:m.date,t:(m.title!==undefined?m.title:m.t),s:m.s||'',allday:!!m.allday})});renderCal();renderToday()}));
   renderSales();
 }
-function renderChat(){var c=document.getElementById('chat');c.innerHTML=CHAT.length?CHAT.map(function(m){var ctrl=m.who==='me'?'<span class="a" onclick="editMsg(\''+m.id+'\')">수정</span><span class="a" onclick="delMsg(\''+m.id+'\')">삭제</span>':'';return '<div class="brow '+(m.who==='me'?'me':'cl')+'"><div class="bub">'+esc(m.text||'')+'</div><div class="bmeta">'+(m.t||'')+ctrl+'</div></div>'}).join(''):'<div class="empty">메시지를 남겨보세요</div>';c.scrollTop=c.scrollHeight}
+function renderChat(){var c=document.getElementById('chat');c.innerHTML=CHAT.length?CHAT.map(function(m){var ctrl=m.who==='me'?'<span class="a" onclick="editMsg(\''+m.id+'\')">수정</span><span class="a" onclick="delMsg(\''+m.id+'\')">삭제</span>':'';var stamp=m.t||'';if(m.ts){var _d=new Date(m.ts),_n=new Date();if(_d.getFullYear()!==_n.getFullYear()||_d.getMonth()!==_n.getMonth()||_d.getDate()!==_n.getDate()){stamp=(_d.getMonth()+1)+'/'+_d.getDate()+' '+(m.t||(('0'+_d.getHours()).slice(-2)+':'+('0'+_d.getMinutes()).slice(-2)));}}return '<div class="brow '+(m.who==='me'?'me':'cl')+'"><div class="bub">'+esc(m.text||'')+'</div><div class="bmeta">'+stamp+ctrl+'</div></div>'}).join(''):'<div class="empty">메시지를 남겨보세요</div>';c.scrollTop=c.scrollHeight}
 function sendMsg(){var el=document.getElementById('msg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
 function editMsg(id){var m=CHAT.filter(function(x){return x.id===id})[0];if(!m)return;var nv=prompt('메시지 수정',m.text||'');if(nv===null)return;nv=nv.trim();if(!nv){db.collection('chat').doc(id).delete();return}db.collection('chat').doc(id).update({text:nv})}
 function delMsg(id){if(confirm('이 메시지를 삭제할까요?'))db.collection('chat').doc(id).delete()}
@@ -454,7 +455,7 @@ function addMemo(){var t=v('mTitle'),b=document.getElementById('mBody').value;if
 function editMemo(id){var m=MEMOS.filter(function(x){return x.id===id})[0];if(!m)return;var nt=prompt('제목',m.title||'');if(nt===null)return;var nb=prompt('내용',m.body||'');if(nb===null)return;db.collection('memos').doc(id).update({title:nt.trim(),body:nb})}
 var SALESROWS=[];var SRCNAME={channel:'자체채널',ext:'외부유통',inner:'내부유통'};
 var PERIODS=[['today','오늘'],['yest','어제'],['week','이번주'],['month','이번달'],['lmonth','지난달'],['year','올해']];
-var curPer='today',curSrc='all';
+var curPer='yest',curSrc='all';
 function periodRange(id){var t=new Date();t.setHours(0,0,0,0);var f=function(d){var z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10)};if(id==='yest'){var y=new Date(t);y.setDate(t.getDate()-1);return[f(y),f(y)]}if(id==='week'){var w=new Date(t);w.setDate(t.getDate()-6);return[f(w),f(t)]}if(id==='month'){return[f(new Date(t.getFullYear(),t.getMonth(),1)),f(t)]}if(id==='lmonth'){return[f(new Date(t.getFullYear(),t.getMonth()-1,1)),f(new Date(t.getFullYear(),t.getMonth(),0))]}if(id==='year'){return[f(new Date(t.getFullYear(),0,1)),f(t)]}return[f(t),f(t)]}
 function dRangeDays(a,b){return Math.max(1,Math.round((new Date(b+'T00:00')-new Date(a+'T00:00'))/86400000)+1)}
 var segT=document.getElementById('segT');PERIODS.forEach(function(p){var b=document.createElement('button');b.textContent=p[1];b.dataset.id=p[0];b.onclick=function(){curPer=p[0];CUSTOM=null;renderSales()};segT.appendChild(b)});
