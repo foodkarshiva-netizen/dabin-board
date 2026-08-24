@@ -23,7 +23,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .deskhead{display:none}
 .pagewrap{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding:14px 14px 84px}
 .page{display:none}.page.on{display:block}
-#p-talk.on{display:flex;flex-direction:column;flex:1;min-height:0}
+#p-talk.on,#p-debate.on{display:flex;flex-direction:column;flex:1;min-height:0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
 .muted{color:var(--mut)}.small{font-size:12px}
 h2.t{font-size:18px;margin:2px 2px 12px;font-weight:800}
@@ -194,16 +194,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
 .ptbl tr.sub td.nm{font-weight:600;padding-left:6px}.ptbl .tw{color:#aab3c4;margin-right:3px}
 .ptbl .bizn{font-size:10px;font-weight:700;color:#6b7280;background:#fff;border:1px solid #cfd8e6;border-radius:8px;padding:0 5px;margin-left:4px;vertical-align:middle}
 .updbar{background:linear-gradient(120deg,#2563eb,#3b82f6);color:#fff;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:14.5px;font-weight:800;display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;box-shadow:0 2px 8px rgba(37,99,235,.18)}
-.dbtopic{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
-.dbtopic .tt{font-weight:800;font-size:15px;cursor:pointer;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
-.dbst{font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:99px;white-space:nowrap}
-.dbst.open{background:#fdf3e6;color:#b9770e}.dbst.running{background:#e8f0ff;color:#1d4ed8}.dbst.done{background:#eef7f0;color:#2e7d46}
-.dbround{font-size:11px;font-weight:800;color:#8a93a5;letter-spacing:.06em;margin:14px 0 6px}
-.dbmsg{border-left:4px solid #ccd;background:#f8faff;border-radius:0 10px 10px 0;padding:9px 12px;margin-bottom:8px}
-.dbmsg .who{font-weight:800;font-size:12.5px;margin-bottom:3px}
-.dbmsg .tx{font-size:13.5px;line-height:1.65;white-space:pre-wrap}
-.dbmsg.concl{border-left-color:#2563eb;background:#eef4ff}
-.dbdel{float:right;color:#c8ccd4;cursor:pointer;font-size:13px}.dbdel:hover{color:#c0392b}
+.dwho{font-size:11.5px;font-weight:800;margin:0 0 2px 4px}
 .updbar .u2{opacity:.88;font-weight:700;font-size:13px}
 .cfwrap{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
 .cfcol{min-width:252px;flex:0 0 auto;background:#fff;border:1px solid #dde6f5;border-radius:10px;padding:10px}
@@ -237,17 +228,9 @@ nav button .ic svg{width:24px;height:24px;display:block}
     <div class="composer"><textarea id="msg" rows="2" placeholder="메시지 입력 — 남겨두면 클로드가 확인해요"></textarea><button class="btn p" onclick="sendMsg()">전송</button></div>
   </section>
   <section class="page" id="p-debate">
-    <h2 class="t">세션 토론</h2>
-    <div class="card" style="padding:14px 16px">
-      <div style="font-weight:800;margin-bottom:8px">🗣 새 토론 오더</div>
-      <textarea id="dbTopic" rows="2" placeholder="토론시킬 주제나 오더를 입력 — 예: 주말 매출 공백을 어떻게 메울까?"></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn p" onclick="addDebate()">토론 시작</button>
-        <span class="muted small">등록하면 15분 안에 세션들이 토론을 시작해요 (2라운드 + 사회자 결론)</span>
-      </div>
-      <div class="small muted" id="dbPanel" style="margin-top:10px"></div>
-    </div>
-    <div id="dbBody"><div class="empty">불러오는 중…</div></div>
+    <div class="small muted" id="dbPanel" style="padding:4px 2px 6px"></div>
+    <div class="chat" id="dchat"><div class="empty">불러오는 중…</div></div>
+    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 — 붙어 있는 세션들이 30분 주기로 확인하고 이어가요"></textarea><button class="btn p" onclick="sendDMsg()">전송</button></div>
   </section>
   <section class="page" id="p-today">
     <div class="rowsb"><h2 class="t" id="todayHd" style="margin:0">오늘</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="prog"></span><button class="btn o sm" id="hideBtn" onclick="toggleHide()">완료 숨기기</button></div></div>
@@ -367,7 +350,7 @@ TABS.forEach(function(t){var b=document.createElement('button');b.dataset.id=t[0
 function go(id){document.querySelectorAll('.page').forEach(function(p){p.classList.toggle('on',p.id==='p-'+id)});nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===id)});var nm=TABS.filter(function(t){return t[0]===id})[0][2];document.getElementById('ttl').textContent=nm;document.getElementById('dttl').textContent=nm;if(id==='cal')renderCal();if(id==='sales')renderSales();if(id==='partner'){partnerSel=null;renderPartner()}if(id==='dreport'){renderDreport()}if(id==='biz')renderBiz()}
 var PEOPLE=[],ORDERS=[],PROJ=[],TODOS=[],DAYSTAT={},CHAT=[];
 var MEMOS=[],MEMOSHOW={};
-var MISU=[],CUSTOM=null,PREPORT=null,PCUR=null,PSUPD=0,PDAILY=null,CASHFLOW=null,MISUDET={},MISUOPEN=null,SALESMETA=null,MISUMETA=null,DBTOPICS=[],DBMSGS=[],DBCFG=null,DBOPEN=null;
+var MISU=[],CUSTOM=null,PREPORT=null,PCUR=null,PSUPD=0,PDAILY=null,CASHFLOW=null,MISUDET={},MISUOPEN=null,SALESMETA=null,MISUMETA=null,DCHAT=[],DSTATE=[];
 function startApp(){
   unsub.forEach(function(f){f&&f()});unsub=[];
   unsub.push(db.collection('chat').orderBy('ts').onSnapshot(function(snap){CHAT=[];snap.forEach(function(d){CHAT.push(Object.assign({id:d.id},d.data()))});renderChat()}));
@@ -384,8 +367,8 @@ function startApp(){
   unsub.push(db.collection('psales').doc('monthly').onSnapshot(function(d){if(!d.exists)return;var v=d.data();if(!v||!v.co||!v.year)return;var cm=v.curMonth||0;var pm=Math.max(1,Math.min(12,(cm||7)-1));var ps={},po={},pb={};Object.keys(v.co).forEach(function(nm){var e=v.co[nm]||{};if(e.excl)return;if(e.own)po[nm]=String(e.own).split('/').pop();if(e.biz)pb[nm]=e.biz;var arr=[],has=false;for(var mo=1;mo<=pm;mo++){var a=e.m&&e.m[String(mo)];if(a&&a.length===4){arr.push(a);has=true;}else arr.push(null);}if(has)ps[nm]=arr;});if(!Object.keys(ps).length)return;PSALES=ps;POWN=po;PBIZ=pb;PMCOUNT=pm;PSUPD=v.updated||0;PMONTHS=[];MDAYS=[];for(var i=0;i<pm;i++){PMONTHS.push((i+1)+'월');MDAYS.push(MDAYS_Y[i]||30);}var cur={},any=false;Object.keys(v.co).forEach(function(nm){var a=v.co[nm].m&&v.co[nm].m[String(cm)];if(a&&a.length===4){cur[nm]={rev:a[0],net:a[3]};any=true;}});if(any)PCUR={ym:v.year+'-'+('0'+cm).slice(-2),from:v.year+'-'+('0'+cm).slice(-2)+'-01',to:v.upto||'',co:cur};if(typeof renderPartner==='function'&&!partnerSel)renderPartner();}));
   unsub.push(db.collection('psales').doc('daily').onSnapshot(function(d){PDAILY=d.exists?d.data():null;if(typeof renderPartner==='function'&&partnerSel)renderPartner()}));
   unsub.push(db.collection('cashflow').doc('latest').onSnapshot(function(d){CASHFLOW=d.exists?d.data():null;if(typeof renderDreport==='function')renderDreport()}));
-  unsub.push(db.collection('debate').onSnapshot(function(s){DBTOPICS=[];s.forEach(function(d){if(d.id==='_config'){DBCFG=d.data();return;}DBTOPICS.push(Object.assign({id:d.id},d.data()))});DBTOPICS.sort(function(a,b){return (b.ts||0)-(a.ts||0)});if(typeof renderDebate==='function')renderDebate()}));
-  unsub.push(db.collection('debate_msgs').onSnapshot(function(s){DBMSGS=[];s.forEach(function(d){DBMSGS.push(Object.assign({id:d.id},d.data()))});DBMSGS.sort(function(a,b){return (a.ts||0)-(b.ts||0)});if(typeof renderDebate==='function')renderDebate()}));
+  unsub.push(db.collection('debate_chat').onSnapshot(function(s){DCHAT=[];s.forEach(function(d){DCHAT.push(Object.assign({id:d.id},d.data()))});DCHAT.sort(function(a,b){return (a.ts||0)-(b.ts||0)});if(typeof renderDChat==='function')renderDChat()}));
+  unsub.push(db.collection('debate_state').onSnapshot(function(s){DSTATE=[];s.forEach(function(d){DSTATE.push(Object.assign({_id:d.id},d.data()))});if(typeof renderDChat==='function')renderDChat()}));
   unsub.push(db.collection('dreport').doc('latest').onSnapshot(function(d){DREPORT=d.exists?d.data():null;if(typeof renderDreport==='function')renderDreport()}));
   unsub.push(db.collection('events').onSnapshot(function(s){EVENTS=[];s.forEach(function(d){var m=d.data();EVENTS.push({id:d.id,date:m.date,t:(m.title!==undefined?m.title:m.t),s:m.s||'',allday:!!m.allday})});renderCal();renderToday()}));
   renderSales();
@@ -526,39 +509,26 @@ function revMemo(id){MEMOSHOW[id]=!MEMOSHOW[id];renderMemo()}
 function copyMemo(id){var m=MEMOS.filter(function(x){return x.id===id})[0];if(!m)return;if(navigator.clipboard){navigator.clipboard.writeText(m.body||'');var el=event&&event.target;if(el){var o=el.textContent;el.textContent='복사됨';setTimeout(function(){el.textContent=o},1000)}}}
 function addMemo(){var t=v('mTitle'),b=document.getElementById('mBody').value;if(!t&&!b.trim())return;db.collection('memos').add({title:t,body:b,tstr:dstr(),ts:Date.now()});document.getElementById('mTitle').value='';document.getElementById('mBody').value=''}
 function editMemo(id){var m=MEMOS.filter(function(x){return x.id===id})[0];if(!m)return;var nt=prompt('제목',m.title||'');if(nt===null)return;var nb=prompt('내용',m.body||'');if(nb===null)return;db.collection('memos').doc(id).update({title:nt.trim(),body:nb})}
-/* ===== 세션 토론 ===== */
-function dbStatus(s){return s==='done'?'<span class="dbst done">완료</span>':s==='running'?'<span class="dbst running">토론 중…</span>':'<span class="dbst open">대기 중</span>';}
-function dbPart(pid){var ps=(DBCFG&&DBCFG.participants)||[];for(var i=0;i<ps.length;i++)if(ps[i].id===pid)return ps[i];return pid==='mod'?{name:'사회자',emoji:'🧭',color:'#2563eb'}:{name:pid,emoji:'💬',color:'#8a93a5'};}
-function renderDebate(){
- var box=document.getElementById('dbBody');if(!box)return;
+/* ===== 세션 토론 (소통형 대화창 — 독립 세션들이 debate-chat.js로 참여, 2026-08-25 개편) ===== */
+var DPAL=['#0F8A63','#3D5FC4','#A16207','#BE3A2E','#7C3AED','#0E7490'];
+function dColor(sid){sid=String(sid||'');var h=0;for(var i=0;i<sid.length;i++)h=(h*31+sid.charCodeAt(i))>>>0;return DPAL[h%DPAL.length];}
+function renderDChat(){
+ var c=document.getElementById('dchat');if(!c)return;
  var panel=document.getElementById('dbPanel');
- if(panel){var ps=(DBCFG&&DBCFG.participants)||[];panel.innerHTML=ps.length?('참가 세션: '+ps.map(function(p){return '<b style="color:'+p.color+'">'+p.emoji+' '+esc(p.name)+'</b>'}).join(' · ')):'';}
- if(!DBTOPICS.length){box.innerHTML='<div class="empty">아직 토론이 없어요. 위에 주제를 입력하고 [토론 시작]을 눌러보세요.</div>';return;}
- if(DBOPEN===null&&DBTOPICS.length)DBOPEN=DBTOPICS[0].id;
- var h='';
- DBTOPICS.forEach(function(t){
-  var open=DBOPEN===t.id;
-  var d=new Date(t.ts||0);
-  h+='<div class="dbtopic">'
-   +'<span class="dbdel" onclick="delDebate(\''+t.id+'\')">✕</span>'
-   +'<div class="tt" onclick="dbToggle(\''+t.id+'\')">'+(open?'▾':'▸')+' '+esc(t.title||'')+' '+dbStatus(t.status)+'<span class="muted small" style="font-weight:400">'+(d.getMonth()+1)+'/'+d.getDate()+'</span></div>';
-  if(open){
-   var ms=DBMSGS.filter(function(m){return m.topic===t.id});
-   if(!ms.length)h+='<div class="small muted" style="margin-top:8px">'+(t.status==='open'?'세션들이 아직 도착 전이에요 — 다음 체크(15분 간격) 때 토론이 시작됩니다.':'발언 없음')+'</div>';
-   var lastRound=null;
-   ms.forEach(function(m){
-    if(m.pid!=='mod'&&m.round!==lastRound){lastRound=m.round;h+='<div class="dbround">ROUND '+m.round+'</div>';}
-    var p=dbPart(m.pid);
-    h+='<div class="dbmsg'+(m.pid==='mod'?' concl':'')+'" style="border-left-color:'+(m.pid==='mod'?'#2563eb':p.color)+'"><div class="who" style="color:'+(m.pid==='mod'?'#1d4ed8':p.color)+'">'+p.emoji+' '+esc(p.name)+(m.pid==='mod'?' · 결론':'')+'</div><div class="tx">'+esc(m.text||'')+'</div></div>';
-   });
-  }
-  h+='</div>';
- });
- box.innerHTML=h;
+ if(panel){var now=Date.now();var live=DSTATE.slice().sort(function(a,b){return (b.lastTs||0)-(a.lastTs||0)});
+  panel.innerHTML=live.length?('붙은 세션: '+live.map(function(s){var mn=Math.max(0,Math.round((now-(s.lastTs||0))/60000));var ago=mn<60?mn+'분 전':Math.round(mn/60)+'시간 전';return '<b style="color:'+dColor(s._id)+'">'+esc(s.name||s._id)+'</b> <span class="muted">('+ago+')</span>'}).join(' · ')):'붙은 세션 없음 — 세션에서 debate-chat.js check를 실행하면 여기 표시돼요';}
+ c.innerHTML=DCHAT.length?DCHAT.map(function(m){
+  var me=m.who==='me';
+  var ctrl=me?'<span class="a" onclick="editDMsg(\''+m.id+'\')">수정</span><span class="a" onclick="delDMsg(\''+m.id+'\')">삭제</span>':'';
+  var stamp=m.t||'';if(m.ts){var _d=new Date(m.ts),_n=new Date();if(_d.getFullYear()!==_n.getFullYear()||_d.getMonth()!==_n.getMonth()||_d.getDate()!==_n.getDate()){stamp=(_d.getMonth()+1)+'/'+_d.getDate()+' '+(m.t||(('0'+_d.getHours()).slice(-2)+':'+('0'+_d.getMinutes()).slice(-2)));}}
+  var nameH=me?'':'<div class="dwho" style="color:'+dColor(m.who)+'">'+esc(m.name||m.who||'세션')+'</div>';
+  return '<div class="brow '+(me?'me':'cl')+'">'+nameH+'<div class="bub"'+(me?'':' style="border-left:3px solid '+dColor(m.who)+'"')+'>'+esc(m.text||'')+'</div><div class="bmeta">'+stamp+ctrl+'</div></div>';
+ }).join(''):'<div class="empty">첫 오더를 남겨보세요 — 붙어 있는 세션들이 30분 주기로 확인하고 토론을 이어가요</div>';
+ c.scrollTop=c.scrollHeight;
 }
-function dbToggle(id){DBOPEN=DBOPEN===id?'':id;renderDebate();}
-function addDebate(){var el=document.getElementById('dbTopic');var t=(el.value||'').trim();if(!t){alert('주제를 입력하세요');return;}el.value='';db.collection('debate').add({title:t,status:'open',ts:Date.now()}).then(function(r){DBOPEN=r.id;renderDebate();});}
-function delDebate(id){if(!confirm('이 토론을 삭제할까요? (발언 포함)'))return;DBMSGS.filter(function(m){return m.topic===id}).forEach(function(m){db.collection('debate_msgs').doc(m.id).delete()});db.collection('debate').doc(id).delete();}
+function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('debate_chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
+function editDMsg(id){var m=DCHAT.filter(function(x){return x.id===id})[0];if(!m)return;var nv=prompt('메시지 수정',m.text||'');if(nv===null)return;nv=nv.trim();if(!nv){db.collection('debate_chat').doc(id).delete();return}db.collection('debate_chat').doc(id).update({text:nv})}
+function delDMsg(id){if(confirm('이 메시지를 삭제할까요?'))db.collection('debate_chat').doc(id).delete()}
 var SALESROWS=[];var SRCNAME={channel:'자체채널',ext:'외부유통',inner:'내부유통'};
 var PERIODS=[['today','오늘'],['yest','어제'],['week','이번주'],['month','이번달'],['lmonth','지난달'],['year','올해']];
 var curPer='yest',curSrc='all';
@@ -572,6 +542,9 @@ function customRange(){var a=v('d1'),b=v('d2');if(!a)return;CUSTOM=[a,b||a];rend
 var mEl=document.getElementById('msg');
 mEl.addEventListener('input',function(){mEl.style.height='auto';mEl.style.height=Math.min(mEl.scrollHeight,130)+'px'});
 if(!IS_MOBILE){mEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}})}
+var dmEl=document.getElementById('dmsg');
+if(dmEl){dmEl.addEventListener('input',function(){dmEl.style.height='auto';dmEl.style.height=Math.min(dmEl.scrollHeight,130)+'px'});
+if(!IS_MOBILE){dmEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendDMsg()}})}}
 /* ===== 협력사 매출관리 ===== */
 var MDAYS_Y=[31,28,31,30,31,30,31,31,30,31,30,31];
 var PMCOUNT=6,PMONTHS=['1월','2월','3월','4월','5월','6월'],MDAYS=[31,28,31,30,31,30];
