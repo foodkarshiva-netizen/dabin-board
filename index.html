@@ -284,6 +284,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
   <section class="page" id="p-misuext">
     <h2 class="t">외부거래처 미수</h2>
     <div class="card" style="padding:12px"><div id="misuxTotal" style="font-weight:800;font-size:15px;color:var(--b2)">불러오는 중…</div></div>
+    <div id="misuxTeams" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
     <input id="misuxSearch" placeholder="검색 (업체명·유통 담당)" oninput="renderMisuX()" style="margin-bottom:10px">
     <div id="misuxList"><div class="empty">불러오는 중…</div></div>
     <div class="small muted" style="margin-top:8px">자금일보 '외부판매채널' 자동연동(리모컨 일자별정산 기준) · 노출 기준: 미수 1,000만↑ 또는 연체 60일↑ · 06:30/12:30/18:30 갱신</div>
@@ -357,7 +358,7 @@ TABS.forEach(function(t){var b=document.createElement('button');b.dataset.id=t[0
 function go(id){document.querySelectorAll('.page').forEach(function(p){p.classList.toggle('on',p.id==='p-'+id)});nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===id)});var nm=TABS.filter(function(t){return t[0]===id})[0][2];document.getElementById('ttl').textContent=nm;document.getElementById('dttl').textContent=nm;if(id==='cal')renderCal();if(id==='sales')renderSales();if(id==='partner'){partnerSel=null;renderPartner()}if(id==='dreport'){renderDreport()}if(id==='biz')renderBiz();if(id==='debate'){renderDChat();dScrollBot()}}
 var PEOPLE=[],ORDERS=[],PROJ=[],TODOS=[],DAYSTAT={},CHAT=[];
 var MEMOS=[],MEMOSHOW={};
-var MISU=[],CUSTOM=null,PREPORT=null,PCUR=null,PSUPD=0,PDAILY=null,CASHFLOW=null,MISUDET={},MISUOPEN=null,SALESMETA=null,MISUMETA=null,DCHAT=[],DSTATE=[],MISUX=[],MISUXMETA=null,MISUXDET={},MISUXOPEN=null;
+var MISU=[],CUSTOM=null,PREPORT=null,PCUR=null,PSUPD=0,PDAILY=null,CASHFLOW=null,MISUDET={},MISUOPEN=null,SALESMETA=null,MISUMETA=null,DCHAT=[],DSTATE=[],MISUX=[],MISUXMETA=null,MISUXDET={},MISUXOPEN=null,MISUXTEAM='';
 function startApp(){
   unsub.forEach(function(f){f&&f()});unsub=[];
   unsub.push(db.collection('chat').orderBy('ts').onSnapshot(function(snap){CHAT=[];snap.forEach(function(d){CHAT.push(Object.assign({id:d.id},d.data()))});renderChat()}));
@@ -506,10 +507,17 @@ function misuToggle(enc){var nm=decodeURIComponent(enc);if(MISUOPEN===nm){MISUOP
 /* ===== 외부거래처 미수 (misu_ext — 협력사미수와 동일 틀, 2026-08-26) ===== */
 function misuxItemHTML(m){var od=m.note||0;var odt=(od>0)?'<span style="color:#c0392b;font-weight:800">연체 '+od+'일</span>':'<span class="muted">정상</span>';var open=MISUXOPEN===m.company;return '<div class="oitem" style="cursor:pointer" onclick="misuxToggle(\''+encodeURIComponent(m.company||'')+'\')"><div class="top"><div style="font-weight:800">'+esc(m.company||'')+' <span class="muted small">'+(open?'▲':'▼ 일자별 내역')+'</span></div><div style="font-weight:800;color:var(--b2)">'+fmtWon(m.amount||0)+'원</div></div><div class="small muted" style="margin-top:6px">유통 '+esc(m.dist||'-')+' · 기일 '+esc(m.due||'-')+' · '+odt+'</div>'+(open?misuxDetHTML(m.company):'')+'</div>';}
 function renderMisuX(){var box=document.getElementById('misuxList');if(!box)return;var q=(document.getElementById('misuxSearch').value||'').trim();
- var list=MISUX.slice();if(q)list=list.filter(function(m){return ((m.company||'')+(m.dist||'')).indexOf(q)>=0});
+ var tm={};MISUX.forEach(function(m){var k=m.dist||'-';if(!tm[k])tm[k]={n:0,s:0};tm[k].n++;tm[k].s+=(m.amount||0)});
+ if(MISUXTEAM&&!tm[MISUXTEAM])MISUXTEAM='';
+ var tBox=document.getElementById('misuxTeams');
+ if(tBox){var chip=function(k,lb,n,s){var on=(MISUXTEAM===k);return '<button onclick="MISUXTEAM=\''+k+'\';renderMisuX()" style="border:1px solid '+(on?'var(--b2)':'var(--line)')+';background:'+(on?'var(--b2)':'var(--card)')+';color:'+(on?'#fff':'var(--ink)')+';border-radius:16px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer">'+lb+' <span style="opacity:.75;font-weight:600">'+n+'곳 '+fmtWon(s)+'</span></button>'};
+  var keys=Object.keys(tm).sort(function(a,b){return tm[b].s-tm[a].s});
+  tBox.innerHTML=chip('','전체',MISUX.length,MISUX.reduce(function(s,m){return s+(m.amount||0)},0))+keys.map(function(k){return chip(k,k==='-'?'미지정':k,tm[k].n,tm[k].s)}).join('');}
+ var base=MISUX.slice();if(MISUXTEAM)base=base.filter(function(m){return (m.dist||'-')===MISUXTEAM});
+ var list=base;if(q)list=base.filter(function(m){return ((m.company||'')+(m.dist||'')).indexOf(q)>=0});
  list.sort(function(a,b){return (b.amount||0)-(a.amount||0)});
- var total=MISUX.reduce(function(s,m){return s+(m.amount||0)},0);
- var tEl=document.getElementById('misuxTotal');if(tEl)tEl.textContent='외부거래처 미수 '+fmtWon(total)+'원 · '+MISUX.length+'곳';
+ var total=base.reduce(function(s,m){return s+(m.amount||0)},0);
+ var tEl=document.getElementById('misuxTotal');if(tEl)tEl.textContent=(MISUXTEAM?(MISUXTEAM==='-'?'미지정':MISUXTEAM)+' 팀':'외부거래처')+' 미수 '+fmtWon(total)+'원 · '+base.length+'곳';
  var h=MISUXMETA&&MISUXMETA.updatedAt?'<div class="updbar"><span>📅 데이터 기준·갱신 '+esc(String(MISUXMETA.updatedAt).slice(5,16))+'</span><span class="u2">리모컨 일자별정산 실시간 집계 · 06:30/12:30/18:30 동기화</span></div>':'';
  h+=list.length?list.map(misuxItemHTML).join(''):'<div class="empty">'+(q?'검색 결과 없음':'미수 데이터 없음')+'</div>';
  box.innerHTML=h;}
