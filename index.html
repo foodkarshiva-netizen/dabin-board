@@ -230,7 +230,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
   <section class="page" id="p-debate">
     <div class="small muted" id="dbPanel" style="padding:4px 2px 6px"></div>
     <div class="chat" id="dchat"><div class="empty">불러오는 중…</div></div>
-    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 — 붙어 있는 세션들이 30분 주기로 확인하고 이어가요"></textarea><button class="btn" onclick="document.getElementById('dfile').click()" title="파일/이미지 첨부 (10MB 이하)">📎</button><input type="file" id="dfile" style="display:none" onchange="dUpload(this)"><button class="btn p" onclick="sendDMsg()">전송</button></div>
+    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 — 붙어 있는 세션들이 30분 주기로 확인하고 이어가요"></textarea><button class="btn" onclick="document.getElementById('dfile').click()" title="사진·파일 첨부 — 여러 장 한 번에 (장당 10MB)">📎</button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn p" id="dsend" onclick="sendDMsg()">전송</button></div>
   </section>
   <section class="page" id="p-today">
     <div class="rowsb"><h2 class="t" id="todayHd" style="margin:0">오늘</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="prog"></span><button class="btn o sm" id="hideBtn" onclick="toggleHide()">완료 숨기기</button></div></div>
@@ -559,9 +559,14 @@ function renderDChat(){
   var stamp=m.t||'';if(m.ts){var _d=new Date(m.ts),_n=new Date();if(_d.getFullYear()!==_n.getFullYear()||_d.getMonth()!==_n.getMonth()||_d.getDate()!==_n.getDate()){stamp=(_d.getMonth()+1)+'/'+_d.getDate()+' '+(m.t||(('0'+_d.getHours()).slice(-2)+':'+('0'+_d.getMinutes()).slice(-2)));}}
   var nameH=me?'':'<div class="dwho" style="color:'+dColor(m.who)+'">'+esc(m.name||m.who||'세션')+'</div>';
   var fileH='';
-  if(m.file){var f=m.file;var isImg=(f.mime||'').indexOf('image/')===0;
-   fileH=(isImg?'<img data-fimg="'+esc(f.id)+'" alt="'+esc(f.name)+'" style="max-width:100%;max-height:340px;border-radius:8px;margin-top:6px;display:block;cursor:pointer" onclick="dFileDown(\''+f.id+'\',\''+encodeURIComponent(f.name)+'\')">':'')
-   +'<div class="small" style="margin-top:4px">📎 <span class="a" onclick="dFileDown(\''+f.id+'\',\''+encodeURIComponent(f.name)+'\')">'+esc(f.name)+'</span> <span class="muted">('+dFmtB(f.size)+')</span></div>';}
+  var fl=(m.files&&m.files.length)?m.files:(m.file?[m.file]:[]);
+  if(fl.length){var nImg=fl.filter(function(f){return (f.mime||'').indexOf('image/')===0}).length;var grid=nImg>1;
+   fileH=fl.map(function(f){var isImg=(f.mime||'').indexOf('image/')===0;
+    var st=grid&&isImg?'width:calc(50% - 3px);height:150px;object-fit:cover;border-radius:8px;cursor:pointer;display:block':'max-width:100%;max-height:340px;border-radius:8px;margin-top:6px;display:block;cursor:pointer';
+    return (isImg?'<img data-fimg="'+esc(f.id)+'" alt="'+esc(f.name)+'" style="'+st+'" onclick="dFileDown(\''+f.id+'\',\''+encodeURIComponent(f.name)+'\')">':'')
+     +((grid&&isImg)?'':'<div class="small" style="margin-top:4px">📎 <span class="a" onclick="dFileDown(\''+f.id+'\',\''+encodeURIComponent(f.name)+'\')">'+esc(f.name)+'</span> <span class="muted">('+dFmtB(f.size)+')</span></div>');
+   }).join('');
+   if(grid)fileH='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+fileH+'</div><div class="small muted" style="margin-top:4px">🖼️ 사진 '+nImg+'장 — 눌러서 저장</div>';}
   return '<div class="brow '+(me?'me':'cl')+'">'+nameH+'<div class="bub"'+(me?'':' style="border-left:3px solid '+dColor(m.who)+'"')+'>'+esc(m.text||'')+fileH+'</div><div class="bmeta">'+stamp+ctrl+'</div></div>';
  }).join(''):'<div class="empty">첫 오더를 남겨보세요 — 붙어 있는 세션들이 30분 주기로 확인하고 토론을 이어가요</div>';
  dLoadImgs();
@@ -580,19 +585,41 @@ function dFileB64(fid){
 }
 function dLoadImgs(){document.querySelectorAll('img[data-fimg]').forEach(function(im){if(im.getAttribute('src'))return;dFileB64(im.getAttribute('data-fimg')).then(function(r){im.src='data:'+(r.meta.mime||'image/png')+';base64,'+r.b64;im.onload=dScrollBot;}).catch(function(){im.remove()});});}
 function dFileDown(fid,encName){dFileB64(fid).then(function(r){var bin=atob(r.b64),u8=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);var bl=new Blob([u8],{type:r.meta.mime||'application/octet-stream'});var a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=decodeURIComponent(encName)||r.meta.name||'file';a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},5000);}).catch(function(){alert('파일을 불러오지 못했어요')});}
-function dUpload(inp){var f=inp.files&&inp.files[0];inp.value='';if(!f)return;
- if(f.size>10*1024*1024){alert('10MB 이하만 첨부할 수 있어요');return;}
+/* 여러 장 묶음 전송 (2026-09-07) — 선택/붙여넣기/드래그로 받은 파일들을 순차 업로드 후 한 메시지로 게시 */
+var DFSEQ=0;
+function dUpload(inp){var fs=inp.files?Array.prototype.slice.call(inp.files):[];inp.value='';dSendFiles(fs)}
+function dPutFile(f){return new Promise(function(res,rej){
  var rd=new FileReader();
+ rd.onerror=function(){rej(new Error(f.name+' 읽기 실패'))};
  rd.onload=function(){var u8=new Uint8Array(rd.result);var b64='';
   for(var i=0;i<u8.length;i+=30000){b64+=btoa(String.fromCharCode.apply(null,u8.subarray(i,Math.min(i+30000,u8.length))));} // 30000=3의 배수 → 패딩 안전
-  var CH=700000,chunks=Math.ceil(b64.length/CH)||1,fid=Date.now().toString(36)+Math.floor(Math.random()*46656).toString(36);
+  var CH=700000,chunks=Math.ceil(b64.length/CH)||1,mime=f.type||'application/octet-stream';
+  var fid=Date.now().toString(36)+((DFSEQ++)%36).toString(36)+Math.floor(Math.random()*46656).toString(36);
   var p=Promise.resolve();
   for(var i2=0;i2<chunks;i2++)(function(i3){p=p.then(function(){return db.collection('debate_file_chunks').doc(fid+'_'+i3).set({fid:fid,i:i3,b64:b64.slice(i3*CH,(i3+1)*CH)})})})(i2);
-  p.then(function(){return db.collection('debate_files').doc(fid).set({name:f.name,mime:f.type||'application/octet-stream',size:f.size,chunks:chunks,by:'me',byName:'다빈',ts:Date.now()})})
-   .then(function(){var el=document.getElementById('dmsg');var t=el.value.trim();el.value='';return db.collection('debate_chat').add({who:'me',text:t||('📎 '+f.name),file:{id:fid,name:f.name,mime:f.type||'application/octet-stream',size:f.size},t:nowT(),ts:Date.now()})})
-   .catch(function(e){alert('업로드 실패: '+e.message)});
+  p.then(function(){return db.collection('debate_files').doc(fid).set({name:f.name,mime:mime,size:f.size,chunks:chunks,by:'me',byName:'다빈',ts:Date.now()})})
+   .then(function(){res({id:fid,name:f.name,mime:mime,size:f.size})}).catch(rej);
  };
  rd.readAsArrayBuffer(f);
+});}
+function dSendFiles(fs){
+ if(!fs||!fs.length)return;
+ var over=fs.filter(function(f){return f.size>10*1024*1024});
+ if(over.length){alert('장당 10MB 이하만 첨부할 수 있어요 — 제외: '+over.map(function(f){return f.name}).join(', '));fs=fs.filter(function(f){return f.size<=10*1024*1024})}
+ if(!fs.length)return;
+ if(fs.length>10){alert('한 번에 10장까지만 보낼 수 있어요 — 앞 10장만 보냅니다');fs=fs.slice(0,10)}
+ var btn=document.getElementById('dsend');var lab=btn?btn.textContent:'';
+ if(btn){btn.disabled=true;btn.textContent='0/'+fs.length}
+ var metas=[],p=Promise.resolve();
+ fs.forEach(function(f,ix){p=p.then(function(){return dPutFile(f)}).then(function(mt){metas.push(mt);if(btn)btn.textContent=(ix+1)+'/'+fs.length})});
+ p.then(function(){
+  var el=document.getElementById('dmsg');var t=el?el.value.trim():'';if(el){el.value='';el.style.height=''}
+  var nImg=metas.filter(function(f){return (f.mime||'').indexOf('image/')===0}).length;
+  var doc={who:'me',text:t||(metas.length>1?((nImg===metas.length?'🖼️ 사진 ':'📎 파일 ')+metas.length+'장'):('📎 '+metas[0].name)),t:nowT(),ts:Date.now()};
+  if(metas.length>1)doc.files=metas;else doc.file=metas[0];
+  return db.collection('debate_chat').add(doc);
+ }).catch(function(e){alert('업로드 실패: '+e.message)})
+  .then(function(){if(btn){btn.disabled=false;btn.textContent=lab||'전송'}});
 }
 function dScrollBot(){var c=document.getElementById('dchat');if(!c||!c.offsetParent)return;c.scrollTop=c.scrollHeight;requestAnimationFrame(function(){c.scrollTop=c.scrollHeight});}
 function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('debate_chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
@@ -613,7 +640,13 @@ mEl.addEventListener('input',function(){mEl.style.height='auto';mEl.style.height
 if(!IS_MOBILE){mEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg()}})}
 var dmEl=document.getElementById('dmsg');
 if(dmEl){dmEl.addEventListener('input',function(){dmEl.style.height='auto';dmEl.style.height=Math.min(dmEl.scrollHeight,130)+'px'});
-if(!IS_MOBILE){dmEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendDMsg()}})}}
+if(!IS_MOBILE){dmEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendDMsg()}})}
+/* 붙여넣기(Ctrl+V)·드래그앤드롭으로도 사진 묶음 전송 */
+dmEl.addEventListener('paste',function(e){var it=(e.clipboardData||{}).items||[],fs=[];for(var i=0;i<it.length;i++){if(it[i].kind==='file'){var f=it[i].getAsFile();if(f)fs.push(f)}}if(fs.length){e.preventDefault();dSendFiles(fs)}});
+var dBox=dmEl.parentNode;
+if(dBox){['dragenter','dragover'].forEach(function(ev){dBox.addEventListener(ev,function(e){e.preventDefault();dBox.style.outline='2px dashed var(--acc,#0F8A63)'})});
+ ['dragleave','drop'].forEach(function(ev){dBox.addEventListener(ev,function(e){e.preventDefault();dBox.style.outline=''})});
+ dBox.addEventListener('drop',function(e){var fs=(e.dataTransfer&&e.dataTransfer.files)?Array.prototype.slice.call(e.dataTransfer.files):[];if(fs.length)dSendFiles(fs)});}}
 /* ===== 협력사 매출관리 ===== */
 var MDAYS_Y=[31,28,31,30,31,30,31,31,30,31,30,31];
 var PMCOUNT=6,PMONTHS=['1월','2월','3월','4월','5월','6월'],MDAYS=[31,28,31,30,31,30];
