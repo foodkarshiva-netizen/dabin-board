@@ -71,11 +71,83 @@ def resolve_channel(handle_or_url: str, proxy_url: str = "") -> tuple[str, str]:
     return channel_id, title
 
 
+def _walk(obj, key):
+    """중첩 dict/list 에서 key 를 가진 값을 모두 찾는다(등장 순서 유지)."""
+    if isinstance(obj, dict):
+        if key in obj:
+            yield obj[key]
+        for v in obj.values():
+            yield from _walk(v, key)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _walk(v, key)
+
+
+def _extract_initial_data(html: str) -> dict:
+    idx = html.find("ytInitialData")
+    if idx < 0:
+        return {}
+    start = html.find("{", idx)
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(html[start:])
+        return obj
+    except json.JSONDecodeError:
+        return {}
+
+
+def list_videos_from_page(channel_id: str, proxy_url: str = "") -> list[VideoMeta]:
+    """채널 '동영상' 탭(ytInitialData)에서 최근 영상을 최신순으로 파싱. RSS 가 404 일 때의 대체 경로.
+
+    쇼츠는 별도 탭이라 여기에 안 나온다. 길이는 썸네일 배지(mm:ss)에서 읽고, 게시일은 '1일 전' 같은 상대 표기다.
+    """
+    s = _session(proxy_url)
+    _consent_cookies(s)
+    r = s.get(f"https://www.youtube.com/channel/{channel_id}/videos", timeout=30)
+    r.raise_for_status()
+    data = _extract_initial_data(r.text)
+    if not data:
+        raise RuntimeError("채널 페이지에서 ytInitialData 를 찾지 못했습니다")
+    channel_title = ""
+    for md in _walk(data, "channelMetadataRenderer"):
+        channel_title = md.get("title", "") or channel_title
+        break
+    out: list[VideoMeta] = []
+    seen: set[str] = set()
+    for lk in _walk(data, "lockupViewModel"):
+        vid = lk.get("contentId", "")
+        if lk.get("contentType") != "LOCKUP_CONTENT_TYPE_VIDEO" or not vid or vid in seen:
+            continue
+        seen.add(vid)
+        md = lk.get("metadata", {}).get("lockupMetadataViewModel", {})
+        title = md.get("title", {}).get("content", "")
+        published = ""
+        for row in md.get("metadata", {}).get("contentMetadataViewModel", {}).get("metadataRows", []):
+            parts = [p.get("text", {}).get("content", "") for p in row.get("metadataParts", [])]
+            for p in parts:
+                if p.endswith("전") or "스트리밍" in p or "예정" in p:
+                    published = p
+        duration = 0
+        for badge in _walk(lk.get("contentImage", {}), "thumbnailBadgeViewModel"):
+            txt = badge.get("text", "")
+            if re.fullmatch(r"(?:\d{1,2}:)?\d{1,2}:\d{2}", txt):
+                duration = parse_timestamp(txt)
+                break
+        thumb = ""
+        srcs = lk.get("contentImage", {}).get("thumbnailViewModel", {}).get("image", {}).get("sources", [])
+        if srcs:
+            thumb = srcs[-1].get("url", "")
+        out.append(VideoMeta(video_id=vid, title=title, channel_id=channel_id, channel_title=channel_title,
+                             published=published, duration_sec=duration, thumbnail_url=thumb))
+    return out
+
+
 def list_recent_videos(channel_id: str, proxy_url: str = "") -> list[VideoMeta]:
-    """RSS 피드에서 최근 영상(최대 15개)을 최신순으로 반환."""
+    """최근 영상을 최신순으로 반환. RSS(최대 15개) → 실패하면 채널 페이지 파싱(약 30개)."""
     s = _session(proxy_url)
     r = s.get(RSS_URL.format(channel_id=channel_id), timeout=30)
-    r.raise_for_status()
+    if r.status_code != 200 or b"<feed" not in r.content[:2000]:
+        # 2026-05 부터 유튜브 RSS 가 광범위하게 404 를 낸다 → 페이지 파싱으로 대체
+        return list_videos_from_page(channel_id, proxy_url)
     feed = feedparser.parse(r.content)
     out: list[VideoMeta] = []
     for e in feed.entries:
