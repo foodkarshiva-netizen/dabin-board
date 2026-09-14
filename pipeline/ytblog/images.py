@@ -60,15 +60,16 @@ ol.tk{list-style:none;margin-top:28px;display:flex;flex-direction:column;gap:18p
 ol.tk li{display:flex;gap:18px;align-items:flex-start;font-size:30px;line-height:1.4;word-break:keep-all}
 ol.tk .n{flex:0 0 48px;height:48px;border-radius:12px;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:24px}
 ol.tk .ts{font-size:20px;color:#2563eb;font-weight:700;white-space:nowrap;margin-left:auto;padding-left:12px}
-.flow{display:flex;gap:16px;margin-top:34px;align-items:stretch}
-.step{flex:1;background:#fff;border:2px solid #dbe3ee;border-radius:16px;padding:20px 18px;position:relative;min-width:0}
-.step .n{font-size:18px;font-weight:700;color:#2563eb}
-.step .t{font-size:22px;font-weight:700;margin-top:6px;line-height:1.3;word-break:keep-all}
-.step .r{font-size:17px;color:#7a8794;margin-top:10px}
-.step:not(:last-child)::after{content:'›';position:absolute;right:-15px;top:40%;font-size:34px;color:#9aa6ae}
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}
+.step{background:#fff;border:2px solid #dbe3ee;border-radius:16px;padding:18px 20px;min-width:0;display:flex;gap:14px;align-items:flex-start}
+.step .n{flex:0 0 36px;height:36px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:19px}
+.step .t{font-size:21px;font-weight:700;line-height:1.3;word-break:keep-all;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.step .r{font-size:16px;color:#7a8794;margin-top:6px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
 .num{background:#fff;border-radius:16px;padding:24px;border:2px solid #dbe3ee}
-.num .v{font-size:44px;font-weight:700;color:#1d4ed8;line-height:1.1;word-break:break-all}
+.num .v{font-size:44px;font-weight:700;color:#1d4ed8;line-height:1.15;word-break:keep-all;overflow-wrap:anywhere}
+.num .v.m{font-size:32px}
+.num .v.s{font-size:24px;line-height:1.3}
 .num .l{font-size:20px;color:#52606d;margin-top:10px;line-height:1.35;word-break:keep-all}
 .num .ts{font-size:16px;color:#9aa6ae;margin-top:6px}
 .sec .body{font-size:26px;line-height:1.5;margin-top:22px;word-break:keep-all}
@@ -117,20 +118,21 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
             for i, t in enumerate(syn.key_takeaways[:5]))
         h = 360 + 100 * min(5, len(syn.key_takeaways))
         add("takeaways",
-            f"<span class='pill'>핵심 포인트 {len(syn.key_takeaways[:5])}가지</span><div class='title' style='font-size:40px'>{_e(_clip(meta.title, 50))}</div>"
+            f"<span class='pill'>핵심 포인트 {len(syn.key_takeaways[:5])}가지</span><div class='title' style='font-size:40px'>{_e(_clip(syn.seo.title or meta.title, 50))}</div>"
             f"<ol class='tk'>{items}</ol>" + _source_line(meta, blog_name),
             "light", 1200, h, alt="핵심 포인트 카드", caption="영상의 핵심 포인트를 한눈에 정리한 카드입니다.")
 
     # 3) 구간 흐름도
-    secs = summary.sections[:6]
+    secs = summary.sections[:9]
     if len(secs) >= 3:
         steps = "".join(
-            f"<div class='step'><div class='n'>{i+1}</div><div class='t'>{_e(_clip(s.title, 26))}</div><div class='r'>{_e(s.start)} ~ {_e(s.end)}</div></div>"
+            f"<div class='step'><div class='n'>{i+1}</div><div><div class='t'>{_e(_clip(s.title, 34))}</div><div class='r'>{_e(s.start)} ~ {_e(s.end)}</div></div></div>"
             for i, s in enumerate(secs))
+        rows = (len(secs) + 2) // 3
         add("flow",
             f"<span class='pill'>영상 흐름</span><div class='title' style='font-size:36px'>이 영상은 이렇게 진행됩니다</div><div class='flow'>{steps}</div>"
             + _source_line(meta, blog_name),
-            "light", 1200, 480, alt="영상 구간 흐름도", caption="영상이 다루는 주제의 순서를 도식화했습니다.")
+            "light", 1200, 300 + 150 * rows, alt="영상 구간 흐름도", caption="영상이 다루는 주제의 순서를 도식화했습니다.")
 
     # 4) 구간 카드: details 가 3개 이상인 구간만, 최대 4장
     made = 0
@@ -146,10 +148,17 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
         made += 1
 
     # 5) 수치 카드
-    nums = [n for s in summary.sections for n in s.numbers][:6]
+    nums = []
+    pools = [list(s.numbers) for s in summary.sections if s.numbers]
+    while len(nums) < 6 and any(pools):           # 구간을 돌아가며 하나씩(한 구간에 몰리지 않게)
+        for p in pools:
+            if p and len(nums) < 6:
+                nums.append(p.pop(0))
     if len(nums) >= 3:
+        def vcls(v: str) -> str:
+            return "" if len(v) <= 9 else ("m" if len(v) <= 16 else "s")
         cells = "".join(
-            f"<div class='num'><div class='v'>{_e(_clip(n.value, 12))}</div><div class='l'>{_e(_clip(n.label, 40))}</div><div class='ts'>{_e(n.ts)}</div></div>"
+            f"<div class='num'><div class='v {vcls(n.value)}'>{_e(_clip(n.value, 30))}</div><div class='l'>{_e(_clip(n.label, 40))}</div><div class='ts'>{_e(n.ts)}</div></div>"
             for n in nums)
         rows = (len(nums) + 2) // 3
         add("numbers",

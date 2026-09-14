@@ -6,12 +6,16 @@
   python -m ytblog fixture                         샘플 자막으로 오프라인 전체 흐름 실행
   python -m ytblog wp-check                        WordPress 연결 확인
   python -m ytblog note <video_id> "메모" [--publish]  편집자 메모 저장(+WordPress 글 갱신/공개)
+  python -m ytblog prepare <URL|ID>                 (수동 모드 1단계) 메타·자막을 out/<id>/ 에 저장
+  python -m ytblog finish <ID> [--publish]          (수동 모드 2단계) out/<id>/summary.json 으로 이미지·글·발행
   python -m ytblog quota                           최근 7일·24시간 생성 글 수와 남은 발행 여유
 """
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -21,6 +25,7 @@ from .discover import VideoMeta, enrich_video, list_recent_videos, resolve_chann
 from .images import build_cards
 from .render import build_excerpt, build_post_html, replace_note_block
 from .state import State
+from .schema import Summary
 from .summarize import make_llm, summarize_video
 from .transcript import Transcript, fetch_transcript
 
@@ -105,6 +110,15 @@ def process_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, s
     except Exception as e:  # noqa: BLE001
         state.mark_failed(vid, "summarize", str(e))
         raise
+
+    return finish_video(settings, channel, meta, summary, state, out_dir, publish=publish, dry_run=dry_run, wp=wp)
+
+
+def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, summary: Summary, state: State,
+                 out_dir: Path, publish: bool = False, dry_run: bool = False, wp=None) -> str:
+    """요약(summary)이 준비된 뒤의 공통 단계: 이미지 → 글 HTML → WordPress 업로드/발행."""
+    vid = meta.video_id
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     # 4) 이미지
     try:
@@ -252,6 +266,79 @@ def cmd_fixture(args, settings: Settings) -> int:
     return 0
 
 
+VIDEO_ID_RE = re.compile(r"(?:v=|youtu\.be/|/shorts/|/live/|/embed/)([A-Za-z0-9_-]{11})")
+
+
+def parse_video_id(s: str) -> str:
+    s = s.strip()
+    if re.fullmatch(r"[A-Za-z0-9_-]{11}", s):
+        return s
+    m = VIDEO_ID_RE.search(s)
+    if not m:
+        raise SystemExit(f"영상 ID 를 찾지 못했습니다: {s}")
+    return m.group(1)
+
+
+def _channel_for(channels: list[ChannelConfig], channel_id: str) -> ChannelConfig:
+    for ch in channels:
+        if ch.channel_id and ch.channel_id == channel_id:
+            return ch
+    for ch in channels:
+        if ch.enabled:
+            return ch
+    return channels[0]
+
+
+def cmd_prepare(args, settings: Settings) -> int:
+    """수동 모드 1단계: 링크 하나를 받아 메타데이터와 자막을 out/<id>/ 에 저장한다(LLM 호출 없음)."""
+    vid = parse_video_id(args.video)
+    state = State(settings.data_dir / "state.json")
+    out_dir = settings.out_dir / vid
+    out_dir.mkdir(parents=True, exist_ok=True)
+    meta = enrich_video(VideoMeta(video_id=vid, title="", channel_id="", channel_title=""), settings.yt_proxy_url)
+    channels = load_channels()
+    ch = _channel_for(channels, meta.channel_id)
+    if not meta.channel_title:
+        meta.channel_title = ch.title or ch.handle
+    transcript = fetch_transcript(vid, (ch.language_hint, "en"), settings.yt_proxy_url)
+    (out_dir / "meta.json").write_text(json.dumps(dataclasses.asdict(meta), ensure_ascii=False, indent=2), encoding="utf-8")
+    (out_dir / "transcript.txt").write_text(transcript.to_text(), encoding="utf-8")
+    (out_dir / "transcript.json").write_text(json.dumps(dataclasses.asdict(transcript), ensure_ascii=False), encoding="utf-8")
+    state.set_status(vid, "fetched", transcript_source=transcript.source, title=meta.title, mode="manual")
+    log(f"영상: {meta.title}\n채널: {meta.channel_title} ({meta.channel_id})\n길이: {meta.duration_sec}s, 챕터 {len(meta.chapters)}개, "
+        f"자막 {transcript.source}/{transcript.language} {len(transcript.segments)}구간 {len(transcript.to_text())}자")
+    log(f"저장: {out_dir / 'meta.json'}, {out_dir / 'transcript.txt'}")
+    if meta.chapters:
+        log("챕터:\n" + "\n".join(f"  {c['start']:>5}s  {c['title']}" for c in meta.chapters))
+    log(f"다음: {out_dir / 'summary.json'} 을 schema.Summary 형식으로 만든 뒤 `python -m ytblog finish {vid}`")
+    return 0
+
+
+def cmd_finish(args, settings: Settings) -> int:
+    """수동 모드 2단계: out/<id>/summary.json 을 읽어 이미지·글·WordPress 업로드까지 진행한다."""
+    vid = parse_video_id(args.video)
+    out_dir = settings.out_dir / vid
+    meta_path, sum_path = out_dir / "meta.json", Path(args.summary) if args.summary else out_dir / "summary.json"
+    if not meta_path.exists():
+        raise SystemExit(f"{meta_path} 가 없습니다. 먼저 `python -m ytblog prepare {vid}` 를 실행하세요.")
+    if not sum_path.exists():
+        raise SystemExit(f"{sum_path} 가 없습니다.")
+    meta = VideoMeta(**json.loads(meta_path.read_text(encoding="utf-8")))
+    summary = Summary.model_validate_json(sum_path.read_text(encoding="utf-8"))
+    if summary.video_id != vid:
+        raise SystemExit(f"summary.video_id({summary.video_id}) 가 {vid} 와 다릅니다")
+    ch = _channel_for(load_channels(), meta.channel_id)
+    state = State(settings.data_dir / "state.json")
+    state.set_status(vid, "summarized", cost_usd=summary.cost_usd, unsupported_ratio=summary.unsupported_ratio, mode="manual")
+    wp = _wp_client(settings, needed=not args.dry_run and bool(settings.wp_url))
+    if wp is not None and wp.find_post_by_video(vid) and not args.force:
+        raise SystemExit(f"이미 WordPress 에 {vid} 글이 있습니다. 다시 올리려면 --force")
+    log(f"▶ {vid} {meta.title}\n  요약: 구간 {len(summary.sections)}개, 핵심 {len(summary.synthesis.key_takeaways)}개")
+    status = finish_video(settings, ch, meta, summary, state, out_dir, publish=args.publish, dry_run=args.dry_run, wp=wp)
+    log(f"status: {status}")
+    return 0
+
+
 def cmd_note(args, settings: Settings) -> int:
     """편집자 메모를 저장하고, 해당 영상의 WordPress 글이 있으면 본문을 갱신(선택: 공개)."""
     text = Path(args.file).read_text(encoding="utf-8") if args.file else (args.text or "")
@@ -314,11 +401,17 @@ def main(argv=None) -> int:
     nt.add_argument("--file", default="", help="메모를 담은 텍스트 파일")
     nt.add_argument("--publish", action="store_true", help="메모 반영 후 글을 공개로 전환")
     sub.add_parser("quota", help="발행 상한 대비 남은 여유")
+    pr = sub.add_parser("prepare", help="수동 모드 1단계: 링크→메타·자막 저장"); pr.add_argument("video")
+    fi = sub.add_parser("finish", help="수동 모드 2단계: summary.json→이미지·글·발행"); fi.add_argument("video")
+    fi.add_argument("--summary", default="", help="summary.json 경로(기본 out/<id>/summary.json)")
+    fi.add_argument("--publish", action="store_true"); fi.add_argument("--dry-run", action="store_true")
+    fi.add_argument("--force", action="store_true", help="이미 글이 있어도 다시 올림")
     args = p.parse_args(argv)
     settings = Settings.load()
     return {"resolve": cmd_resolve, "discover": cmd_discover, "run": cmd_run,
             "fixture": cmd_fixture, "wp-check": cmd_wp_check,
-            "note": cmd_note, "quota": cmd_quota}[args.cmd](args, settings)
+            "note": cmd_note, "quota": cmd_quota,
+            "prepare": cmd_prepare, "finish": cmd_finish}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":
