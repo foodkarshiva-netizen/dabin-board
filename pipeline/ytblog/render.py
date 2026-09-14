@@ -159,18 +159,13 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
     if note:
         parts.append(build_note_block(note, note_is_draft))
 
-    # 출처 고지 (기본은 링크 없는 텍스트)
+    # 출처: 한 줄만 정확히 (기본은 링크 없는 텍스트)
     if source_link:
-        who = (f"유튜브 채널 <a href='https://www.youtube.com/channel/{_e(meta.channel_id)}' target='_blank' rel='noopener'>{_e(meta.channel_title)}</a>의 "
-               f"영상 <a href='{_e(meta.url)}' target='_blank' rel='noopener'>“{_e(meta.title)}”</a>")
+        who = (f"유튜브 채널 <a href='https://www.youtube.com/channel/{_e(meta.channel_id)}' target='_blank' rel='noopener'>{_e(meta.channel_title)}</a> · "
+               f"<a href='{_e(meta.url)}' target='_blank' rel='noopener'>“{_e(meta.title)}”</a>")
     else:
-        who = f"유튜브 채널 {_e(meta.channel_title)}의 영상 “{_e(meta.title)}”"
-    parts.append(
-        "<hr/><div class='yt-source'><p><strong>출처</strong></p>"
-        f"<p>이 글은 {who}의 내용을 학습 목적으로 요약·재구성한 것입니다. "
-        "영상의 모든 권리는 원 제작자에게 있으며, 이 글의 이미지는 영상 화면을 사용하지 않고 요약 내용을 바탕으로 새로 제작한 것입니다. "
-        f"게시 중단 요청은 {_e(blog_name)} 문의 채널로 보내주시면 즉시 처리합니다.</p></div>"
-    )
+        who = f"유튜브 채널 {_e(meta.channel_title)} · “{_e(meta.title)}”"
+    parts.append(f"<hr/><div class='yt-source'><p><strong>출처</strong> {who}</p></div>")
     return "\n".join(parts)
 
 

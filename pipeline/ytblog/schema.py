@@ -34,11 +34,13 @@ class Section(BaseModel):
     quotes: list[Quote]
     numbers: list[Number]
     image_caption: str      # 이 구간을 카드 이미지로 만들 때 쓸 한 줄
+    card_points: list[str] = []  # 카드에 그대로 들어갈 완성 문장 2~3개(각 60자 이내, 줄임 없이 표시)
 
 
 class Takeaway(BaseModel):
     text: str
     ts: str
+    short: str = ""         # 카드용 완성 문장(60자 이내). 비어 있으면 text 를 그대로 씀
 
 
 class GlossaryItem(BaseModel):

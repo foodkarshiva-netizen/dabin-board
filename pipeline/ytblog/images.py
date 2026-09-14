@@ -55,7 +55,7 @@ BASE_CSS = """
 html,body{height:100%;width:100%}
 body{font-family:'NotoKR','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic','Noto Sans CJK KR',sans-serif;
      color:#1b2430;background:#fff;-webkit-font-smoothing:antialiased}
-.card{width:100%;height:100%;padding:72px 80px 120px;display:flex;flex-direction:column;position:relative;overflow:hidden;background:#fff}
+.card{width:100%;min-height:100%;padding:72px 80px 130px;display:flex;flex-direction:column;position:relative;background:#fff}
 .card.dark{background:#1d4ed8;color:#fff}
 .label{font-size:30px;font-weight:700;color:#2563eb;letter-spacing:.3px}
 .card.dark .label{color:rgba(255,255,255,.85)}
@@ -123,28 +123,28 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
 
     # 1) 대표 이미지
     add("hero",
-        f"<div class='label'>핵심 정리</div><div class='title'>{_e(_clip(syn.seo.title or meta.title, 52))}</div>"
-        f"<div class='sub'>{_e(_clip(syn.one_liner, 105))}</div>",
+        f"<div class='label'>핵심 정리</div><div class='title'>{_e(_clip(syn.seo.title or meta.title, 70))}</div>"
+        f"<div class='sub'>{_e(_clip(syn.one_liner, 160))}</div>",
         "dark", H_STD, alt=f"{meta.title} 핵심 정리 대표 이미지", caption="")
 
     # 2) 핵심 포인트
     tk = syn.key_takeaways[:5]
     if tk:
-        items = "".join(f"<li><span class='n'>{i + 1}</span><span>{_e(_clip(t.text, 84))}</span></li>" for i, t in enumerate(tk))
+        items = "".join(f"<li><span class='n'>{i + 1}</span><span>{_e(_clip(getattr(t, 'short', '') or t.text, 140))}</span></li>" for i, t in enumerate(tk))
         add("takeaways",
             f"<div class='label'>핵심 포인트 {len(tk)}가지</div><ol class='tk'>{items}</ol>",
-            "light", max(H_STD, 230 + 150 * len(tk)), alt="핵심 포인트 정리 카드", caption="이 영상의 핵심 포인트")
+            "light", max(H_STD, 200 + 125 * len(tk)), alt="핵심 포인트 정리 카드", caption="이 영상의 핵심 포인트")
 
     # 3) 구간 카드: 구간마다 한 장 (핵심 한 줄 + 짧은 항목 최대 3개)
     for i, s in enumerate(summary.sections):
-        pts = [d for d in s.details if d.strip()][:3]
+        pts = [d for d in (getattr(s, "card_points", None) or s.details) if d.strip()][:3]
         if not pts:
             continue
-        bullets = "".join(f"<li>{_e(_clip(d, 66))}</li>" for d in pts)
-        head = _clip(s.image_caption or s.title, 40)
+        bullets = "".join(f"<li>{_e(_clip(d, 140))}</li>" for d in pts)
+        head = _clip(s.image_caption or s.title, 48)
         add("section",
             f"<div class='label'>{_e(_clip(s.title, 34))}</div><div class='title sm'>{_e(head)}</div><ul class='pts'>{bullets}</ul>",
-            "light", 780, alt=f"{s.title} 핵심 카드", caption=head, idx=i)
+            "light", H_STD, alt=f"{s.title} 핵심 카드", caption=head, idx=i)
 
     # 4) 숫자로 기억하기: 구간을 돌아가며 최대 6개
     nums = []
@@ -167,7 +167,7 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
     gl = syn.glossary
     for k in range(0, len(gl), 2):
         chunk = gl[k:k + 2]
-        rows_html = "".join(f"<div><div class='t'>{_e(_clip(g.term, 24))}</div><div class='d'>{_e(_clip(g.definition, 90))}</div></div>" for g in chunk)
+        rows_html = "".join(f"<div><div class='t'>{_e(_clip(g.term, 30))}</div><div class='d'>{_e(_clip(g.definition, 160))}</div></div>" for g in chunk)
         add("glossary",
             f"<div class='label'>핵심 용어</div><div class='gl'>{rows_html}</div>",
             "light", H_STD, alt="핵심 용어 카드", caption="알아두면 좋은 용어", suffix=f"-{k // 2 + 1}")
@@ -175,10 +175,10 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
     # 6) 자기 점검 질문
     qs = getattr(syn, "study_questions", []) or []
     if qs:
-        items = "".join(f"<li><span class='n'>Q{i + 1}</span><span>{_e(_clip(q, 60))}</span></li>" for i, q in enumerate(qs[:5]))
+        items = "".join(f"<li><span class='n'>Q{i + 1}</span><span>{_e(_clip(q, 140))}</span></li>" for i, q in enumerate(qs[:5]))
         add("questions",
             f"<div class='label'>스스로 점검해 보기</div><ol class='tk'>{items}</ol>",
-            "light", max(H_STD, 230 + 150 * min(5, len(qs))), alt="자기 점검 질문 카드", caption="영상을 이해했는지 확인하는 질문")
+            "light", max(H_STD, 200 + 125 * min(5, len(qs))), alt="자기 점검 질문 카드", caption="영상을 이해했는지 확인하는 질문")
 
     render_jobs(jobs)
     return cards

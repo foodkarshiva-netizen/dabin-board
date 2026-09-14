@@ -18,6 +18,12 @@ function loadPlaywright() {
       const page = await browser.newPage({ viewport: { width: job.width, height: job.height }, deviceScaleFactor: 1 });
       await page.setContent(job.html, { waitUntil: "load" });
       await page.evaluate(() => document.fonts.ready);
+      // job.height 는 최소 높이. 내용이 더 길면 잘리지 않도록 뷰포트를 늘린다.
+      const need = await page.evaluate(() => {
+        const c = document.querySelector(".card");
+        return c ? Math.ceil(c.scrollHeight) : 0;
+      });
+      if (need > job.height) await page.setViewportSize({ width: job.width, height: need });
       await page.screenshot({ path: job.out, type: "png", fullPage: false });
       await page.close();
       console.log("rendered", job.out);
