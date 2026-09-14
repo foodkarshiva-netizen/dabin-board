@@ -1,0 +1,16 @@
+{
+  "channels": [
+    {
+      "handle": "@지식인사이드",
+      "channel_id": "",
+      "title": "지식인사이드",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "지식인사이드 요약",
+      "extra_tags": ["지식인사이드", "유튜브 요약"],
+      "tone": "친절하고 명확한 설명체, 존댓말. 강연 내용을 독자가 바로 이해할 수 있게 풀어 씀"
+    }
+  ]
+}

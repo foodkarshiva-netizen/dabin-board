@@ -1,0 +1,63 @@
+name: ytblog
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "이번 실행에서 처리할 최대 영상 수"
+        default: "2"
+      publish:
+        description: "true 면 검토 없이 바로 공개"
+        default: "false"
+
+concurrency:
+  group: ytblog
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          npm i -g playwright@1.56.1
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Run pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          BLOG_NAME: ${{ vars.BLOG_NAME }}
+          YT_PROXY_URL: ${{ secrets.YT_PROXY_URL }}
+          MODEL_MAIN: ${{ vars.MODEL_MAIN || 'claude-opus-5' }}
+          MODEL_LIGHT: ${{ vars.MODEL_LIGHT || 'claude-sonnet-5' }}
+        run: |
+          LIMIT="${{ github.event.inputs.limit || '2' }}"
+          if [ "${{ github.event.inputs.publish }}" = "true" ]; then PUB=--publish; else PUB=; fi
+          python -m ytblog run --limit "$LIMIT" $PUB
+      - name: Upload outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ytblog-out-${{ github.run_id }}
+          path: pipeline/out
+          if-no-files-found: ignore
+          retention-days: 7

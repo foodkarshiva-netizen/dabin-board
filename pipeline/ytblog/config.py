@@ -1,0 +1,74 @@
+"""환경 변수(.env)와 channels.json 로딩."""
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+PIPELINE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(PIPELINE_DIR / ".env")
+
+
+@dataclass
+class ChannelConfig:
+    handle: str                      # "@지식인사이드" 또는 채널 URL
+    channel_id: str = ""             # 비어 있으면 첫 실행 때 resolve
+    title: str = ""
+    enabled: bool = True
+    min_duration_sec: int = 180      # 이보다 짧으면(쇼츠 등) 건너뜀
+    max_duration_sec: int = 5400     # 90분 초과는 자동 처리하지 않음
+    language_hint: str = "ko"
+    blog_category: str = "유튜브 요약"
+    extra_tags: list[str] = field(default_factory=list)
+    tone: str = "친절하고 명확한 설명체, 존댓말"
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ChannelConfig":
+        known = {k: v for k, v in d.items() if k in cls.__dataclass_fields__}
+        return cls(**known)
+
+
+@dataclass
+class Settings:
+    anthropic_api_key: str
+    model_main: str
+    model_light: str
+    wp_url: str
+    wp_user: str
+    wp_app_password: str
+    yt_proxy_url: str
+    mock_llm: bool
+    data_dir: Path
+    out_dir: Path
+    max_cost_per_video_usd: float
+    blog_name: str
+
+    @classmethod
+    def load(cls) -> "Settings":
+        env = os.environ
+        data_dir = Path(env.get("YTBLOG_DATA_DIR", PIPELINE_DIR / "data"))
+        out_dir = Path(env.get("YTBLOG_OUT_DIR", PIPELINE_DIR / "out"))
+        return cls(
+            anthropic_api_key=env.get("ANTHROPIC_API_KEY", ""),
+            model_main=env.get("MODEL_MAIN", "claude-opus-5"),
+            model_light=env.get("MODEL_LIGHT", "claude-sonnet-5"),
+            wp_url=env.get("WP_URL", "").rstrip("/"),
+            wp_user=env.get("WP_USER", ""),
+            wp_app_password=env.get("WP_APP_PASSWORD", ""),
+            yt_proxy_url=env.get("YT_PROXY_URL", ""),
+            mock_llm=env.get("MOCK_LLM", "") in ("1", "true", "yes"),
+            data_dir=data_dir,
+            out_dir=out_dir,
+            max_cost_per_video_usd=float(env.get("MAX_COST_PER_VIDEO_USD", "1.5")),
+            blog_name=env.get("BLOG_NAME", "유튜브 요약 블로그"),
+        )
+
+
+def load_channels(path: Path | None = None) -> list[ChannelConfig]:
+    path = path or PIPELINE_DIR / "channels.json"
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    return [ChannelConfig.from_dict(c) for c in raw["channels"]]
