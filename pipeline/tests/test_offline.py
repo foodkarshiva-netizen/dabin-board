@@ -49,9 +49,11 @@ def test_summary_and_html():
         assert s.sections and s.synthesis.key_takeaways
         assert not s.needs_review
         html = build_post_html(s, meta, [], {}, "테스트 블로그")
-        assert "youtube.com/embed/SAMPLE00001" in html
-        assert "출처 및 저작권 안내" in html
-        assert "t=" in html  # 타임스탬프 링크
+        assert "youtube.com/embed/SAMPLE00001" not in html and "&t=" not in html and "[0" not in html  # 기본: 임베드·타임스탬프 없음
+        assert "<strong>출처</strong>" in html and "youtube.com/watch" not in html               # 출처는 텍스트만
+        assert "스스로 점검해 보기" in html
+        html_ts = build_post_html(s, meta, [], {}, "테스트 블로그", show_timestamps=True, embed_video=True, source_link=True)
+        assert "youtube.com/embed/SAMPLE00001" in html_ts and "&t=" in html_ts and "youtube.com/watch" in html_ts
         st = State(Path(td) / "state.json")
         st.set_status("x", "fetched")
         st.mark_failed("x", "summarize", "boom")
@@ -90,7 +92,7 @@ def test_editor_note_block():
         # 블록이 없는 글에는 출처 고지 앞에 삽입
         stripped = html.split(NOTE_START)[0] + html.split(NOTE_END)[1]
         html4 = replace_note_block(stripped, "삽입 메모")
-        assert html4.index("삽입 메모") < html4.index("출처 및 저작권 안내")
+        assert html4.index("삽입 메모") < html4.index("<strong>출처</strong>")
 
 
 def test_state_notes_and_quota():

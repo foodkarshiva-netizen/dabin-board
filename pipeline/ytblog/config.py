@@ -24,6 +24,9 @@ class ChannelConfig:
     blog_category: str = "유튜브 요약"
     extra_tags: list[str] = field(default_factory=list)
     tone: str = "친절하고 명확한 설명체, 존댓말"
+    show_timestamps: bool = False    # 본문에 [mm:ss] 영상 시점 링크 표시
+    embed_video: bool = False        # 원본 영상 임베드
+    source_link: bool = False        # 출처 고지에 채널·영상 하이퍼링크 (False 면 텍스트만)
 
     @classmethod
     def from_dict(cls, d: dict) -> "ChannelConfig":

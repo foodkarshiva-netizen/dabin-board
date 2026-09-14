@@ -148,6 +148,7 @@ class MockLLM:
                 faq=[FAQItem(q="이 영상의 핵심은 무엇인가요?", a=first)],
                 background="",
                 editor_note_draft="(초안) 이 영상의 주장을 실제로 적용해 본다면 어떤 점부터 바꿀지 적어 보세요.",
+                study_questions=["이 영상의 핵심 주장은 무엇인가요?", "그 주장의 근거는 무엇인가요?"],
                 seo=SEO(title=f"{first} 정리", slug="mock-summary", description=first,
                         tags=["유튜브 요약", "모의"]),
             )
@@ -208,7 +209,8 @@ def detail_section(llm, settings: Settings, system: list[dict], item: SectionPla
         f"구간 제목: {item.title}\n시작: {item.start}\n끝: {item.end}\n\n"
         "위 구간의 자막만을 근거로 다음을 작성하세요.\n"
         "- summary: 이 구간의 내용을 3~6문장으로. 독자가 영상을 안 봐도 이해되게.\n"
-        "- details: 핵심 주장·근거·사례를 항목당 1~2문장으로 최소 4개(내용이 적으면 2개). 각 항목 끝에 [mm:ss] 를 붙입니다.\n"
+        "- details: 핵심 주장·근거·사례를 항목당 1~2문장으로 최소 4개(내용이 적으면 2개). 각 항목 끝에 [mm:ss] 를 붙입니다. "
+        "화자의 말을 받아쓰지 말고, 독자가 배워 갈 '핵심'을 설명하는 문장으로 씁니다('~라고 말한다' 같은 화법 서술 금지).\n"
         "- quotes: 인상적인 발언 1~3개를 원문 그대로(오탈자만 교정), 타임스탬프와 함께.\n"
         "- numbers: 언급된 수치(퍼센트, 금액, 연도, 개수 등)를 모두. 없으면 빈 배열.\n"
         "- image_caption: 이 구간을 카드 이미지 한 장으로 표현할 때 들어갈 한 줄(25자 이내).\n"
@@ -234,6 +236,7 @@ def synthesize(llm, settings: Settings, system: list[dict], sections: list[Secti
         "- editor_note_draft: 블로그 운영자가 '편집자 메모'로 다듬어 쓸 초안 3~5문장. 요약의 반복이 아니라 "
         "독자가 실제로 적용할 때의 포인트, 주의할 점, 영상이 다루지 않은 반대 관점이나 질문을 담습니다. "
         "운영자가 직접 고쳐 쓸 것이므로 1인칭 서술체로 씁니다.\n"
+        "- study_questions: 독자가 내용을 이해했는지 스스로 점검할 질문 3~5개. 영상 내용으로 답할 수 있는 것만.\n"
         f"- seo: 검색용 제목(원 영상 제목을 그대로 복사하지 말고 핵심 주제를 담아 45자 내외), 영문 소문자·하이픈 slug, "
         f"메타 설명(120자 내외), 태그 5~8개(채널 관련 태그 '{channel.blog_category}' 포함)."
     )

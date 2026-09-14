@@ -77,6 +77,21 @@ class WordPressClient:
         self._post(f"media/{m['id']}", alt_text=alt, title=title or alt)
         return m["id"], m["source_url"]
 
+    def delete_media_in(self, html_text: str, keep: set[str] | None = None) -> int:
+        """본문에 들어 있던 업로드 이미지(이 사이트 uploads URL)를 미디어 라이브러리에서 삭제. keep 에 있는 URL 은 남긴다."""
+        import re
+        keep = keep or set()
+        urls = set(re.findall(r"https?://[^'\" ]+/wp-content/uploads/[^'\" ]+", html_text)) - keep
+        n = 0
+        for u in urls:
+            base = u.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+            for m in self._get("media", search=base, per_page=10):
+                if m.get("source_url") == u:
+                    r = self.s.delete(f"{self.api}/media/{m['id']}", params={"force": "true"}, timeout=60)
+                    if r.status_code < 400:
+                        n += 1
+        return n
+
     def _term_id(self, taxonomy: str, name: str) -> int:
         hits = self._get(taxonomy, search=name, per_page=20)
         for h in hits:

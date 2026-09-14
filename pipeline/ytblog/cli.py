@@ -115,7 +115,7 @@ def process_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, s
 
 
 def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, summary: Summary, state: State,
-                 out_dir: Path, publish: bool = False, dry_run: bool = False, wp=None) -> str:
+                 out_dir: Path, publish: bool = False, dry_run: bool = False, wp=None, update_post_id: int = 0) -> str:
     """요약(summary)이 준비된 뒤의 공통 단계: 이미지 → 글 HTML → WordPress 업로드/발행."""
     vid = meta.video_id
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -144,7 +144,9 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
             raise
     note = state.note_for(vid)
     html = build_post_html(summary, meta, cards, url_map or {str(c.path): f"images/{c.path.name}" for c in cards},
-                           settings.blog_name, editor_note=note, note_is_draft=False)
+                           settings.blog_name, editor_note=note, note_is_draft=False,
+                           show_timestamps=channel.show_timestamps, embed_video=channel.embed_video,
+                           source_link=channel.source_link)
     preview = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>{summary.synthesis.seo.title}</title>" \
               "<style>body{max-width:760px;margin:40px auto;font-family:sans-serif;line-height:1.7;padding:0 16px}img{max-width:100%;border-radius:12px}blockquote{border-left:4px solid #ddd;margin:0;padding:4px 16px;color:#555}.yt-box{background:#f4f6fb;padding:12px 16px;border-radius:12px}</style></head><body>" \
               f"<h1>{summary.synthesis.seo.title}</h1>{html}</body></html>"
@@ -166,11 +168,21 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
             status = "publish"
         cats = wp.category_ids([channel.blog_category])
         tags = wp.tag_ids(list(dict.fromkeys(summary.synthesis.seo.tags + channel.extra_tags)))
-        post = wp.create_post(
-            title=summary.synthesis.seo.title or meta.title,
-            content=html, status=status, slug=summary.synthesis.seo.slug,
-            excerpt=build_excerpt(summary), categories=cats, tags=tags, featured_media=featured,
-        )
+        if update_post_id:
+            old = wp.get_post(update_post_id)
+            if old.get("status") == "publish":
+                status = "publish"          # 이미 공개된 글은 공개 상태 유지
+            post = wp.update_post(update_post_id, title=summary.synthesis.seo.title or meta.title, content=html,
+                                  status=status, slug=summary.synthesis.seo.slug, excerpt=build_excerpt(summary),
+                                  categories=cats, tags=tags, featured_media=featured)
+            removed = wp.delete_media_in(old.get("content", {}).get("raw", ""), keep=set(url_map.values()))
+            log(f"  기존 글 갱신 (이전 이미지 {removed}개 삭제)")
+        else:
+            post = wp.create_post(
+                title=summary.synthesis.seo.title or meta.title,
+                content=html, status=status, slug=summary.synthesis.seo.slug,
+                excerpt=build_excerpt(summary), categories=cats, tags=tags, featured_media=featured,
+            )
         final = "published" if status == "publish" else ("needs_review" if summary.needs_review else "drafted")
         state.mark_post_created(vid, final, wp_post_id=post["id"], wp_link=post.get("link", ""))
         log(f"  WordPress {status}: {post.get('link', '')}")
@@ -331,10 +343,19 @@ def cmd_finish(args, settings: Settings) -> int:
     state = State(settings.data_dir / "state.json")
     state.set_status(vid, "summarized", cost_usd=summary.cost_usd, unsupported_ratio=summary.unsupported_ratio, mode="manual")
     wp = _wp_client(settings, needed=not args.dry_run and bool(settings.wp_url))
-    if wp is not None and wp.find_post_by_video(vid) and not args.force:
-        raise SystemExit(f"이미 WordPress 에 {vid} 글이 있습니다. 다시 올리려면 --force")
+    update_id = 0
+    if wp is not None:
+        existing = state.data["videos"].get(vid, {}).get("wp_post_id") or 0
+        if not existing:
+            found = wp.find_post_by_video(vid)
+            existing = found["id"] if found else 0
+        if existing and args.update:
+            update_id = int(existing)
+        elif existing and not args.force:
+            raise SystemExit(f"이미 WordPress 에 {vid} 글(id {existing})이 있습니다. 갱신하려면 --update, 새로 올리려면 --force")
     log(f"▶ {vid} {meta.title}\n  요약: 구간 {len(summary.sections)}개, 핵심 {len(summary.synthesis.key_takeaways)}개")
-    status = finish_video(settings, ch, meta, summary, state, out_dir, publish=args.publish, dry_run=args.dry_run, wp=wp)
+    status = finish_video(settings, ch, meta, summary, state, out_dir, publish=args.publish, dry_run=args.dry_run,
+                          wp=wp, update_post_id=update_id)
     log(f"status: {status}")
     return 0
 
@@ -405,7 +426,8 @@ def main(argv=None) -> int:
     fi = sub.add_parser("finish", help="수동 모드 2단계: summary.json→이미지·글·발행"); fi.add_argument("video")
     fi.add_argument("--summary", default="", help="summary.json 경로(기본 out/<id>/summary.json)")
     fi.add_argument("--publish", action="store_true"); fi.add_argument("--dry-run", action="store_true")
-    fi.add_argument("--force", action="store_true", help="이미 글이 있어도 다시 올림")
+    fi.add_argument("--force", action="store_true", help="이미 글이 있어도 새 글로 다시 올림")
+    fi.add_argument("--update", action="store_true", help="이미 글이 있으면 그 글을 갱신(이전 이미지 삭제)")
     args = p.parse_args(argv)
     settings = Settings.load()
     return {"resolve": cmd_resolve, "discover": cmd_discover, "run": cmd_run,
