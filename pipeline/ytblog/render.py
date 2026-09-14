@@ -9,6 +9,29 @@ from .images import CardImage
 from .schema import Summary
 
 TS_RE = re.compile(r"\[((?:\d{1,2}:)?\d{1,2}:\d{2})\]")
+NOTE_START = "<!-- ytblog:note:start -->"
+NOTE_END = "<!-- ytblog:note:end -->"
+NOTE_RE = re.compile(re.escape(NOTE_START) + r".*?" + re.escape(NOTE_END), re.S)
+DRAFT_NOTICE = "이 메모는 AI가 쓴 초안입니다. 발행 전에 운영자의 의견으로 바꿔 주세요."
+
+
+def build_note_block(note: str, is_draft: bool) -> str:
+    """편집자 메모 블록. is_draft=True 면 AI 초안이라는 표시를 붙인다(발행 전 교체 유도)."""
+    paras = [p.strip() for p in re.split(r"\n\s*\n|\n", note or "") if p.strip()]
+    body = "".join(f"<p>{_e(p)}</p>" for p in paras) or "<p></p>"
+    notice = f"<p class='yt-note-draft'><em>[{_e(DRAFT_NOTICE)}]</em></p>" if is_draft else ""
+    return (f"{NOTE_START}<h2>편집자 메모</h2><div class='yt-note'>{notice}{body}</div>{NOTE_END}")
+
+
+def replace_note_block(html_text: str, note: str, is_draft: bool = False) -> str:
+    """기존 글 본문의 편집자 메모 블록을 새 메모로 바꾼다. 블록이 없으면 출처 고지 앞에 넣는다."""
+    block = build_note_block(note, is_draft)
+    if NOTE_RE.search(html_text):
+        return NOTE_RE.sub(lambda _m: block, html_text)
+    marker = "<hr/><div class='yt-source'>"
+    if marker in html_text:
+        return html_text.replace(marker, block + "\n" + marker, 1)
+    return html_text + "\n" + block
 
 
 def _e(s: str) -> str:
@@ -33,7 +56,9 @@ def figure(img: CardImage, url_map: dict[str, str]) -> str:
 
 
 def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
-                    url_map: dict[str, str], blog_name: str) -> str:
+                    url_map: dict[str, str], blog_name: str,
+                    editor_note: str = "", note_is_draft: bool = False) -> str:
+    """editor_note 가 비어 있으면 요약의 editor_note_draft 를 AI 초안 표시와 함께 넣는다."""
     vid = meta.video_id
     syn = summary.synthesis
     by_kind = {c.kind: c for c in cards if c.kind != "section"}
@@ -109,6 +134,13 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         parts.append("<h2>자주 묻는 질문</h2>")
         for f in syn.faq:
             parts.append(f"<p><strong>Q. {_e(f.q)}</strong><br/>A. {_e(f.a)}</p>")
+
+    # 편집자 메모 (사람이 쓴 메모 > AI 초안)
+    note = editor_note.strip() if editor_note else ""
+    if not note:
+        note, note_is_draft = getattr(syn, "editor_note_draft", "") or "", True
+    if note:
+        parts.append(build_note_block(note, note_is_draft))
 
     # 출처 고지
     parts.append(

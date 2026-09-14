@@ -32,8 +32,22 @@ python -m ytblog wp-check                # 워드프레스 연결 확인
 python -m ytblog run --limit 1 --dry-run # 영상 1편: out/<video_id>/ 에 post.html·images/ 만 생성
 python -m ytblog run --limit 1           # 워드프레스에 '초안'으로 업로드 (관리자에서 확인 후 공개)
 python -m ytblog run --limit 2 --publish # 검토 없이 바로 공개 (근거없음 20% 초과·비용 초과 시엔 초안으로)
-python -m ytblog run --video <ID>        # 특정 영상 강제 처리
+python -m ytblog run --video <ID>        # 특정 영상 강제 처리 (발행 상한 예외)
+python -m ytblog quota                   # 최근 7일·24시간 생성 글 수와 남은 발행 여유
+python -m ytblog note <ID> "내 의견"      # 편집자 메모 저장 → 워드프레스 글 본문 갱신
+python -m ytblog note <ID> --file m.txt --publish   # 메모 반영 후 공개로 전환
 ```
+
+## 수익화 대비 게이트 (애드센스·구글 스팸 정책)
+
+AI 요약글을 대량으로 그대로 올리면 "가치 없는 콘텐츠"(애드센스)·"대량 생성 콘텐츠 남용"(구글 검색)에 걸리기 쉽습니다. 두 가지 장치를 기본으로 켭니다.
+
+| 장치 | 동작 | 설정 |
+|---|---|---|
+| **발행 상한** | 최근 7일 4편·24시간 1편을 넘으면 그 실행은 글을 만들지 않음. 워드프레스가 있으면 거기서 세고(초안 포함, 손으로 쓴 글 제외) 없으면 `data/state.json` 기준 | `MAX_POSTS_PER_WEEK`, `MAX_POSTS_PER_DAY` (0 = 무제한). `--video`, `--dry-run` 은 예외 |
+| **편집자 메모** | 글 끝에 "편집자 메모" 블록. run 직후엔 AI 초안 + "발행 전 교체" 안내가 들어가고, `note` 명령으로 사람이 쓴 메모(적용 포인트·의견·반대 관점 3~5줄)를 넣으면 안내가 사라짐. 켜져 있으면 메모 없는 글은 `--publish` 해도 초안으로 남음 | `REQUIRE_EDITOR_NOTE` (1/0) |
+
+권장 운영: `run` 이 초안을 만들면 → 관리자 화면 또는 `out/<id>/post.html` 로 확인 → `note <id> "…" --publish` 로 메모를 넣으며 공개. 관리자 화면에서 직접 메모 문단을 고쳐 쓰고 공개해도 됩니다(AI 초안 안내 문구는 지워야 합니다).
 
 산출물(`out/<video_id>/`): `transcript.txt`, `summary.json`, `usage.txt`(토큰·비용), `images/*.png`, `post.html`(미리보기).
 상태(`data/state.json`): 영상별 `discovered → fetched → summarized → illustrated → drafted/published`, 실패 시 `failed`(3회 넘으면 `dead`).
@@ -59,9 +73,9 @@ python -m ytblog run --video <ID>        # 특정 영상 강제 처리
 | `ytblog/summarize.py` | 구간 분할 → 구간별 상세(Opus 5, 프롬프트 캐싱) → 종합 → 근거 검증(Sonnet 5) |
 | `ytblog/schema.py` | 구조화 출력 스키마 |
 | `ytblog/images.py`, `render/render_card.js` | HTML 카드 → PNG (대표·핵심포인트·흐름도·구간·수치) |
-| `ytblog/render.py` | 글 HTML(임베드, 타임스탬프 링크, 용어집, FAQ, 출처 고지) |
+| `ytblog/render.py` | 글 HTML(임베드, 타임스탬프 링크, 용어집, FAQ, 편집자 메모 블록, 출처 고지) |
 | `ytblog/wordpress.py` | 미디어 업로드, 카테고리/태그, 글 생성 |
-| `ytblog/state.py` | 상태 파일 |
+| `ytblog/state.py` | 상태 파일(영상 상태·편집자 메모·글 생성 시각) |
 | `ytblog/cli.py` | 명령 |
 
 다음 단계(Phase 1): 다빈보드 앱에 "블로그" 탭을 붙여 Firestore 초안 승인/반려 → 발행. 설계는 `docs/youtube-blog/PLAN.md`.

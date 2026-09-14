@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import mimetypes
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -38,6 +39,29 @@ class WordPressClient:
                 if video_id in p.get("content", {}).get("raw", "") or video_id in p.get("content", {}).get("rendered", ""):
                     return p
         return None
+
+    def get_post(self, post_id: int) -> dict:
+        return self._get(f"posts/{post_id}", context="edit")
+
+    def update_post(self, post_id: int, **fields) -> dict:
+        return self._post(f"posts/{post_id}", **fields)
+
+    def count_recent_posts(self, days: float, category_id: int = 0, marker: str = "ytblog") -> int:
+        """최근 days 일 안에 만들어진 글(초안·공개 등) 수. 발행 상한 판단용.
+
+        marker 가 본문에 들어 있는 글만 세므로 손으로 쓴 글은 제외된다.
+        """
+        after = (datetime.now(timezone.utc) - timedelta(days=days)).replace(microsecond=0).isoformat()
+        params = dict(after=after, status="publish,draft,pending,future,private",
+                      per_page=100, context="edit", orderby="date", order="desc")
+        if category_id:
+            params["categories"] = category_id
+        n = 0
+        for p in self._get("posts", **params):
+            raw = p.get("content", {}).get("raw", "") or p.get("content", {}).get("rendered", "")
+            if marker in raw:
+                n += 1
+        return n
 
     def upload_media(self, path: Path, alt: str, title: str = "") -> tuple[int, str]:
         mime = mimetypes.guess_type(str(path))[0] or "image/png"

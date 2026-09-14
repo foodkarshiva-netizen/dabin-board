@@ -66,6 +66,7 @@ class Synthesis(BaseModel):
     glossary: list[GlossaryItem]
     faq: list[FAQItem]
     background: str               # 영상에 없는 배경 설명(부가가치). 없으면 빈 문자열
+    editor_note_draft: str = ""   # 편집자 메모 초안(운영자가 발행 전 자기 의견으로 교체)
     seo: SEO
 
 

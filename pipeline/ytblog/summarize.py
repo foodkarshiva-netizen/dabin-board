@@ -147,6 +147,7 @@ class MockLLM:
                 glossary=[GlossaryItem(term="예시 용어", definition="모의 실행에서 생성된 용어 설명입니다.")],
                 faq=[FAQItem(q="이 영상의 핵심은 무엇인가요?", a=first)],
                 background="",
+                editor_note_draft="(초안) 이 영상의 주장을 실제로 적용해 본다면 어떤 점부터 바꿀지 적어 보세요.",
                 seo=SEO(title=f"{first} 정리", slug="mock-summary", description=first,
                         tags=["유튜브 요약", "모의"]),
             )
@@ -230,6 +231,9 @@ def synthesize(llm, settings: Settings, system: list[dict], sections: list[Secti
         "- faq: 독자가 궁금해할 질문 3개와 영상 내용에 근거한 답.\n"
         "- background: 영상 내용을 이해하는 데 도움이 되는 배경 설명 2~4문장. 널리 알려진 사실만 쓰고, "
         "확신이 없으면 빈 문자열로 둡니다. 이 부분은 영상 밖 지식이므로 '참고'로 표시될 것입니다.\n"
+        "- editor_note_draft: 블로그 운영자가 '편집자 메모'로 다듬어 쓸 초안 3~5문장. 요약의 반복이 아니라 "
+        "독자가 실제로 적용할 때의 포인트, 주의할 점, 영상이 다루지 않은 반대 관점이나 질문을 담습니다. "
+        "운영자가 직접 고쳐 쓸 것이므로 1인칭 서술체로 씁니다.\n"
         f"- seo: 검색용 제목(원 영상 제목을 그대로 복사하지 말고 핵심 주제를 담아 45자 내외), 영문 소문자·하이픈 slug, "
         f"메타 설명(120자 내외), 태그 5~8개(채널 관련 태그 '{channel.blog_category}' 포함)."
     )

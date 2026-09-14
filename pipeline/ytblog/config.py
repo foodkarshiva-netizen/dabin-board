@@ -45,6 +45,9 @@ class Settings:
     out_dir: Path
     max_cost_per_video_usd: float
     blog_name: str
+    max_posts_per_week: int          # 최근 7일 생성 글(초안 포함) 상한. 0 이면 무제한
+    max_posts_per_day: int           # 최근 24시간 상한. 0 이면 무제한
+    require_editor_note: bool        # True 면 사람이 쓴 편집자 메모 없이는 --publish 해도 초안으로
 
     @classmethod
     def load(cls) -> "Settings":
@@ -64,6 +67,9 @@ class Settings:
             out_dir=out_dir,
             max_cost_per_video_usd=float(env.get("MAX_COST_PER_VIDEO_USD", "1.5")),
             blog_name=env.get("BLOG_NAME", "유튜브 요약 블로그"),
+            max_posts_per_week=int(env.get("MAX_POSTS_PER_WEEK", "4")),
+            max_posts_per_day=int(env.get("MAX_POSTS_PER_DAY", "1")),
+            require_editor_note=env.get("REQUIRE_EDITOR_NOTE", "1") not in ("0", "false", "no"),
         )
 
 

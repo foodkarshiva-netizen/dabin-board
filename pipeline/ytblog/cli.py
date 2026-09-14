@@ -5,6 +5,8 @@
   python -m ytblog run [--limit N] [--video ID] [--publish] [--dry-run]
   python -m ytblog fixture                         샘플 자막으로 오프라인 전체 흐름 실행
   python -m ytblog wp-check                        WordPress 연결 확인
+  python -m ytblog note <video_id> "메모" [--publish]  편집자 메모 저장(+WordPress 글 갱신/공개)
+  python -m ytblog quota                           최근 7일·24시간 생성 글 수와 남은 발행 여유
 """
 from __future__ import annotations
 
@@ -17,7 +19,7 @@ from pathlib import Path
 from .config import ChannelConfig, Settings, load_channels
 from .discover import VideoMeta, enrich_video, list_recent_videos, resolve_channel
 from .images import build_cards
-from .render import build_excerpt, build_post_html
+from .render import build_excerpt, build_post_html, replace_note_block
 from .state import State
 from .summarize import make_llm, summarize_video
 from .transcript import Transcript, fetch_transcript
@@ -126,7 +128,9 @@ def process_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, s
         except Exception as e:  # noqa: BLE001
             state.mark_failed(vid, "upload", str(e))
             raise
-    html = build_post_html(summary, meta, cards, url_map or {str(c.path): f"images/{c.path.name}" for c in cards}, settings.blog_name)
+    note = state.note_for(vid)
+    html = build_post_html(summary, meta, cards, url_map or {str(c.path): f"images/{c.path.name}" for c in cards},
+                           settings.blog_name, editor_note=note, note_is_draft=False)
     preview = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>{summary.synthesis.seo.title}</title>" \
               "<style>body{max-width:760px;margin:40px auto;font-family:sans-serif;line-height:1.7;padding:0 16px}img{max-width:100%;border-radius:12px}blockquote{border-left:4px solid #ddd;margin:0;padding:4px 16px;color:#555}.yt-box{background:#f4f6fb;padding:12px 16px;border-radius:12px}</style></head><body>" \
               f"<h1>{summary.synthesis.seo.title}</h1>{html}</body></html>"
@@ -137,9 +141,15 @@ def process_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, s
         log(f"  미리보기 저장: {out_dir / 'post.html'}")
         return "drafted"
 
-    # 6) 발행
+    # 6) 발행 — 근거 검증 통과 + (설정 시) 사람이 쓴 편집자 메모가 있어야 공개
     try:
-        status = "publish" if (publish and not summary.needs_review) else "draft"
+        status = "draft"
+        if publish and summary.needs_review:
+            log("  공개 보류: 근거 검증/비용 기준 미달 → 초안")
+        elif publish and settings.require_editor_note and not note:
+            log(f"  공개 보류: 편집자 메모 없음 → 초안. `python -m ytblog note {vid} \"메모\" --publish` 로 공개")
+        elif publish:
+            status = "publish"
         cats = wp.category_ids([channel.blog_category])
         tags = wp.tag_ids(list(dict.fromkeys(summary.synthesis.seo.tags + channel.extra_tags)))
         post = wp.create_post(
@@ -148,7 +158,7 @@ def process_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, s
             excerpt=build_excerpt(summary), categories=cats, tags=tags, featured_media=featured,
         )
         final = "published" if status == "publish" else ("needs_review" if summary.needs_review else "drafted")
-        state.set_status(vid, final, wp_post_id=post["id"], wp_link=post.get("link", ""))
+        state.mark_post_created(vid, final, wp_post_id=post["id"], wp_link=post.get("link", ""))
         log(f"  WordPress {status}: {post.get('link', '')}")
         return final
     except Exception as e:  # noqa: BLE001
@@ -163,6 +173,27 @@ def _wp_client(settings: Settings, needed: bool):
     return WordPressClient(settings.wp_url, settings.wp_user, settings.wp_app_password)
 
 
+def _recent_counts(settings: Settings, state: State, wp) -> tuple[int, int]:
+    """(최근 7일 생성 글 수, 최근 24시간 생성 글 수). WordPress 가 있으면 거기서, 없으면 상태 파일에서."""
+    if wp is not None:
+        return wp.count_recent_posts(7), wp.count_recent_posts(1)
+    return state.count_recent_posts(7), state.count_recent_posts(1)
+
+
+def quota_left(settings: Settings, state: State, wp) -> tuple[int, str]:
+    """남은 발행 여유(글 수)와 설명. 상한이 0 이면 무제한."""
+    week, day = _recent_counts(settings, state, wp)
+    left = 10**9
+    why = []
+    if settings.max_posts_per_week:
+        left = min(left, settings.max_posts_per_week - week)
+        why.append(f"7일 {week}/{settings.max_posts_per_week}")
+    if settings.max_posts_per_day:
+        left = min(left, settings.max_posts_per_day - day)
+        why.append(f"24시간 {day}/{settings.max_posts_per_day}")
+    return max(0, left), ", ".join(why) or "상한 없음"
+
+
 def cmd_run(args, settings: Settings) -> int:
     channels = load_channels()
     state = State(settings.data_dir / "state.json")
@@ -172,6 +203,15 @@ def cmd_run(args, settings: Settings) -> int:
         log("WP_URL 이 없어 로컬 미리보기(out/)만 생성합니다.")
     processed = 0
     failures = 0
+    # 발행 상한: 글(초안 포함)을 실제로 만드는 실행에만 적용. --video 지정·--dry-run 은 예외
+    budget = None
+    if not args.dry_run and not args.video:
+        left, why = quota_left(settings, state, wp)
+        budget = left
+        log(f"발행 여유: {left}편 ({why})")
+        if left <= 0:
+            log("발행 상한에 도달해 이번 실행은 건너뜁니다. (MAX_POSTS_PER_WEEK / MAX_POSTS_PER_DAY)")
+            return 0
     for ch in channels:
         if not ch.enabled:
             continue
@@ -184,7 +224,7 @@ def cmd_run(args, settings: Settings) -> int:
             if wp is not None and not args.video and wp.find_post_by_video(v.video_id):
                 state.set_status(v.video_id, "published", note="이미 WordPress 에 존재")
                 continue
-            if processed >= args.limit:
+            if processed >= args.limit or (budget is not None and processed >= budget):
                 break
             log(f"\n▶ {v.video_id} {v.title}")
             try:
@@ -212,6 +252,44 @@ def cmd_fixture(args, settings: Settings) -> int:
     return 0
 
 
+def cmd_note(args, settings: Settings) -> int:
+    """편집자 메모를 저장하고, 해당 영상의 WordPress 글이 있으면 본문을 갱신(선택: 공개)."""
+    text = Path(args.file).read_text(encoding="utf-8") if args.file else (args.text or "")
+    if not text.strip():
+        log("메모 내용이 비어 있습니다. 텍스트 또는 --file 을 주세요.")
+        return 2
+    state = State(settings.data_dir / "state.json")
+    state.set_note(args.video_id, text)
+    log(f"메모 저장: {args.video_id} ({len(text.strip())}자)")
+    v = state.data["videos"].get(args.video_id, {})
+    post_id = v.get("wp_post_id")
+    if not post_id:
+        log("아직 WordPress 글이 없습니다. 다음 run 에서 이 메모가 글에 들어갑니다.")
+        return 0
+    wp = _wp_client(settings, True)
+    post = wp.get_post(post_id)
+    raw = post.get("content", {}).get("raw", "")
+    fields = {"content": replace_note_block(raw, text, is_draft=False)}
+    if args.publish:
+        if v.get("status") == "needs_review":
+            log("근거 검증 미달 글이라 공개하지 않고 본문만 갱신합니다. 관리자 화면에서 확인 후 공개하세요.")
+        else:
+            fields["status"] = "publish"
+    updated = wp.update_post(post_id, **fields)
+    if updated.get("status") == "publish":
+        state.mark_post_created(args.video_id, "published", wp_link=updated.get("link", ""))
+    log(f"WordPress 글 갱신 ({updated.get('status')}): {updated.get('link', '')}")
+    return 0
+
+
+def cmd_quota(args, settings: Settings) -> int:
+    state = State(settings.data_dir / "state.json")
+    wp = _wp_client(settings, bool(settings.wp_url))
+    left, why = quota_left(settings, state, wp)
+    log(f"발행 여유: {left}편 ({why}) — 기준: {'WordPress' if wp else '로컬 상태 파일'}")
+    return 0
+
+
 def cmd_wp_check(args, settings: Settings) -> int:
     wp = _wp_client(settings, True)
     me = wp.check()
@@ -231,10 +309,16 @@ def main(argv=None) -> int:
     run.add_argument("--dry-run", action="store_true", help="WordPress 에 올리지 않고 out/ 에만 저장")
     fx = sub.add_parser("fixture"); fx.add_argument("--file", default=str(Path(__file__).resolve().parent.parent / "tests/fixtures/transcript_sample.json"))
     sub.add_parser("wp-check")
+    nt = sub.add_parser("note", help="편집자 메모 저장(+WordPress 글 갱신)")
+    nt.add_argument("video_id"); nt.add_argument("text", nargs="?", default="")
+    nt.add_argument("--file", default="", help="메모를 담은 텍스트 파일")
+    nt.add_argument("--publish", action="store_true", help="메모 반영 후 글을 공개로 전환")
+    sub.add_parser("quota", help="발행 상한 대비 남은 여유")
     args = p.parse_args(argv)
     settings = Settings.load()
     return {"resolve": cmd_resolve, "discover": cmd_discover, "run": cmd_run,
-            "fixture": cmd_fixture, "wp-check": cmd_wp_check}[args.cmd](args, settings)
+            "fixture": cmd_fixture, "wp-check": cmd_wp_check,
+            "note": cmd_note, "quota": cmd_quota}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":

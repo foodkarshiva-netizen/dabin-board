@@ -11,7 +11,7 @@ os.environ["MOCK_LLM"] = "1"
 
 from ytblog.config import ChannelConfig, Settings  # noqa: E402
 from ytblog.discover import VideoMeta, parse_chapters  # noqa: E402
-from ytblog.render import build_post_html, linkify  # noqa: E402
+from ytblog.render import DRAFT_NOTICE, NOTE_END, NOTE_START, build_post_html, linkify, replace_note_block  # noqa: E402
 from ytblog.state import State  # noqa: E402
 from ytblog.summarize import summarize_video  # noqa: E402
 from ytblog.transcript import Transcript, fmt_ts  # noqa: E402
@@ -61,6 +61,65 @@ def test_summary_and_html():
 def test_linkify():
     out = linkify("편도체가 빠르다 [00:42]", "abc")
     assert "watch?v=abc&t=42s" in out and "<a" in out
+
+
+def _mock_summary(td):
+    os.environ["YTBLOG_DATA_DIR"] = td
+    settings = Settings.load()
+    t = load_fixture()
+    meta = VideoMeta(video_id=t.video_id, title="샘플", channel_id="UCSAMPLE", channel_title="지식인사이드",
+                     duration_sec=t.duration_sec)
+    ch = ChannelConfig(handle="@sample", channel_id="UCSAMPLE", min_duration_sec=0)
+    return settings, meta, summarize_video(settings, ch, meta, t)
+
+
+def test_editor_note_block():
+    with tempfile.TemporaryDirectory() as td:
+        _, meta, s = _mock_summary(td)
+        assert s.synthesis.editor_note_draft  # 모의 LLM 도 초안을 낸다
+        # 사람 메모가 없으면 AI 초안 + 교체 안내가 들어간다
+        html = build_post_html(s, meta, [], {}, "테스트 블로그")
+        assert NOTE_START in html and NOTE_END in html and "편집자 메모" in html
+        assert DRAFT_NOTICE in html
+        # 사람 메모가 있으면 초안 안내가 사라지고 메모가 들어간다
+        html2 = build_post_html(s, meta, [], {}, "테스트 블로그", editor_note="첫 줄\n\n둘째 줄 <b>")
+        assert DRAFT_NOTICE not in html2 and "<p>첫 줄</p><p>둘째 줄 &lt;b&gt;</p>" in html2
+        # 기존 글의 블록을 새 메모로 치환
+        html3 = replace_note_block(html, "교체된 메모")
+        assert html3.count(NOTE_START) == 1 and "교체된 메모" in html3 and DRAFT_NOTICE not in html3
+        # 블록이 없는 글에는 출처 고지 앞에 삽입
+        stripped = html.split(NOTE_START)[0] + html.split(NOTE_END)[1]
+        html4 = replace_note_block(stripped, "삽입 메모")
+        assert html4.index("삽입 메모") < html4.index("출처 및 저작권 안내")
+
+
+def test_state_notes_and_quota():
+    from ytblog.cli import quota_left
+    with tempfile.TemporaryDirectory() as td:
+        os.environ["YTBLOG_DATA_DIR"] = td
+        os.environ["MAX_POSTS_PER_WEEK"] = "2"
+        os.environ["MAX_POSTS_PER_DAY"] = "1"
+        settings = Settings.load()
+        st = State(Path(td) / "state.json")
+        assert st.note_for("v1") == ""
+        st.set_note("v1", "  메모  ")
+        assert State(Path(td) / "state.json").note_for("v1") == "메모"
+        left, why = quota_left(settings, st, None)
+        assert left == 1 and "7일 0/2" in why and "24시간 0/1" in why
+        st.mark_post_created("v1", "drafted", wp_post_id=1)
+        assert st.count_recent_posts(7) == 1 and st.count_recent_posts(1) == 1
+        assert quota_left(settings, st, None)[0] == 0
+        st.mark_post_created("v1", "published")           # 같은 글 공개 전환은 다시 세지 않는다
+        assert st.count_recent_posts(7) == 1
+
+        class FakeWP:
+            def count_recent_posts(self, days, category_id=0, marker="ytblog"):
+                return 5 if days == 7 else 0
+        assert quota_left(settings, st, FakeWP())[0] == 0  # 주간 상한 초과면 일간 여유가 있어도 0
+        os.environ["MAX_POSTS_PER_WEEK"] = "0"; os.environ["MAX_POSTS_PER_DAY"] = "0"
+        assert quota_left(Settings.load(), st, FakeWP())[0] > 100  # 0 = 무제한
+        for k in ("MAX_POSTS_PER_WEEK", "MAX_POSTS_PER_DAY"):
+            os.environ.pop(k, None)
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ class State:
                 self.data = json.load(f)
         else:
             self.data = {"videos": {}, "channels": {}}
+        self.data.setdefault("notes", {})
 
     def save(self) -> None:
         tmp = self.path.with_suffix(".tmp")
@@ -48,6 +49,25 @@ class State:
         v["attempts"] = v.get("attempts", 0) + 1
         status = "dead" if v["attempts"] >= MAX_ATTEMPTS else "failed"
         self.set_status(video_id, status, failed_stage=stage, last_error=error[:2000])
+
+    def mark_post_created(self, video_id: str, status: str, **fields) -> None:
+        """WordPress 글(초안/공개)이 생성된 시각을 남긴다. 발행 상한 계산용."""
+        v = self.video(video_id)
+        v.setdefault("post_created", time.time())
+        self.set_status(video_id, status, **fields)
+
+    def count_recent_posts(self, days: float) -> int:
+        """최근 days 일 안에 생성된 글(초안 포함) 수. WordPress 를 못 쓸 때의 대체 집계."""
+        since = time.time() - days * 86400
+        return sum(1 for v in self.data["videos"].values() if v.get("post_created", 0) >= since)
+
+    # --- editor notes ---
+    def note_for(self, video_id: str) -> str:
+        return self.data["notes"].get(video_id, {}).get("text", "")
+
+    def set_note(self, video_id: str, text: str) -> None:
+        self.data["notes"][video_id] = {"text": text.strip(), "updated": time.time()}
+        self.save()
 
     def is_done(self, video_id: str) -> bool:
         return self.data["videos"].get(video_id, {}).get("status") in ("published", "skipped", "dead", "drafted", "needs_review")
