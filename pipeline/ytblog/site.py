@@ -63,8 +63,8 @@ ILLUS = """
 </svg>"""
 
 
-def render_banner(head: str, sub: str, out: Path) -> Path:
-    """밝은 크림 배경 + 일러스트(영상 → 노트). head 는 HTML 허용(<br/>, <em>)."""
+def render_banner(head: str, sub: str, out: Path, mobile: bool = False) -> Path:
+    """밝은 크림 배경 + 일러스트(영상 → 노트). head 는 HTML 허용(<br/>, <em>). mobile=True 면 1080x1080 세로 배치."""
     css = _font_css() + """
 *{margin:0;padding:0;box-sizing:border-box}
 body{width:1920px;height:640px;font-family:'NotoKR','Noto Sans KR','Malgun Gothic',sans-serif;position:relative;overflow:hidden;background:#f5f3ee}
@@ -75,12 +75,47 @@ body{width:1920px;height:640px;font-family:'NotoKR','Noto Sans KR','Malgun Gothi
 .h em{font-style:normal;color:#b45309}
 .p{font-size:31px;line-height:1.5;margin-top:26px;color:#52606d;word-break:keep-all}
 """
+    W, H = (1080, 1080) if mobile else (1920, 640)
+    if mobile:
+        css += """
+body{width:1080px;height:1080px}
+.t{left:80px;top:90px;max-width:920px}
+.k{font-size:30px;padding:10px 24px}
+.h{font-size:96px;line-height:1.16;margin-top:30px}
+.p{font-size:38px;margin-top:28px}
+svg{right:auto !important;left:130px !important;top:560px !important;transform:scale(1.0)}
+"""
     page = (f"<html><head><meta charset='utf-8'><style>{css}</style></head><body><div class='dots'></div>{ILLUS}"
             f"<div class='t'><span class='k'>지식채우기</span><div class='h'>{head}</div><div class='p'>{_e(sub)}</div></div></body></html>")
-    jp = out.parent / "banner-jobs.json"
-    jp.write_text(json.dumps([{"html": page, "width": 1920, "height": 640, "out": str(out)}], ensure_ascii=False), encoding="utf-8")
+    jp = out.parent / f"banner-jobs-{'m' if mobile else 'd'}.json"
+    jp.write_text(json.dumps([{"html": page, "width": W, "height": H, "out": str(out)}], ensure_ascii=False), encoding="utf-8")
     subprocess.run(["node", str(PIPELINE_DIR / "render" / "render_card.js"), str(jp)], check=True, capture_output=True, text=True, timeout=300)
     return out
+
+
+BANNER_CSS = ".yt-banner .yt-banner-m{display:none}@media (max-width:781px){.yt-banner .yt-banner-d{display:none}.yt-banner .yt-banner-m{display:block}}.yt-banner figure{margin:0}"
+
+
+def _banner_group(d_id: int, d_url: str, m_id: int, m_url: str) -> str:
+    def img(mid, url, cls):
+        return (f'<!-- wp:image {{"id":{mid},"sizeSlug":"full","linkDestination":"none","className":"{cls}"}} -->\n'
+                f'<figure class="wp-block-image size-full {cls}"><img src="{url}" alt="지식채우기 배너" class="wp-image-{mid}"/></figure>\n<!-- /wp:image -->')
+    return ('<!-- wp:group {"align":"full","className":"yt-banner","style":{"spacing":{"margin":{"top":"0"}}},"layout":{"type":"constrained"}} -->\n'
+            '<div class="wp-block-group alignfull yt-banner" style="margin-top:0">\n' + img(d_id, d_url, "yt-banner-d") + "\n" + img(m_id, m_url, "yt-banner-m") +
+            "\n</div>\n<!-- /wp:group -->")
+
+
+def ensure_banner_css(wp: WordPressClient) -> None:
+    th = wp._get("themes", status="active")[0]
+    href = th.get("_links", {}).get("wp:user-global-styles", [{}])[0].get("href", "")
+    gid = href.rstrip("/").rsplit("/", 1)[-1]
+    if not gid:
+        return
+    g = wp._get(f"global-styles/{gid}", context="edit"); styles = g.get("styles") or {}
+    css = styles.get("css") or ""
+    if ".yt-banner" not in css:
+        styles["css"] = (css + "\n" + BANNER_CSS).strip()
+        wp._post(f"global-styles/{gid}", styles=styles)
 
 
 def update_banner(settings: Settings, head: str = "", sub: str = "") -> str:
@@ -91,20 +126,25 @@ def update_banner(settings: Settings, head: str = "", sub: str = "") -> str:
         n = len(posts)
         sub = (f"이번 주 새 글 {n}편 · 최근 주제: {', '.join(cats)}" if n and cats else BANNER_SUB_DEFAULT)
     head = head or BANNER_HEAD
-    out = Path(tempfile.mkdtemp()) / f"home-banner-{int(time.time())}.png"
-    render_banner(head, sub, out)
-    mid, url = wp.upload_media(out, "지식채우기 배너", "홈 배너")
+    tmp = Path(tempfile.mkdtemp()); stamp = int(time.time())
+    d_path = render_banner(head, sub, tmp / f"home-banner-{stamp}.png")
+    m_path = render_banner(head, sub, tmp / f"home-banner-m-{stamp}.png", mobile=True)
+    d_id, d_url = wp.upload_media(d_path, "지식채우기 배너", "홈 배너")
+    m_id, m_url = wp.upload_media(m_path, "지식채우기 배너(모바일)", "홈 배너 모바일")
     t = wp._get("templates/twentytwentyfive//home", context="edit"); c = t["content"]["raw"]
-    old = re.search(r'<!-- wp:cover \{"url":"([^"]+)","id":(\d+)', c)
-    c2 = re.sub(r'<!-- wp:cover \{"url":"[^"]+","id":\d+', f'<!-- wp:cover {{"url":"{url}","id":{mid}', c, count=1)
-    c2 = re.sub(r'class="wp-block-cover__image-background wp-image-\d+" alt="[^"]*" src="[^"]+"',
-                f'class="wp-block-cover__image-background wp-image-{mid}" alt="지식채우기 배너" src="{url}"', c2, count=1)
+    group = _banner_group(d_id, d_url, m_id, m_url)
+    old_ids = [int(x) for x in re.findall(r'wp-image-(\d+)', c)]
+    if 'className":"yt-banner"' in c:
+        c2 = re.sub(r'<!-- wp:group \{"align":"full","className":"yt-banner".*?<!-- /wp:group -->', lambda _m: group, c, count=1, flags=re.S)
+    else:
+        c2 = re.sub(r'<!-- wp:cover .*?<!-- /wp:cover -->', lambda _m: group, c, count=1, flags=re.S)
     if c2 == c:
-        raise RuntimeError("홈 템플릿에서 배너(cover) 블록을 찾지 못했습니다")
+        raise RuntimeError("홈 템플릿에서 배너 블록을 찾지 못했습니다")
     wp._post("templates/twentytwentyfive//home", content=c2)
-    if old:
+    ensure_banner_css(wp)
+    for mid in set(old_ids) - {d_id, m_id}:
         try:
-            wp.s.delete(f"{wp.api}/media/{old.group(2)}", params={"force": "true"}, timeout=60)
+            wp.s.delete(f"{wp.api}/media/{mid}", params={"force": "true"}, timeout=60)
         except Exception:  # noqa: BLE001
             pass
     return sub
