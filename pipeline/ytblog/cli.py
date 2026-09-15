@@ -378,7 +378,7 @@ def cmd_finish(args, settings: Settings) -> int:
         v = state.data["videos"].get(vid, {})
         if status == "published":
             q.mark(args.queue, "done", postUrl=v.get("wp_link", ""), title=summary.synthesis.seo.title or meta.title)
-            log("대기열 완료 표시:", args.queue)
+            log(f"대기열 완료 표시: {args.queue}")
         else:
             q.mark(args.queue, "working", err=f"상태 {status}")
             log("대기열: 작업 중 유지 (공개 아님)")
@@ -425,12 +425,12 @@ def cmd_queue(args, settings: Settings) -> int:
             log(f"{it.get('_id') or it.get('id')}  {it.get('vid')}  {it.get('url')}  {('· ' + it['note']) if it.get('note') else ''}")
         return 0
     if args.action == "start":
-        q.mark(args.doc_id, "working"); log("작업 중:", args.doc_id); return 0
+        q.mark(args.doc_id, "working"); log(f"작업 중: {args.doc_id}"); return 0
     if args.action == "done":
-        q.mark(args.doc_id, "done", postUrl=args.value, title=" ".join(args.rest)); log("완료:", args.doc_id, args.value); return 0
+        q.mark(args.doc_id, "done", postUrl=args.value, title=" ".join(args.rest)); log(f"완료: {args.doc_id} {args.value}"); return 0
     if args.action == "fail":
-        q.mark(args.doc_id, "failed", err=" ".join([args.value] + args.rest)); log("실패 표시:", args.doc_id); return 0
-    log("알 수 없는 동작:", args.action); return 2
+        q.mark(args.doc_id, "failed", err=" ".join([args.value] + args.rest)); log(f"실패 표시: {args.doc_id}"); return 0
+    log(f"알 수 없는 동작: {args.action}"); return 2
 
 
 def cmd_quota(args, settings: Settings) -> int:
