@@ -9,6 +9,11 @@
   python -m ytblog prepare <URL|ID>                 (수동 모드 1단계) 메타·자막을 out/<id>/ 에 저장
   python -m ytblog finish <ID> [--publish]          (수동 모드 2단계) out/<id>/summary.json 으로 이미지·글·발행
   python -m ytblog quota                           최근 7일·24시간 생성 글 수와 남은 발행 여유
+  python -m ytblog queue                            다빈보드 '블로그' 탭 대기열(pending) 보기
+  python -m ytblog queue start <docId>              작업 중으로 표시
+  python -m ytblog queue done <docId> <postUrl> [제목]   발행 완료 표시
+  python -m ytblog queue fail <docId> <사유>        실패 표시
+  python -m ytblog finish <ID> --queue <docId>      발행 후 대기열 자동 완료 표시
 """
 from __future__ import annotations
 
@@ -368,6 +373,15 @@ def cmd_finish(args, settings: Settings) -> int:
     status = finish_video(settings, ch, meta, summary, state, out_dir, publish=args.publish, dry_run=args.dry_run,
                           wp=wp, update_post_id=update_id)
     log(f"status: {status}")
+    if args.queue:
+        from . import queue as q
+        v = state.data["videos"].get(vid, {})
+        if status == "published":
+            q.mark(args.queue, "done", postUrl=v.get("wp_link", ""), title=summary.synthesis.seo.title or meta.title)
+            log("대기열 완료 표시:", args.queue)
+        else:
+            q.mark(args.queue, "working", err=f"상태 {status}")
+            log("대기열: 작업 중 유지 (공개 아님)")
     return 0
 
 
@@ -399,6 +413,24 @@ def cmd_note(args, settings: Settings) -> int:
         state.mark_post_created(args.video_id, "published", wp_link=updated.get("link", ""))
     log(f"WordPress 글 갱신 ({updated.get('status')}): {updated.get('link', '')}")
     return 0
+
+
+def cmd_queue(args, settings: Settings) -> int:
+    from . import queue as q
+    if args.action == "list":
+        items = q.pending()
+        if not items:
+            log("대기 중인 영상이 없습니다."); return 0
+        for it in items:
+            log(f"{it.get('_id') or it.get('id')}  {it.get('vid')}  {it.get('url')}  {('· ' + it['note']) if it.get('note') else ''}")
+        return 0
+    if args.action == "start":
+        q.mark(args.doc_id, "working"); log("작업 중:", args.doc_id); return 0
+    if args.action == "done":
+        q.mark(args.doc_id, "done", postUrl=args.value, title=" ".join(args.rest)); log("완료:", args.doc_id, args.value); return 0
+    if args.action == "fail":
+        q.mark(args.doc_id, "failed", err=" ".join([args.value] + args.rest)); log("실패 표시:", args.doc_id); return 0
+    log("알 수 없는 동작:", args.action); return 2
 
 
 def cmd_quota(args, settings: Settings) -> int:
@@ -439,12 +471,16 @@ def main(argv=None) -> int:
     fi.add_argument("--publish", action="store_true"); fi.add_argument("--dry-run", action="store_true")
     fi.add_argument("--force", action="store_true", help="이미 글이 있어도 새 글로 다시 올림")
     fi.add_argument("--update", action="store_true", help="이미 글이 있으면 그 글을 갱신(이전 이미지 삭제)")
+    fi.add_argument("--queue", default="", help="다빈보드 대기열 문서 id (발행 후 완료 표시)")
+    qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
+    qu.add_argument("action", nargs="?", default="list", choices=["list", "start", "done", "fail"])
+    qu.add_argument("doc_id", nargs="?", default=""); qu.add_argument("value", nargs="?", default=""); qu.add_argument("rest", nargs="*")
     args = p.parse_args(argv)
     settings = Settings.load()
     return {"resolve": cmd_resolve, "discover": cmd_discover, "run": cmd_run,
             "fixture": cmd_fixture, "wp-check": cmd_wp_check,
             "note": cmd_note, "quota": cmd_quota,
-            "prepare": cmd_prepare, "finish": cmd_finish}[args.cmd](args, settings)
+            "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":
