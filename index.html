@@ -810,30 +810,34 @@ function renderPartner(){
  h+='<div class="pnote">외부 협력사 '+grp.bizCount+'개 사업자 · '+rows.length+'개 채널 · 2026년 1~'+PMCOUNT+'월 · 억/만원 · 행 클릭 시 분석 리포트</div>';
  h+='<div class="seg">'+['rev','net','rate'].map(function(k){return '<button class="'+(W===k?'on':'')+'" onclick="setPMetric(\''+k+'\')">'+({rev:'매출',net:'순익',rate:'순익률'}[k])+'</button>';}).join('')+'</div>';
  var CM=pCurMonth();
- h+='<div class="seclbl">월별 '+MN+' 추이 <span class="muted small">· 사업자별 묶음</span></div><div class="pwrap"><table class="ptbl"><tr><th class="nm">사업자 / 채널</th>';
+ h+='<div class="seclbl">월별 '+MN+' 추이 <span class="muted small">· 사업자 단위</span></div><div class="pwrap"><table class="ptbl"><tr><th class="nm">사업자</th>';
  PMONTHS.forEach(function(m){h+='<th>'+m+'</th>';});if(CM)h+='<th class="curm">'+CM+'월*</th>';h+='<th>합계</th><th>월평균</th><th>일평균</th></tr>';
+ /* 2026-09-15 개편(요청): 채널 행 제거 — 사업자당 1행만, 클릭 시 사업자 통합 리포트 */
  grp.list.forEach(function(g){
-  if(g.rows.length>1){
-   h+='<tr class="bizrow"><td class="nm">'+esc(g.biz)+' <span class="bizn">'+g.rows.length+'채널</span></td>';
-   for(var _j=0;_j<PMCOUNT;_j++){h+='<td>'+pFmt(pMonthVal(g.sum[_j],W),W)+'</td>';}
-   if(CM){h+='<td class="curm">'+pFmt(pGrpCur(g,W),W)+'</td>';}
-   h+='<td class="tot">'+pFmt(pTotVal(g.a,W),W)+'</td><td>'+pFmt(W==='rate'?pTotVal(g.a,W):(W==='net'?g.a.net:g.a.rev)/(g.mcnt||1),W)+'</td><td>'+(W==='rate'?'-':pFmt((W==='net'?g.a.net:g.a.rev)/(g.days||1),W))+'</td></tr>';
-  }
-  g.rows.forEach(function(r){var multi=g.rows.length>1;h+='<tr class="clk'+(multi?' sub':' solo')+'" onclick="partnerOpen(\''+encodeURIComponent(r.nm)+'\')"><td class="nm">'+(multi?'<span class="tw">└</span>'+esc(r.nm):esc(g.biz===r.nm?r.nm:g.biz+' / '+r.nm))+'</td>';for(var _i=0;_i<PMCOUNT;_i++){h+='<td>'+pFmt(pMonthVal(PSALES[r.nm][_i],W),W)+'</td>';}if(CM){h+='<td class="curm">'+pFmt(pCurVal(r.nm,W),W)+'</td>';}var ad=pAvgDay(r,W);h+='<td class="tot">'+pFmt(pTotVal(r.a,W),W)+'</td><td>'+pFmt(pAvgMon(r,W),W)+'</td><td>'+(ad==null?'-':pFmt(ad,W))+'</td></tr>';});
+  h+='<tr class="clk solo" onclick="partnerOpen(\''+encodeURIComponent(g.biz)+'\')"><td class="nm">'+esc(g.biz)+(g.rows.length>1?' <span class="bizn">'+g.rows.length+'채널</span>':'')+'</td>';
+  for(var _j=0;_j<PMCOUNT;_j++){h+='<td>'+pFmt(pMonthVal(g.sum[_j],W),W)+'</td>';}
+  if(CM){h+='<td class="curm">'+pFmt(pGrpCur(g,W),W)+'</td>';}
+  h+='<td class="tot">'+pFmt(pTotVal(g.a,W),W)+'</td><td>'+pFmt(W==='rate'?pTotVal(g.a,W):(W==='net'?g.a.net:g.a.rev)/(g.mcnt||1),W)+'</td><td>'+(W==='rate'?'-':pFmt((W==='net'?g.a.net:g.a.rev)/(g.days||1),W))+'</td></tr>';
  });
  h+='</table></div>';
  if(CM){var _to=PCUR&&PCUR.to?String(PCUR.to):'';var _toS=_to?parseInt(_to.slice(5,7),10)+'/'+parseInt(_to.slice(8,10),10):'전일';h+='<div class="pnote">* 당월('+CM+'월)은 1일~'+_toS+' 누적 집계 · 매일 오전 자동 갱신 · 합계/월평균/일평균은 마감월(1~'+PMCOUNT+'월) 기준</div>';}
  var maxB=Math.max.apply(null,grp.list.map(function(g){return pTotVal(g.a,W);}).concat([0]));
  h+='<div class="seclbl">'+PMCOUNT+'개월 '+MN+' 비교 <span class="muted small">· 사업자 기준</span></div><div class="pnote">사업자별 '+PMCOUNT+'개월 '+MN+(W==='rate'?'(누적 기준)':' 누적')+' · 막대 길이 = 최댓값 대비 상대 비율</div>';
- grp.list.forEach(function(g){var v=pTotVal(g.a,W);var pct=maxB>0?Math.max(0,Math.round(v/maxB*100)):0;var one=g.rows.length===1;h+='<div class="pbar"'+(one?' onclick="partnerOpen(\''+encodeURIComponent(g.rows[0].nm)+'\')"':'')+'><span class="pbn">'+esc(g.biz)+(one?'':' <span class="bizn">'+g.rows.length+'</span>')+'</span><span class="pbt"><span class="pbf" style="width:'+pct+'%"></span></span><span class="pbv">'+pFmt(v,W)+'</span></div>';});
+ grp.list.forEach(function(g){var v=pTotVal(g.a,W);var pct=maxB>0?Math.max(0,Math.round(v/maxB*100)):0;h+='<div class="pbar" onclick="partnerOpen(\''+encodeURIComponent(g.biz)+'\')"><span class="pbn">'+esc(g.biz)+(g.rows.length>1?' <span class="bizn">'+g.rows.length+'</span>':'')+'</span><span class="pbt"><span class="pbf" style="width:'+pct+'%"></span></span><span class="pbv">'+pFmt(v,W)+'</span></div>';});
  box.innerHTML=h;
 }
 function partnerOpen(enc){partnerSel=decodeURIComponent(enc);renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;try{history.pushState({prep:1},'')}catch(e){}}
 function partnerBack(){if(history.state&&history.state.prep){history.back();return;}partnerSel=null;renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}
 window.addEventListener('popstate',function(){if(partnerSel){partnerSel=null;renderPartner();var sc=document.querySelector('.pagewrap');if(sc)sc.scrollTop=0;}});
-function partnerRank(nm){var a=Object.keys(PSALES).map(function(n){return {n:n,rev:pAgg(PSALES[n]).rev};});a.sort(function(x,y){return y.rev-x.rev;});for(var i=0;i<a.length;i++)if(a[i].n===nm)return i+1;return 0;}
+/* 2026-09-15: 순위·리포트 전부 사업자 단위 — nm은 사업자명, 소속 채널 합산으로 집계 */
+function partnerRank(nm){var by={};Object.keys(PSALES).forEach(function(n){var b=pBizOf(n);by[b]=(by[b]||0)+pAgg(PSALES[n]).rev;});var a=Object.keys(by).map(function(n){return {n:n,rev:by[n]};});a.sort(function(x,y){return y.rev-x.rev;});for(var i=0;i<a.length;i++)if(a[i].n===nm)return i+1;return 0;}
 function partnerRepHTML(nm){
- var arr=PSALES[nm];var pcnt=Object.keys(PSALES).length;var a=pAgg(arr);var rate=a.rev?a.net/a.rev*100:0;var adr=a.rev?a.ad/a.rev*100:0;var cor=a.rev?a.buy/a.rev*100:0;var own=POWN[nm]||'';var rk=partnerRank(nm);
+ var chs=Object.keys(PSALES).filter(function(n){return pBizOf(n)===nm;});if(!chs.length&&PSALES[nm])chs=[nm];
+ var arr=[];for(var _b=0;_b<PMCOUNT;_b++){var _t=[0,0,0,0],_any=false;chs.forEach(function(n){var m=PSALES[n][_b];if(m){_any=true;for(var k=0;k<4;k++)_t[k]+=m[k];}});arr.push(_any?_t:null);}
+ var _bz={};Object.keys(PSALES).forEach(function(n){_bz[pBizOf(n)]=1;});var pcnt=Object.keys(_bz).length;
+ var a=pAgg(arr);var rate=a.rev?a.net/a.rev*100:0;var adr=a.rev?a.ad/a.rev*100:0;var cor=a.rev?a.buy/a.rev*100:0;
+ var _ow=[];chs.forEach(function(n){var o=POWN[n];if(o&&_ow.indexOf(o)<0)_ow.push(o);});var own=_ow.join('·');
+ var rk=partnerRank(nm);
  var mrev=[];arr.forEach(function(m,i){if(m)mrev.push({i:i,v:m[0]});});
  var avg=mrev.length?a.rev/mrev.length:0;
  var sortedM=mrev.slice().sort(function(x,y){return y.v-x.v;});var maxM=sortedM[0]||{i:0,v:0},minM=sortedM[sortedM.length-1]||{i:0,v:0};
@@ -849,7 +853,7 @@ function partnerRepHTML(nm){
  var trend=growth>=10?'상승세':growth<=-10?'하락세':'보합세';
  var netAvg=a.cnt?a.net/a.cnt:0;
  var h='<div class="prep-h"><span class="bk" onclick="partnerBack()">‹ 목록</span><h2 class="t" style="margin:0">'+esc(nm)+'</h2></div>';
- h+='<div class="pnote">'+(PBIZ[nm]?'사업자 '+esc(PBIZ[nm])+' · ':'')+'책임자 '+esc(own)+' · 2026년 1~'+PMCOUNT+'월 · 단위 억/만원 · 외부 '+pcnt+'개 채널 중 매출 '+rk+'위</div>';
+ h+='<div class="pnote">'+(chs.length>1?'소속 채널 '+chs.length+'개: '+esc(chs.join(' · '))+' · ':'')+'책임자 '+esc(own)+' · 2026년 1~'+PMCOUNT+'월 · 단위 억/만원 · 외부 '+pcnt+'개 사업자 중 매출 '+rk+'위</div>';
  h+='<div class="card" style="background:#f4f8ff;border-color:#d6e6ff"><div style="font-weight:800;margin-bottom:6px">📌 총평</div><div style="font-size:13.5px;line-height:1.65">'+PMCOUNT+'개월 누적 <b>매출 '+wonS(a.rev)+'</b> · 순익 <b>'+wonS(a.net)+'</b>(순익률 '+rate.toFixed(1)+'%), 월평균 매출 '+wonS(avg)+' · 순익 '+wonS(netAvg)+', 일평균 매출 '+wonS(a.rev/(pDays(arr)||1))+' · 순익 '+wonS(a.net/(pDays(arr)||1))+'. 매출은 전반 대비 <b>'+trend+'</b>('+(growth>=0?'+':'')+growth.toFixed(0)+'%)이며, 최고 실적은 '+(maxM.i+1)+'월('+wonS(maxM.v)+'), 최저는 '+(minM.i+1)+'월('+wonS(minM.v)+'). 원가율 '+cor.toFixed(1)+'% · 광고비율 '+adr.toFixed(1)+'% 수준.</div></div>';
  h+='<div class="ssum" style="grid-template-columns:1fr 1fr 1fr"><div class="ss net"><span class="sl">순익률</span><span class="sv">'+rate.toFixed(1)+'%</span></div><div class="ss"><span class="sl">원가율</span><span class="sv">'+cor.toFixed(1)+'%</span></div><div class="ss"><span class="sl">광고비율</span><span class="sv">'+adr.toFixed(1)+'%</span></div></div>';
  h+='<div class="seclbl">월별 실적</div><div class="pwrap"><table class="ptbl"><tr><th class="nm">항목</th>';
@@ -858,13 +862,14 @@ function partnerRepHTML(nm){
  for(var f=0;f<4;f++){h+='<tr><td class="nm">'+labels[f]+'</td>';for(var _j=0;_j<PMCOUNT;_j++){var _m=arr[_j];h+='<td>'+(_m?wonS(_m[f]):'-')+'</td>';}h+='<td class="tot">'+wonS(tots[f])+'</td></tr>';}
  h+='<tr><td class="nm">순익률</td>';for(var _k=0;_k<PMCOUNT;_k++){var _m=arr[_k];h+='<td>'+(_m&&_m[0]?(_m[3]/_m[0]*100).toFixed(1)+'%':'-')+'</td>';}h+='<td class="tot">'+rate.toFixed(1)+'%</td></tr>';
  h+='</table></div>';
- if(PDAILY&&PDAILY.co&&PDAILY.co[nm]){var dmap=PDAILY.co[nm];var dks=Object.keys(dmap).sort().reverse();if(dks.length){var dmm=parseInt(String(PDAILY.ym||'').slice(5,7),10)||'';var dsR=0,dsN=0;dks.forEach(function(k){dsR+=dmap[k][0]||0;dsN+=dmap[k][1]||0;});
+ var dmap=null;if(PDAILY&&PDAILY.co){chs.forEach(function(n){var dm=PDAILY.co[n];if(!dm)return;if(!dmap)dmap={};Object.keys(dm).forEach(function(k){if(!dmap[k])dmap[k]=[0,0];dmap[k][0]+=(dm[k][0]||0);dmap[k][1]+=(dm[k][1]||0);});});}
+ if(dmap){var dks=Object.keys(dmap).sort().reverse();if(dks.length){var dmm=parseInt(String(PDAILY.ym||'').slice(5,7),10)||'';var dsR=0,dsN=0;dks.forEach(function(k){dsR+=dmap[k][0]||0;dsN+=dmap[k][1]||0;});
  h+='<div class="seclbl">당월('+dmm+'월) 일매출 <span class="muted small">· ~'+esc(String(PDAILY.upto||''))+' · 매일 오전 갱신</span></div><div class="pwrap"><table class="ptbl" style="min-width:420px"><tr><th class="nm">날짜</th><th>매출</th><th>순익</th><th>순익률</th></tr>';
  dks.forEach(function(k){var dv=dmap[k];var drr=dv[0]?(dv[1]/dv[0]*100).toFixed(1)+'%':'-';h+='<tr><td class="nm">'+dmm+'/'+parseInt(k,10)+'</td><td>'+fmtWon(dv[0]||0)+'</td><td'+((dv[1]||0)<0?' style="color:#c0392b"':'')+'>'+fmtWon(dv[1]||0)+'</td><td>'+drr+'</td></tr>';});
  h+='<tr class="bizrow"><td class="nm">합계</td><td>'+fmtWon(dsR)+'</td><td'+(dsN<0?' style="color:#c0392b"':'')+'>'+fmtWon(dsN)+'</td><td>'+(dsR?(dsN/dsR*100).toFixed(1)+'%':'-')+'</td></tr></table></div>';
  h+='<div class="pnote">일매출은 리모컨 매출입력 기준 · 최근 2~3일은 수기입력 지연으로 이후 보정될 수 있음</div>';}}
  var good=[],warn=[];
- good.push(PMCOUNT+'개월 누적 매출 '+wonS(a.rev)+'로 외부 '+pcnt+'개사 중 '+rk+'위 규모');
+ good.push(PMCOUNT+'개월 누적 매출 '+wonS(a.rev)+'로 외부 '+pcnt+'개 사업자 중 '+rk+'위 규모');
  if(rate>=17)good.push('평균 순익률 '+rate.toFixed(1)+'%로 수익성 최상위권');
  else if(rate>=13)good.push('평균 순익률 '+rate.toFixed(1)+'%로 견조');
  else if(rate>=10)good.push('평균 순익률 '+rate.toFixed(1)+'%로 안정적');
