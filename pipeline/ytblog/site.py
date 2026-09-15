@@ -93,13 +93,13 @@ svg{right:auto !important;left:130px !important;top:560px !important;transform:s
     return out
 
 
-BANNER_CSS = ".yt-banner .yt-banner-m{display:none}@media (max-width:781px){.yt-banner .yt-banner-d{display:none}.yt-banner .yt-banner-m{display:block}}.yt-banner figure{margin:0}"
+BANNER_CSS = ".yt-banner .yt-banner-d img{width:100%;height:auto;border-radius:18px}.yt-banner .yt-banner-m{display:none}@media (max-width:781px){.yt-banner .yt-banner-d{display:none}.yt-banner .yt-banner-m{display:block}}.yt-banner figure{margin:0}"
 
 
 def _banner_group(d_id: int, d_url: str, m_id: int, m_url: str) -> str:
     def img(mid, url, cls):
-        return (f'<!-- wp:image {{"id":{mid},"sizeSlug":"full","linkDestination":"none","className":"{cls}"}} -->\n'
-                f'<figure class="wp-block-image size-full {cls}"><img src="{url}" alt="지식채우기 배너" class="wp-image-{mid}"/></figure>\n<!-- /wp:image -->')
+        return (f'<!-- wp:image {{"id":{mid},"sizeSlug":"full","linkDestination":"none","align":"wide","className":"{cls}"}} -->\n'
+                f'<figure class="wp-block-image alignwide size-full {cls}"><img src="{url}" alt="지식채우기 배너" class="wp-image-{mid}"/></figure>\n<!-- /wp:image -->')
     return ('<!-- wp:group {"align":"full","className":"yt-banner","style":{"spacing":{"margin":{"top":"0"}}},"layout":{"type":"constrained"}} -->\n'
             '<div class="wp-block-group alignfull yt-banner" style="margin-top:0">\n' + img(d_id, d_url, "yt-banner-d") + "\n" + img(m_id, m_url, "yt-banner-m") +
             "\n</div>\n<!-- /wp:group -->")
