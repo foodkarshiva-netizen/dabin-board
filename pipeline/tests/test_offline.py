@@ -97,8 +97,9 @@ def test_editor_note_block():
         assert html4.index("삽입 메모") < html4.index("<strong>출처</strong>")
         from ytblog.images import CardImage
         from pathlib import Path as _P
-        fig_html = build_post_html(s, meta, [CardImage(kind="takeaways", path=_P("x/hero.png"), alt="a", caption="")],
-                                   {"x/hero.png": "https://b/hero.png"}, "b", id_map={"x/hero.png": 77})
+        cp = _P("x/hero.png")
+        fig_html = build_post_html(s, meta, [CardImage(kind="takeaways", path=cp, alt="a", caption="")],
+                                   {str(cp): "https://b/hero.png"}, "b", id_map={str(cp): 77})
         assert '<!-- wp:image {"id":77' in fig_html and "wp-image-77" in fig_html
 
 
