@@ -81,12 +81,12 @@ def test_editor_note_block():
         _, meta, s = _mock_summary(td)
         assert s.synthesis.editor_note_draft  # 모의 LLM 도 초안을 낸다
         # 사람 메모가 없으면 AI 초안 + 교체 안내가 들어간다
-        html = build_post_html(s, meta, [], {}, "테스트 블로그")
+        html = build_post_html(s, meta, [], {}, "테스트 블로그", note_auto=False)
         assert NOTE_START in html and NOTE_END in html and "편집자 메모" in html
         assert DRAFT_NOTICE in html
         # 사람 메모가 있으면 초안 안내가 사라지고 메모가 들어간다
         html2 = build_post_html(s, meta, [], {}, "테스트 블로그", editor_note="첫 줄\n\n둘째 줄 <b>")
-        assert DRAFT_NOTICE not in html2 and "<p>첫 줄</p><p>둘째 줄 &lt;b&gt;</p>" in html2
+        assert DRAFT_NOTICE not in html2 and "<p>첫 줄.</p><p>둘째 줄 &lt;b&gt;.</p>" in html2   # 마침표 자동 보정
         # 기존 글의 블록을 새 메모로 치환
         html3 = replace_note_block(html, "교체된 메모")
         assert html3.count(NOTE_START) == 1 and "교체된 메모" in html3 and DRAFT_NOTICE not in html3
@@ -94,6 +94,16 @@ def test_editor_note_block():
         stripped = html.split(NOTE_START)[0] + html.split(NOTE_END)[1]
         html4 = replace_note_block(stripped, "삽입 메모")
         assert html4.index("삽입 메모") < html4.index("<strong>출처</strong>")
+
+
+def test_ensure_period_and_auto_note():
+    from ytblog.render import ensure_period
+    assert ensure_period("마침표 없음") == "마침표 없음." and ensure_period("있음.") == "있음." and ensure_period("질문?") == "질문?"
+    assert ensure_period("") == "" and ensure_period("따옴표로 끝남”") == "따옴표로 끝남”"
+    with tempfile.TemporaryDirectory() as td:
+        _, meta, s = _mock_summary(td)
+        assert DRAFT_NOTICE not in build_post_html(s, meta, [], {}, "b")                    # 기본: AI 메모 그대로
+        assert DRAFT_NOTICE in build_post_html(s, meta, [], {}, "b", note_auto=False)      # 사람 검토 모드
 
 
 def test_diagrams():

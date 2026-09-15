@@ -103,6 +103,12 @@ def _clip(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+def _sent(s: str, n: int) -> str:
+    """완성 문장용: 잘라낸 뒤 마침표가 없으면 붙인다."""
+    t = _clip(s, n)
+    return t if (not t or t[-1] in ".!?…") else t + "."
+
+
 def _first_sentence(s: str, n: int) -> str:
     s = TS_RE.sub("", s or "").strip()
     m = re.match(r"(.+?[.!?다])(\s|$)", s)
@@ -132,7 +138,7 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
     # 2) 핵심 포인트
     tk = syn.key_takeaways[:5]
     if tk:
-        items = "".join(f"<li><span class='n'>{i + 1}</span><span>{_e(_clip(getattr(t, 'short', '') or t.text, 140))}</span></li>" for i, t in enumerate(tk))
+        items = "".join(f"<li><span class='n'>{i + 1}</span><span>{_e(_sent(getattr(t, 'short', '') or t.text, 140))}</span></li>" for i, t in enumerate(tk))
         add("takeaways",
             f"<div class='label'>핵심 포인트 {len(tk)}가지</div><ol class='tk'>{items}</ol>",
             "light", max(H_STD, 200 + 125 * len(tk)), alt="핵심 포인트 정리 카드", caption="이 영상의 핵심 포인트")
@@ -145,7 +151,7 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
         if not body:
             continue
         label = summary.sections[dg.section_index].title if 0 <= dg.section_index < len(summary.sections) else "핵심 정리"
-        cap = f"<div class='dg-cap'>{_e(dg.caption)}</div>" if dg.caption else ""
+        cap = f"<div class='dg-cap'>{_e(_sent(dg.caption, 400))}</div>" if dg.caption else ""
         add("diagram",
             f"<div class='label'>{_e(_clip(label, 40))}</div><div class='title sm'>{_e(dg.title)}</div>{body}{cap}",
             "light", 520, alt=f"{dg.title} 도식", caption=dg.title, idx=dg.section_index, suffix=f"-d{k + 1}")
@@ -158,7 +164,7 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
         pts = [d for d in (getattr(s, "card_points", None) or s.details) if d.strip()][:3]
         if not pts:
             continue
-        bullets = "".join(f"<li>{_e(_clip(d, 140))}</li>" for d in pts)
+        bullets = "".join(f"<li>{_e(_sent(d, 140))}</li>" for d in pts)
         head = _clip(s.image_caption or s.title, 48)
         add("section",
             f"<div class='label'>{_e(_clip(s.title, 34))}</div><div class='title sm'>{_e(head)}</div><ul class='pts'>{bullets}</ul>",

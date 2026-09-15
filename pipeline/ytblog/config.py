@@ -34,6 +34,7 @@ class ChannelConfig:
     include_numbers: bool = True     # 숫자로 기억하기 카드
     max_sections: int = 6            # 자동 요약 시 구간 수 상한 (수동 모드는 summary.json 그대로)
     max_details: int = 4             # 구간당 본문 항목 수 상한
+    editor_note_auto: bool = True    # True 면 AI 가 쓴 편집자 메모를 그대로 싣는다(초안 안내 없음)
 
     @classmethod
     def from_dict(cls, d: dict) -> "ChannelConfig":
@@ -79,7 +80,7 @@ class Settings:
             blog_name=env.get("BLOG_NAME", "유튜브 요약 블로그"),
             max_posts_per_week=int(env.get("MAX_POSTS_PER_WEEK", "4")),
             max_posts_per_day=int(env.get("MAX_POSTS_PER_DAY", "1")),
-            require_editor_note=env.get("REQUIRE_EDITOR_NOTE", "1") not in ("0", "false", "no"),
+            require_editor_note=env.get("REQUIRE_EDITOR_NOTE", "0") not in ("0", "false", "no"),
         )
 
 

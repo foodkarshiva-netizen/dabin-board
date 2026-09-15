@@ -24,6 +24,17 @@ def _e(s: str) -> str:
     return html.escape(s or "")
 
 
+END_PUNCT = tuple(".!?…」』)”\"'")
+
+
+def ensure_period(text: str) -> str:
+    """문장 끝에 마침표가 없으면 붙인다. 이미 문장부호로 끝나면 그대로."""
+    t = (text or "").strip()
+    if not t or t.endswith(END_PUNCT):
+        return t
+    return t + "."
+
+
 def strip_ts(text: str) -> str:
     """문장 속 [mm:ss] 표기를 제거한다."""
     return TS_STRIP_RE.sub("", text or "").strip()
@@ -42,7 +53,7 @@ def linkify(text: str, video_id: str) -> str:
 
 def build_note_block(note: str, is_draft: bool) -> str:
     """편집자 메모 블록. is_draft=True 면 AI 초안이라는 표시를 붙인다(발행 전 교체 유도)."""
-    paras = [p.strip() for p in re.split(r"\n\s*\n|\n", note or "") if p.strip()]
+    paras = [ensure_period(p) for p in re.split(r"\n\s*\n|\n", note or "") if p.strip()]
     body = "".join(f"<p>{_e(p)}</p>" for p in paras) or "<p></p>"
     notice = f"<p class='yt-note-draft'><em>[{_e(DRAFT_NOTICE)}]</em></p>" if is_draft else ""
     return f"{NOTE_START}<h2>편집자 메모</h2><div class='yt-note'>{notice}{body}</div>{NOTE_END}"
@@ -69,7 +80,8 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
                     editor_note: str = "", note_is_draft: bool = False,
                     show_timestamps: bool = False, embed_video: bool = False, source_link: bool = False,
                     include_toc: bool = False, include_glossary: bool = False, include_questions: bool = False,
-                    include_faq: bool = False, include_numbers: bool = True, max_details: int = 4) -> str:
+                    include_faq: bool = False, include_numbers: bool = True, max_details: int = 4,
+                    note_auto: bool = True) -> str:
     """학습 노트 구조의 본문. editor_note 가 비어 있으면 요약의 editor_note_draft 를 AI 초안 표시와 함께 넣는다."""
     vid = meta.video_id
     syn = summary.synthesis
@@ -86,11 +98,11 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         return " " + ts_link(vid, t) if show_timestamps else ""
 
     def txt(t: str) -> str:
-        return linkify(t, vid) if show_timestamps else _e(strip_ts(t))
+        return linkify(ensure_period(t), vid) if show_timestamps else _e(ensure_period(strip_ts(t)))
 
     # 한 줄 요약 + 도입
-    parts.append(f"<p class='yt-oneliner'><strong>{_e(syn.one_liner)}</strong></p>")
-    parts.append(f"<p class='yt-intro'>{_e(syn.intro)}</p>")
+    parts.append(f"<p class='yt-oneliner'><strong>{_e(ensure_period(syn.one_liner))}</strong></p>")
+    parts.append(f"<p class='yt-intro'>{_e(ensure_period(syn.intro))}</p>")
 
     if embed_video:
         parts.append(
@@ -103,7 +115,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
     parts.append("<h2>핵심 포인트</h2>")
     if "takeaways" in by_kind:
         parts.append(figure(by_kind["takeaways"], url_map))
-    parts.append("<ol>" + "".join(f"<li>{_e(t.text)}{ts(t.ts)}</li>" for t in syn.key_takeaways) + "</ol>")
+    parts.append("<ol>" + "".join(f"<li>{_e(ensure_period(t.text))}{ts(t.ts)}</li>" for t in syn.key_takeaways) + "</ol>")
     for c in top_diagrams:
         parts.append(figure(c, url_map))
 
@@ -123,7 +135,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         parts.append(f"<h2 id='sec-{i + 1}'>{head}</h2>")
         for c in section_cards.get(i, []):
             parts.append(figure(c, url_map))
-        parts.append(f"<p>{_e(strip_ts(s.summary))}</p>")
+        parts.append(f"<p>{_e(ensure_period(strip_ts(s.summary)))}</p>")
         if s.details:
             parts.append("<ul>" + "".join(f"<li>{txt(d)}</li>" for d in s.details[:max_details]) + "</ul>")
         if s.numbers and show_timestamps:
@@ -136,7 +148,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
 
     # 정리
     parts.append("<h2>정리와 시사점</h2>")
-    parts.append(f"<p>{_e(syn.conclusion)}</p>")
+    parts.append(f"<p>{_e(ensure_period(syn.conclusion))}</p>")
 
     if syn.background:
         parts.append("<h2>참고: 배경 설명</h2>")
@@ -164,7 +176,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
     # 편집자 메모 (사람이 쓴 메모 > AI 초안)
     note = editor_note.strip() if editor_note else ""
     if not note:
-        note, note_is_draft = getattr(syn, "editor_note_draft", "") or "", True
+        note, note_is_draft = getattr(syn, "editor_note_draft", "") or "", not note_auto
     if note:
         parts.append(build_note_block(note, note_is_draft))
 
