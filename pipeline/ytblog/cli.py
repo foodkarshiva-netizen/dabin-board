@@ -124,7 +124,7 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
     try:
         cards = build_cards(summary, meta, settings.blog_name, out_dir / "images",
                             include_glossary=channel.include_glossary, include_questions=channel.include_questions,
-                            include_numbers=channel.include_numbers)
+                            include_numbers=channel.include_numbers, card_footer=channel.card_footer)
         state.set_status(vid, "illustrated", images=len(cards))
         log(f"  이미지 {len(cards)}장 생성")
     except Exception as e:  # noqa: BLE001

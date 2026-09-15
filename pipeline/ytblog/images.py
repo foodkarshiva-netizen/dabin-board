@@ -9,7 +9,7 @@
 - numbers: 숫자로 기억하기
 - glossary: 핵심 용어(한 장에 3개)
 - questions: 자기 점검 질문
-모든 카드 하단에 출처(채널명)와 블로그 이름을 표기한다.
+카드 하단 줄은 채널 설정 card_footer(none/blog/source)로 정한다. 기본은 없음(출처는 글 끝에 한 번만).
 """
 from __future__ import annotations
 
@@ -94,8 +94,13 @@ def _e(s: str) -> str:
     return html.escape(s or "")
 
 
-def _source_line(meta: VideoMeta, blog_name: str) -> str:
-    return f"<div class='source'><span>출처: {_e(meta.channel_title)} · 유튜브</span><span>{_e(blog_name)}</span></div>"
+def _source_line(meta: VideoMeta, blog_name: str, footer: str = "none") -> str:
+    """카드 하단 줄. footer: none(없음, 기본) | blog(블로그 이름만) | source(출처 + 블로그 이름)"""
+    if footer == "blog":
+        return f"<div class='source'><span></span><span>{_e(blog_name)}</span></div>"
+    if footer == "source":
+        return f"<div class='source'><span>출처: {_e(meta.channel_title)} · 유튜브</span><span>{_e(blog_name)}</span></div>"
+    return ""
 
 
 def _clip(s: str, n: int) -> str:
@@ -116,17 +121,19 @@ def _first_sentence(s: str, n: int) -> str:
 
 
 def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path,
-                include_glossary: bool = False, include_questions: bool = False, include_numbers: bool = True) -> list[CardImage]:
+                include_glossary: bool = False, include_questions: bool = False, include_numbers: bool = True,
+                card_footer: str = "none") -> list[CardImage]:
     out_dir.mkdir(parents=True, exist_ok=True)
     syn = summary.synthesis
     jobs: list[dict] = []
     cards: list[CardImage] = []
-    src = _source_line(meta, blog_name)
+    src = _source_line(meta, blog_name, card_footer)
+    pad = "130px" if src else "76px"
 
     def add(kind: str, inner: str, cls: str, h: int, alt: str, caption: str, idx: int = -1, suffix: str = ""):
         name = kind + (f"-{idx + 1}" if idx >= 0 else "") + suffix
         path = out_dir / f"{name}.png"
-        jobs.append({"html": _wrap(inner + src, cls), "width": W, "height": h, "out": str(path)})
+        jobs.append({"html": _wrap(inner + src, cls).replace("padding:72px 80px 130px", f"padding:72px 80px {pad}"), "width": W, "height": h, "out": str(path)})
         cards.append(CardImage(kind=kind, path=path, alt=alt, caption=caption, section_index=idx))
 
     # 1) 대표 이미지

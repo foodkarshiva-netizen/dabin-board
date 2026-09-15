@@ -35,6 +35,7 @@ class ChannelConfig:
     max_sections: int = 6            # 자동 요약 시 구간 수 상한 (수동 모드는 summary.json 그대로)
     max_details: int = 4             # 구간당 본문 항목 수 상한
     editor_note_auto: bool = True    # True 면 AI 가 쓴 편집자 메모를 그대로 싣는다(초안 안내 없음)
+    card_footer: str = "none"        # 카드 하단 줄: none | blog | source
 
     @classmethod
     def from_dict(cls, d: dict) -> "ChannelConfig":
