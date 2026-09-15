@@ -108,7 +108,8 @@ def _first_sentence(s: str, n: int) -> str:
     return _clip(m.group(1) if m else s, n)
 
 
-def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path) -> list[CardImage]:
+def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path,
+                include_glossary: bool = False, include_questions: bool = False, include_numbers: bool = True) -> list[CardImage]:
     out_dir.mkdir(parents=True, exist_ok=True)
     syn = summary.synthesis
     jobs: list[dict] = []
@@ -153,7 +154,7 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
         for p in pools:
             if p and len(nums) < 6:
                 nums.append(p.pop(0))
-    if len(nums) >= 3:
+    if include_numbers and len(nums) >= 3:
         def vcls(v: str) -> str:
             return "" if len(v) <= 8 else ("m" if len(v) <= 14 else "s")
         cells = "".join(f"<div class='num'><div class='v {vcls(n.value)}'>{_e(_clip(n.value, 28))}</div>"
@@ -164,7 +165,7 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
             "light", max(H_STD, 280 + 220 * rows), alt="영상의 주요 수치 카드", caption="숫자로 기억하는 핵심")
 
     # 5) 핵심 용어: 한 장에 3개
-    gl = syn.glossary
+    gl = syn.glossary if include_glossary else []
     for k in range(0, len(gl), 2):
         chunk = gl[k:k + 2]
         rows_html = "".join(f"<div><div class='t'>{_e(_clip(g.term, 30))}</div><div class='d'>{_e(_clip(g.definition, 160))}</div></div>" for g in chunk)
@@ -173,7 +174,7 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
             "light", H_STD, alt="핵심 용어 카드", caption="알아두면 좋은 용어", suffix=f"-{k // 2 + 1}")
 
     # 6) 자기 점검 질문
-    qs = getattr(syn, "study_questions", []) or []
+    qs = (getattr(syn, "study_questions", []) or []) if include_questions else []
     if qs:
         items = "".join(f"<li><span class='n'>Q{i + 1}</span><span>{_e(_clip(q, 140))}</span></li>" for i, q in enumerate(qs[:5]))
         add("questions",

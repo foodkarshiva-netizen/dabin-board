@@ -122,7 +122,9 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
 
     # 4) 이미지
     try:
-        cards = build_cards(summary, meta, settings.blog_name, out_dir / "images")
+        cards = build_cards(summary, meta, settings.blog_name, out_dir / "images",
+                            include_glossary=channel.include_glossary, include_questions=channel.include_questions,
+                            include_numbers=channel.include_numbers)
         state.set_status(vid, "illustrated", images=len(cards))
         log(f"  이미지 {len(cards)}장 생성")
     except Exception as e:  # noqa: BLE001
@@ -146,7 +148,10 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
     html = build_post_html(summary, meta, cards, url_map or {str(c.path): f"images/{c.path.name}" for c in cards},
                            settings.blog_name, editor_note=note, note_is_draft=False,
                            show_timestamps=channel.show_timestamps, embed_video=channel.embed_video,
-                           source_link=channel.source_link)
+                           source_link=channel.source_link, include_toc=channel.include_toc,
+                           include_glossary=channel.include_glossary, include_questions=channel.include_questions,
+                           include_faq=channel.include_faq, include_numbers=channel.include_numbers,
+                           max_details=channel.max_details)
     preview = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>{summary.synthesis.seo.title}</title>" \
               "<style>body{max-width:760px;margin:40px auto;font-family:sans-serif;line-height:1.7;padding:0 16px}img{max-width:100%;border-radius:12px}blockquote{border-left:4px solid #ddd;margin:0;padding:4px 16px;color:#555}.yt-box{background:#f4f6fb;padding:12px 16px;border-radius:12px}</style></head><body>" \
               f"<h1>{summary.synthesis.seo.title}</h1>{html}</body></html>"

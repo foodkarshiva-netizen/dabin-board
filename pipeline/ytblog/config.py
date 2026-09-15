@@ -27,6 +27,13 @@ class ChannelConfig:
     show_timestamps: bool = False    # 본문에 [mm:ss] 영상 시점 링크 표시
     embed_video: bool = False        # 원본 영상 임베드
     source_link: bool = False        # 출처 고지에 채널·영상 하이퍼링크 (False 면 텍스트만)
+    include_toc: bool = False        # '이 글의 순서' 목차
+    include_glossary: bool = False   # 핵심 용어 (본문 + 카드)
+    include_questions: bool = False  # 자기 점검 질문 (본문 + 카드)
+    include_faq: bool = False        # 자주 묻는 질문
+    include_numbers: bool = True     # 숫자로 기억하기 카드
+    max_sections: int = 6            # 자동 요약 시 구간 수 상한 (수동 모드는 summary.json 그대로)
+    max_details: int = 4             # 구간당 본문 항목 수 상한
 
     @classmethod
     def from_dict(cls, d: dict) -> "ChannelConfig":

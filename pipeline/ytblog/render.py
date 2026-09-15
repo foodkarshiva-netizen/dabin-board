@@ -67,7 +67,9 @@ def figure(img: CardImage, url_map: dict[str, str]) -> str:
 def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
                     url_map: dict[str, str], blog_name: str,
                     editor_note: str = "", note_is_draft: bool = False,
-                    show_timestamps: bool = False, embed_video: bool = False, source_link: bool = False) -> str:
+                    show_timestamps: bool = False, embed_video: bool = False, source_link: bool = False,
+                    include_toc: bool = False, include_glossary: bool = False, include_questions: bool = False,
+                    include_faq: bool = False, include_numbers: bool = True, max_details: int = 4) -> str:
     """학습 노트 구조의 본문. editor_note 가 비어 있으면 요약의 editor_note_draft 를 AI 초안 표시와 함께 넣는다."""
     vid = meta.video_id
     syn = summary.synthesis
@@ -99,12 +101,13 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         parts.append(figure(by_kind["takeaways"], url_map))
     parts.append("<ol>" + "".join(f"<li>{_e(t.text)}{ts(t.ts)}</li>" for t in syn.key_takeaways) + "</ol>")
 
-    # 목차
-    parts.append("<h2>이 글의 순서</h2><ol class='yt-toc'>")
-    for i, s in enumerate(summary.sections):
-        rng = f" <small>({_e(s.start)}~{_e(s.end)})</small>" if show_timestamps else ""
-        parts.append(f"<li><a href='#sec-{i + 1}'>{_e(s.title)}</a>{rng}</li>")
-    parts.append("</ol>")
+    # 목차 (옵션)
+    if include_toc:
+        parts.append("<h2>이 글의 순서</h2><ol class='yt-toc'>")
+        for i, s in enumerate(summary.sections):
+            rng = f" <small>({_e(s.start)}~{_e(s.end)})</small>" if show_timestamps else ""
+            parts.append(f"<li><a href='#sec-{i + 1}'>{_e(s.title)}</a>{rng}</li>")
+        parts.append("</ol>")
 
     # 구간별 핵심
     for i, s in enumerate(summary.sections):
@@ -116,12 +119,12 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
             parts.append(figure(section_cards[i], url_map))
         parts.append(f"<p>{_e(strip_ts(s.summary))}</p>")
         if s.details:
-            parts.append("<ul>" + "".join(f"<li>{txt(d)}</li>" for d in s.details) + "</ul>")
-        if s.numbers:
+            parts.append("<ul>" + "".join(f"<li>{txt(d)}</li>" for d in s.details[:max_details]) + "</ul>")
+        if s.numbers and show_timestamps:
             parts.append("<p class='yt-nums'><strong>기억할 숫자</strong> · " + " · ".join(
                 f"{_e(n.label)} <strong>{_e(n.value)}</strong>{ts(n.ts)}" for n in s.numbers) + "</p>")
 
-    if "numbers" in by_kind:
+    if include_numbers and "numbers" in by_kind:
         parts.append("<h2>숫자로 기억하기</h2>")
         parts.append(figure(by_kind["numbers"], url_map))
 
@@ -133,21 +136,21 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         parts.append("<h2>참고: 배경 설명</h2>")
         parts.append(f"<p><em>아래는 영상에 나오지 않는, 이해를 돕기 위한 배경 설명입니다.</em></p><p>{_e(syn.background)}</p>")
 
-    if syn.glossary:
+    if include_glossary and syn.glossary:
         parts.append("<h2>핵심 용어</h2>")
         for c in glossary_cards:
             parts.append(figure(c, url_map))
         parts.append("<dl class='yt-glossary'>" + "".join(
             f"<dt><strong>{_e(g.term)}</strong></dt><dd>{_e(g.definition)}</dd>" for g in syn.glossary) + "</dl>")
 
-    qs = getattr(syn, "study_questions", []) or []
+    qs = (getattr(syn, "study_questions", []) or []) if include_questions else []
     if qs:
         parts.append("<h2>스스로 점검해 보기</h2>")
         if "questions" in by_kind:
             parts.append(figure(by_kind["questions"], url_map))
         parts.append("<ol>" + "".join(f"<li>{_e(q)}</li>" for q in qs) + "</ol>")
 
-    if syn.faq:
+    if include_faq and syn.faq:
         parts.append("<h2>자주 묻는 질문</h2>")
         for f in syn.faq:
             parts.append(f"<p><strong>Q. {_e(f.q)}</strong><br/>A. {_e(f.a)}</p>")

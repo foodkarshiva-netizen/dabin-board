@@ -51,7 +51,8 @@ def test_summary_and_html():
         html = build_post_html(s, meta, [], {}, "테스트 블로그")
         assert "youtube.com/embed/SAMPLE00001" not in html and "&t=" not in html and "[0" not in html  # 기본: 임베드·타임스탬프 없음
         assert "<strong>출처</strong>" in html and "youtube.com/watch" not in html               # 출처는 텍스트만
-        assert "스스로 점검해 보기" in html
+        assert "스스로 점검해 보기" not in html and "핵심 용어" not in html      # 기본: 짧은 글
+        assert "스스로 점검해 보기" in build_post_html(s, meta, [], {}, "테스트 블로그", include_questions=True)
         html_ts = build_post_html(s, meta, [], {}, "테스트 블로그", show_timestamps=True, embed_video=True, source_link=True)
         assert "youtube.com/embed/SAMPLE00001" in html_ts and "&t=" in html_ts and "youtube.com/watch" in html_ts
         st = State(Path(td) / "state.json")
