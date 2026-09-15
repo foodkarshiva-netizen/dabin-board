@@ -172,7 +172,10 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
             log(f"  공개 보류: 편집자 메모 없음 → 초안. `python -m ytblog note {vid} \"메모\" --publish` 로 공개")
         elif publish:
             status = "publish"
-        cats = wp.category_ids([channel.blog_category])
+        chosen = getattr(summary.synthesis, "category", "") or ""
+        if chosen and channel.categories and chosen not in channel.categories:
+            chosen = ""
+        cats = wp.category_ids([chosen or channel.blog_category])
         tags = wp.tag_ids(list(dict.fromkeys(summary.synthesis.seo.tags + channel.extra_tags)))
         if update_post_id:
             old = wp.get_post(update_post_id)

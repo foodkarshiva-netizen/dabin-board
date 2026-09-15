@@ -21,7 +21,8 @@ class ChannelConfig:
     min_duration_sec: int = 180      # 이보다 짧으면(쇼츠 등) 건너뜀
     max_duration_sec: int = 5400     # 90분 초과는 자동 처리하지 않음
     language_hint: str = "ko"
-    blog_category: str = "유튜브 요약"
+    blog_category: str = "유튜브 요약"      # synthesis.category 가 비었을 때의 기본 카테고리
+    categories: list[str] = field(default_factory=list)  # 글마다 고를 수 있는 카테고리 목록
     extra_tags: list[str] = field(default_factory=list)
     tone: str = "친절하고 명확한 설명체, 존댓말"
     show_timestamps: bool = False    # 본문에 [mm:ss] 영상 시점 링크 표시
