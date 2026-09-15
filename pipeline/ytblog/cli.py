@@ -133,12 +133,14 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
 
     # 5) 글 조립 (+ 업로드) — 로컬 미리보기는 항상 저장
     url_map: dict[str, str] = {}
+    id_map: dict[str, int] = {}
     featured = 0
     if wp is not None and not dry_run:
         try:
             for c in cards:
                 mid, url = wp.upload_media(c.path, c.alt, f"{meta.title} - {c.kind}")
                 url_map[str(c.path)] = url
+                id_map[str(c.path)] = mid
                 if c.kind == "hero":
                     featured = mid
         except Exception as e:  # noqa: BLE001
@@ -146,7 +148,7 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
             raise
     note = state.note_for(vid)
     html = build_post_html(summary, meta, cards, url_map or {str(c.path): f"images/{c.path.name}" for c in cards},
-                           settings.blog_name, editor_note=note, note_is_draft=False,
+                           settings.blog_name, id_map=id_map, editor_note=note, note_is_draft=False,
                            show_timestamps=channel.show_timestamps, embed_video=channel.embed_video,
                            source_link=channel.source_link, include_toc=channel.include_toc,
                            include_glossary=channel.include_glossary, include_questions=channel.include_questions,

@@ -49,12 +49,13 @@ def test_summary_and_html():
         assert s.sections and s.synthesis.key_takeaways
         assert not s.needs_review
         html = build_post_html(s, meta, [], {}, "테스트 블로그")
-        assert "youtube.com/embed/SAMPLE00001" not in html and "&t=" not in html and "[0" not in html  # 기본: 임베드·타임스탬프 없음
+        assert "wp:embed" not in html and "&t=" not in html and "[0" not in html  # 기본: 임베드·타임스탬프 없음
         assert "<strong>출처</strong>" in html and "youtube.com/watch" not in html               # 출처는 텍스트만
+        assert "<!-- wp:paragraph -->" in html and "<!-- wp:heading -->" in html and "<!-- wp:separator -->" in html
         assert "스스로 점검해 보기" not in html and "핵심 용어" not in html      # 기본: 짧은 글
         assert "스스로 점검해 보기" in build_post_html(s, meta, [], {}, "테스트 블로그", include_questions=True)
         html_ts = build_post_html(s, meta, [], {}, "테스트 블로그", show_timestamps=True, embed_video=True, source_link=True)
-        assert "youtube.com/embed/SAMPLE00001" in html_ts and "&t=" in html_ts and "youtube.com/watch" in html_ts
+        assert "wp:embed" in html_ts and "youtube.com/watch?v=SAMPLE00001" in html_ts and "&t=" in html_ts
         st = State(Path(td) / "state.json")
         st.set_status("x", "fetched")
         st.mark_failed("x", "summarize", "boom")
@@ -86,7 +87,7 @@ def test_editor_note_block():
         assert DRAFT_NOTICE in html
         # 사람 메모가 있으면 초안 안내가 사라지고 메모가 들어간다
         html2 = build_post_html(s, meta, [], {}, "테스트 블로그", editor_note="첫 줄\n\n둘째 줄 <b>")
-        assert DRAFT_NOTICE not in html2 and "<p>첫 줄.</p><p>둘째 줄 &lt;b&gt;.</p>" in html2   # 마침표 자동 보정
+        assert DRAFT_NOTICE not in html2 and "<p>첫 줄.</p>" in html2 and "<p>둘째 줄 &lt;b&gt;.</p>" in html2   # 마침표 자동 보정
         # 기존 글의 블록을 새 메모로 치환
         html3 = replace_note_block(html, "교체된 메모")
         assert html3.count(NOTE_START) == 1 and "교체된 메모" in html3 and DRAFT_NOTICE not in html3
@@ -94,6 +95,11 @@ def test_editor_note_block():
         stripped = html.split(NOTE_START)[0] + html.split(NOTE_END)[1]
         html4 = replace_note_block(stripped, "삽입 메모")
         assert html4.index("삽입 메모") < html4.index("<strong>출처</strong>")
+        from ytblog.images import CardImage
+        from pathlib import Path as _P
+        fig_html = build_post_html(s, meta, [CardImage(kind="takeaways", path=_P("x/hero.png"), alt="a", caption="")],
+                                   {"x/hero.png": "https://b/hero.png"}, "b", id_map={"x/hero.png": 77})
+        assert '<!-- wp:image {"id":77' in fig_html and "wp-image-77" in fig_html
 
 
 def test_ensure_period_and_auto_note():

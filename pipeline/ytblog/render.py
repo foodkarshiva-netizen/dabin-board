@@ -54,9 +54,9 @@ def linkify(text: str, video_id: str) -> str:
 def build_note_block(note: str, is_draft: bool) -> str:
     """편집자 메모 블록. is_draft=True 면 AI 초안이라는 표시를 붙인다(발행 전 교체 유도)."""
     paras = [ensure_period(p) for p in re.split(r"\n\s*\n|\n", note or "") if p.strip()]
-    body = "".join(f"<p>{_e(p)}</p>" for p in paras) or "<p></p>"
-    notice = f"<p class='yt-note-draft'><em>[{_e(DRAFT_NOTICE)}]</em></p>" if is_draft else ""
-    return f"{NOTE_START}<h2>편집자 메모</h2><div class='yt-note'>{notice}{body}</div>{NOTE_END}"
+    body = "\n".join(P(_e(p)) for p in paras) or P("")
+    notice = P(f"<em>[{_e(DRAFT_NOTICE)}]</em>", "yt-note-draft") if is_draft else ""
+    return f"{NOTE_START}\n{H2('편집자 메모')}\n{notice}\n{body}\n{NOTE_END}"
 
 
 def replace_note_block(html_text: str, note: str, is_draft: bool = False) -> str:
@@ -64,19 +64,42 @@ def replace_note_block(html_text: str, note: str, is_draft: bool = False) -> str
     block = build_note_block(note, is_draft)
     if NOTE_RE.search(html_text):
         return NOTE_RE.sub(lambda _m: block, html_text)
-    marker = "<hr/><div class='yt-source'>"
+    marker = "<!-- wp:separator -->"
     if marker in html_text:
         return html_text.replace(marker, block + "\n" + marker, 1)
     return html_text + "\n" + block
 
 
-def figure(img: CardImage, url_map: dict[str, str]) -> str:
+def figure(img: CardImage, url_map: dict[str, str], id_map: dict[str, int] | None = None) -> str:
+    """이미지 블록. 블록 주석(<!-- wp:image -->)이 있어야 워드프레스가 이미지 블록 CSS(max-width:100%)를 싣는다."""
     src = url_map.get(str(img.path), str(img.path))
-    return f"<figure class='wp-block-image size-full'><img src='{_e(src)}' alt='{_e(img.alt)}' loading='lazy'/></figure>"
+    mid = (id_map or {}).get(str(img.path), 0)
+    attrs = f'{{"id":{mid},"sizeSlug":"full","linkDestination":"none"}}' if mid else '{"sizeSlug":"full","linkDestination":"none"}'
+    cls = f" wp-image-{mid}" if mid else ""
+    return (f"<!-- wp:image {attrs} -->\n<figure class=\"wp-block-image size-full\">"
+            f"<img src=\"{_e(src)}\" alt=\"{_e(img.alt)}\" class=\"{cls.strip()}\" loading=\"lazy\"/></figure>\n<!-- /wp:image -->")
+
+
+def P(inner: str, cls: str = "") -> str:
+    c = f' class="{cls}"' if cls else ""
+    return f"<!-- wp:paragraph -->\n<p{c}>{inner}</p>\n<!-- /wp:paragraph -->"
+
+
+def H2(inner: str, anchor: str = "") -> str:
+    a = f' id="{anchor}"' if anchor else ""
+    return f"<!-- wp:heading -->\n<h2 class=\"wp-block-heading\"{a}>{inner}</h2>\n<!-- /wp:heading -->"
+
+
+def LIST(items: list[str], ordered: bool = False, cls: str = "") -> str:
+    tag = "ol" if ordered else "ul"
+    attr = ' {"ordered":true}' if ordered else ""
+    c = f' class="wp-block-list {cls}"'.replace("  ", " ") if cls else ' class="wp-block-list"'
+    lis = "".join(f"<!-- wp:list-item -->\n<li>{it}</li>\n<!-- /wp:list-item -->" for it in items)
+    return f"<!-- wp:list{attr} -->\n<{tag}{c}>{lis}</{tag}>\n<!-- /wp:list -->"
 
 
 def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
-                    url_map: dict[str, str], blog_name: str,
+                    url_map: dict[str, str], blog_name: str, id_map: dict[str, int] | None = None,
                     editor_note: str = "", note_is_draft: bool = False,
                     show_timestamps: bool = False, embed_video: bool = False, source_link: bool = False,
                     include_toc: bool = False, include_glossary: bool = False, include_questions: bool = False,
@@ -100,78 +123,80 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
     def txt(t: str) -> str:
         return linkify(ensure_period(t), vid) if show_timestamps else _e(ensure_period(strip_ts(t)))
 
+    fig = lambda c: figure(c, url_map, id_map)  # noqa: E731
+
     # 한 줄 요약 + 도입
-    parts.append(f"<p class='yt-oneliner'><strong>{_e(ensure_period(syn.one_liner))}</strong></p>")
-    parts.append(f"<p class='yt-intro'>{_e(ensure_period(syn.intro))}</p>")
+    parts.append(P(f"<strong>{_e(ensure_period(syn.one_liner))}</strong>", "yt-oneliner"))
+    parts.append(P(_e(ensure_period(syn.intro)), "yt-intro"))
 
     if embed_video:
         parts.append(
-            "<figure class='wp-block-embed is-type-video'><div class='wp-block-embed__wrapper' style='position:relative;padding-top:56.25%'>"
-            f"<iframe style='position:absolute;inset:0;width:100%;height:100%' src='https://www.youtube.com/embed/{vid}' "
-            "title='원본 영상' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' "
-            "allowfullscreen></iframe></div></figure>")
+            f"<!-- wp:embed {{\"url\":\"https://www.youtube.com/watch?v={vid}\",\"type\":\"video\",\"providerNameSlug\":\"youtube\",\"responsive\":true}} -->\n"
+            f"<figure class=\"wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube\"><div class=\"wp-block-embed__wrapper\">\n"
+            f"https://www.youtube.com/watch?v={vid}\n</div></figure>\n<!-- /wp:embed -->")
 
     # 핵심 포인트
-    parts.append("<h2>핵심 포인트</h2>")
+    parts.append(H2("핵심 포인트"))
     if "takeaways" in by_kind:
-        parts.append(figure(by_kind["takeaways"], url_map))
-    parts.append("<ol>" + "".join(f"<li>{_e(ensure_period(t.text))}{ts(t.ts)}</li>" for t in syn.key_takeaways) + "</ol>")
+        parts.append(fig(by_kind["takeaways"]))
+    parts.append(LIST([f"{_e(ensure_period(t.text))}{ts(t.ts)}" for t in syn.key_takeaways], ordered=True))
     for c in top_diagrams:
-        parts.append(figure(c, url_map))
+        parts.append(fig(c))
 
     # 목차 (옵션)
     if include_toc:
-        parts.append("<h2>이 글의 순서</h2><ol class='yt-toc'>")
+        parts.append(H2("이 글의 순서"))
+        items = []
         for i, s in enumerate(summary.sections):
             rng = f" <small>({_e(s.start)}~{_e(s.end)})</small>" if show_timestamps else ""
-            parts.append(f"<li><a href='#sec-{i + 1}'>{_e(s.title)}</a>{rng}</li>")
-        parts.append("</ol>")
+            items.append(f"<a href=\"#sec-{i + 1}\">{_e(s.title)}</a>{rng}")
+        parts.append(LIST(items, ordered=True, cls="yt-toc"))
 
     # 구간별 핵심
     for i, s in enumerate(summary.sections):
         head = f"{i + 1}. {_e(s.title)}"
         if show_timestamps:
             head += f" <small>{ts_link(vid, s.start, s.start + ' 부터')}</small>"
-        parts.append(f"<h2 id='sec-{i + 1}'>{head}</h2>")
+        parts.append(H2(head, anchor=f"sec-{i + 1}"))
         for c in section_cards.get(i, []):
-            parts.append(figure(c, url_map))
-        parts.append(f"<p>{_e(ensure_period(strip_ts(s.summary)))}</p>")
+            parts.append(fig(c))
+        parts.append(P(_e(ensure_period(strip_ts(s.summary)))))
         if include_details and s.details:
-            parts.append("<ul>" + "".join(f"<li>{txt(d)}</li>" for d in s.details[:max_details]) + "</ul>")
+            parts.append(LIST([txt(d) for d in s.details[:max_details]]))
         if s.numbers and show_timestamps:
-            parts.append("<p class='yt-nums'><strong>기억할 숫자</strong> · " + " · ".join(
-                f"{_e(n.label)} <strong>{_e(n.value)}</strong>{ts(n.ts)}" for n in s.numbers) + "</p>")
+            parts.append(P("<strong>기억할 숫자</strong> · " + " · ".join(
+                f"{_e(n.label)} <strong>{_e(n.value)}</strong>{ts(n.ts)}" for n in s.numbers), "yt-nums"))
 
     if include_numbers and "numbers" in by_kind:
-        parts.append("<h2>숫자로 기억하기</h2>")
-        parts.append(figure(by_kind["numbers"], url_map))
+        parts.append(H2("숫자로 기억하기"))
+        parts.append(fig(by_kind["numbers"]))
 
     # 정리
-    parts.append("<h2>정리와 시사점</h2>")
-    parts.append(f"<p>{_e(ensure_period(syn.conclusion))}</p>")
+    parts.append(H2("정리와 시사점"))
+    parts.append(P(_e(ensure_period(syn.conclusion))))
 
     if syn.background:
-        parts.append("<h2>참고: 배경 설명</h2>")
-        parts.append(f"<p><em>아래는 영상에 나오지 않는, 이해를 돕기 위한 배경 설명입니다.</em></p><p>{_e(syn.background)}</p>")
+        parts.append(H2("참고: 배경 설명"))
+        parts.append(P("<em>아래는 영상에 나오지 않는, 이해를 돕기 위한 배경 설명이에요.</em>"))
+        parts.append(P(_e(ensure_period(syn.background))))
 
     if include_glossary and syn.glossary:
-        parts.append("<h2>핵심 용어</h2>")
+        parts.append(H2("핵심 용어"))
         for c in glossary_cards:
-            parts.append(figure(c, url_map))
-        parts.append("<dl class='yt-glossary'>" + "".join(
-            f"<dt><strong>{_e(g.term)}</strong></dt><dd>{_e(g.definition)}</dd>" for g in syn.glossary) + "</dl>")
+            parts.append(fig(c))
+        parts.append(LIST([f"<strong>{_e(g.term)}</strong>: {_e(ensure_period(g.definition))}" for g in syn.glossary], cls="yt-glossary"))
 
     qs = (getattr(syn, "study_questions", []) or []) if include_questions else []
     if qs:
-        parts.append("<h2>스스로 점검해 보기</h2>")
+        parts.append(H2("스스로 점검해 보기"))
         if "questions" in by_kind:
-            parts.append(figure(by_kind["questions"], url_map))
-        parts.append("<ol>" + "".join(f"<li>{_e(q)}</li>" for q in qs) + "</ol>")
+            parts.append(fig(by_kind["questions"]))
+        parts.append(LIST([_e(q) for q in qs], ordered=True))
 
     if include_faq and syn.faq:
-        parts.append("<h2>자주 묻는 질문</h2>")
+        parts.append(H2("자주 묻는 질문"))
         for f in syn.faq:
-            parts.append(f"<p><strong>Q. {_e(f.q)}</strong><br/>A. {_e(f.a)}</p>")
+            parts.append(P(f"<strong>Q. {_e(f.q)}</strong><br>A. {_e(ensure_period(f.a))}"))
 
     # 편집자 메모 (사람이 쓴 메모 > AI 초안)
     note = editor_note.strip() if editor_note else ""
@@ -182,12 +207,13 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
 
     # 출처: 한 줄만 정확히 (기본은 링크 없는 텍스트)
     if source_link:
-        who = (f"유튜브 채널 <a href='https://www.youtube.com/channel/{_e(meta.channel_id)}' target='_blank' rel='noopener'>{_e(meta.channel_title)}</a> · "
-               f"<a href='{_e(meta.url)}' target='_blank' rel='noopener'>“{_e(meta.title)}”</a>")
+        who = (f"유튜브 채널 <a href=\"https://www.youtube.com/channel/{_e(meta.channel_id)}\" target=\"_blank\" rel=\"noopener\">{_e(meta.channel_title)}</a> · "
+               f"<a href=\"{_e(meta.url)}\" target=\"_blank\" rel=\"noopener\">“{_e(meta.title)}”</a>")
     else:
         who = f"유튜브 채널 {_e(meta.channel_title)} · “{_e(meta.title)}”"
-    parts.append(f"<hr/><div class='yt-source'><p><strong>출처</strong> {who}</p></div>")
-    return "\n".join(parts)
+    parts.append("<!-- wp:separator -->\n<hr class=\"wp-block-separator has-alpha-channel-opacity\"/>\n<!-- /wp:separator -->")
+    parts.append(P(f"<strong>출처</strong> {who}", "yt-source"))
+    return "\n\n".join(parts)
 
 
 def build_excerpt(summary: Summary) -> str:
