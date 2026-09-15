@@ -73,8 +73,12 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
     """학습 노트 구조의 본문. editor_note 가 비어 있으면 요약의 editor_note_draft 를 AI 초안 표시와 함께 넣는다."""
     vid = meta.video_id
     syn = summary.synthesis
-    by_kind = {c.kind: c for c in cards if c.section_index < 0 and c.kind not in ("glossary",)}
-    section_cards = {c.section_index: c for c in cards if c.kind == "section"}
+    by_kind = {c.kind: c for c in cards if c.section_index < 0 and c.kind not in ("glossary", "diagram")}
+    section_cards: dict[int, list[CardImage]] = {}
+    for c in cards:
+        if c.kind in ("section", "diagram") and c.section_index >= 0:
+            section_cards.setdefault(c.section_index, []).append(c)
+    top_diagrams = [c for c in cards if c.kind == "diagram" and c.section_index < 0]
     glossary_cards = [c for c in cards if c.kind == "glossary"]
     parts: list[str] = []
 
@@ -100,6 +104,8 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
     if "takeaways" in by_kind:
         parts.append(figure(by_kind["takeaways"], url_map))
     parts.append("<ol>" + "".join(f"<li>{_e(t.text)}{ts(t.ts)}</li>" for t in syn.key_takeaways) + "</ol>")
+    for c in top_diagrams:
+        parts.append(figure(c, url_map))
 
     # 목차 (옵션)
     if include_toc:
@@ -115,8 +121,8 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         if show_timestamps:
             head += f" <small>{ts_link(vid, s.start, s.start + ' 부터')}</small>"
         parts.append(f"<h2 id='sec-{i + 1}'>{head}</h2>")
-        if i in section_cards:
-            parts.append(figure(section_cards[i], url_map))
+        for c in section_cards.get(i, []):
+            parts.append(figure(c, url_map))
         parts.append(f"<p>{_e(strip_ts(s.summary))}</p>")
         if s.details:
             parts.append("<ul>" + "".join(f"<li>{txt(d)}</li>" for d in s.details[:max_details]) + "</ul>")

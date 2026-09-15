@@ -96,6 +96,24 @@ def test_editor_note_block():
         assert html4.index("삽입 메모") < html4.index("<strong>출처</strong>")
 
 
+def test_diagrams():
+    from ytblog.diagrams import diagram_html
+    assert "→" in diagram_html("flow", {"steps": ["A", "B", "C"]}) and "box last" in diagram_html("flow", {"steps": ["A", "B"]})
+    assert "↓" in diagram_html("flow", {"steps": list("ABCDE")})
+    assert diagram_html("cycle", {"steps": ["A", "B", "C"]}).count("<rect") == 3
+    c = diagram_html("compare", {"unit": "%", "items": [{"label": "한국", "value": 4.4}, {"label": "미국", "value": 4.8}]})
+    assert "4.4%" in c and "bar hi" in c
+    t = diagram_html("trend", {"unit": "원", "points": [{"label": "a", "value": 1300}, {"label": "b", "value": 1550}]})
+    assert "1,550원" in t and t.count("<rect") == 2
+    assert "e down" in diagram_html("factors", {"items": [{"cause": "x", "effect": "y", "dir": "down"}]})
+    assert "col r" in diagram_html("versus", {"left": {"title": "a", "items": ["1"]}, "right": {"title": "b", "items": ["2"]}})
+    assert diagram_html("steps", {"steps": ["a", {"title": "b", "desc": "c"}]}).count("class='st'") == 2
+    try:
+        diagram_html("nope", {}); assert False
+    except ValueError:
+        pass
+
+
 def test_state_notes_and_quota():
     from ytblog.cli import quota_left
     with tempfile.TemporaryDirectory() as td:

@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import PIPELINE_DIR
+from .diagrams import DIAGRAM_CSS, diagram_html
 from .discover import VideoMeta
 from .schema import Summary
 
@@ -56,9 +57,9 @@ html,body{height:100%;width:100%}
 body{font-family:'NotoKR','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic','Noto Sans CJK KR',sans-serif;
      color:#1b2430;background:#fff;-webkit-font-smoothing:antialiased}
 .card{width:100%;min-height:100%;padding:72px 80px 130px;display:flex;flex-direction:column;position:relative;background:#fff}
-.card.dark{background:#1d4ed8;color:#fff}
-.label{font-size:30px;font-weight:700;color:#2563eb;letter-spacing:.3px}
-.card.dark .label{color:rgba(255,255,255,.85)}
+.card.dark{background:#1f2937;color:#fff}
+.label{font-size:30px;font-weight:700;color:#b45309;letter-spacing:.3px}
+.card.dark .label{color:#fbbf24}
 .title{font-size:62px;font-weight:700;line-height:1.28;margin-top:22px;word-break:keep-all;overflow-wrap:anywhere}
 .title.sm{font-size:54px}
 .sub{font-size:38px;line-height:1.5;margin-top:30px;color:#3d4a5c;word-break:keep-all}
@@ -67,25 +68,25 @@ body{font-family:'NotoKR','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic','
 .card.dark .source{color:rgba(255,255,255,.75)}
 ul.pts{list-style:none;margin-top:34px;display:flex;flex-direction:column;gap:22px}
 ul.pts li{position:relative;padding-left:44px;font-size:40px;line-height:1.42;word-break:keep-all;overflow-wrap:anywhere}
-ul.pts li::before{content:'';position:absolute;left:0;top:22px;width:18px;height:18px;border-radius:50%;background:#2563eb}
+ul.pts li::before{content:'';position:absolute;left:0;top:22px;width:18px;height:18px;border-radius:50%;background:#1f2937}
 ol.tk{list-style:none;margin-top:30px;display:flex;flex-direction:column;gap:22px}
 ol.tk li{display:flex;gap:22px;align-items:flex-start;font-size:38px;line-height:1.42;word-break:keep-all;overflow-wrap:anywhere}
-ol.tk .n{flex:0 0 56px;height:56px;border-radius:14px;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:30px;margin-top:2px}
+ol.tk .n{flex:0 0 56px;height:56px;border-radius:14px;background:#1f2937;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:30px;margin-top:2px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:34px}
 .grid.two{grid-template-columns:repeat(2,1fr)}
-.num{background:#f5f7fb;border-radius:20px;padding:30px 30px 26px}
-.num .v{font-size:52px;font-weight:700;color:#1d4ed8;line-height:1.15;word-break:keep-all;overflow-wrap:anywhere}
+.num{background:#f5f3ee;border-radius:20px;padding:30px 30px 26px}
+.num .v{font-size:52px;font-weight:700;color:#1f2937;line-height:1.15;word-break:keep-all;overflow-wrap:anywhere}
 .num .v.m{font-size:40px}
 .num .v.s{font-size:32px;line-height:1.3}
 .num .l{font-size:28px;color:#52606d;margin-top:14px;line-height:1.35;word-break:keep-all}
 .gl{margin-top:34px;display:flex;flex-direction:column;gap:40px}
-.gl .t{font-size:42px;font-weight:700;color:#1d4ed8;line-height:1.3}
+.gl .t{font-size:42px;font-weight:700;color:#b45309;line-height:1.3}
 .gl .d{font-size:34px;line-height:1.45;color:#3d4a5c;margin-top:6px;word-break:keep-all}
 """
 
 
 def _wrap(inner: str, cls: str) -> str:
-    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{_font_css()}{BASE_CSS}</style></head>"
+    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{_font_css()}{BASE_CSS}{DIAGRAM_CSS}</style></head>"
             f"<body><div class='card {cls}'>{inner}</div></body></html>")
 
 
@@ -136,8 +137,24 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
             f"<div class='label'>핵심 포인트 {len(tk)}가지</div><ol class='tk'>{items}</ol>",
             "light", max(H_STD, 200 + 125 * len(tk)), alt="핵심 포인트 정리 카드", caption="이 영상의 핵심 포인트")
 
-    # 3) 구간 카드: 구간마다 한 장 (핵심 한 줄 + 짧은 항목 최대 3개)
+    # 3) 도식: summary.diagrams 항목마다 한 장
+    diagrams = getattr(summary, "diagrams", None) or []
+    has_diagram = set()
+    for k, dg in enumerate(diagrams):
+        body = diagram_html(dg.type, dg.data)
+        if not body:
+            continue
+        label = summary.sections[dg.section_index].title if 0 <= dg.section_index < len(summary.sections) else "핵심 정리"
+        cap = f"<div class='dg-cap'>{_e(dg.caption)}</div>" if dg.caption else ""
+        add("diagram",
+            f"<div class='label'>{_e(_clip(label, 40))}</div><div class='title sm'>{_e(dg.title)}</div>{body}{cap}",
+            "light", 520, alt=f"{dg.title} 도식", caption=dg.title, idx=dg.section_index, suffix=f"-d{k + 1}")
+        has_diagram.add(dg.section_index)
+
+    # 4) 구간 글자 카드: 도식이 없는 구간만 (핵심 한 줄 + 짧은 항목 최대 3개)
     for i, s in enumerate(summary.sections):
+        if i in has_diagram:
+            continue
         pts = [d for d in (getattr(s, "card_points", None) or s.details) if d.strip()][:3]
         if not pts:
             continue

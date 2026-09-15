@@ -83,11 +83,21 @@ class Verification(BaseModel):
     verdicts: list[ClaimVerdict]
 
 
+class Diagram(BaseModel):
+    """내용 도식 한 장. type/data 형식은 diagrams.py 참고."""
+    type: str                 # flow | cycle | compare | trend | factors | versus | steps
+    title: str
+    section_index: int = -1   # 어느 구간 아래에 넣을지 (-1 이면 핵심 포인트 아래)
+    caption: str = ""
+    data: dict = {}
+
+
 class Summary(BaseModel):
     """파이프라인 최종 산출물."""
     video_id: str
     sections: list[Section]
     synthesis: Synthesis
+    diagrams: list[Diagram] = []
     unsupported_ratio: float
     needs_review: bool
     transcript_source: str
