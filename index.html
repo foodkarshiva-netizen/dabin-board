@@ -240,7 +240,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
   <section class="page" id="p-blog">
     <div class="rowsb"><h2 class="t" style="margin:0">블로그 대기열</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="ytqProg"></span><button class="btn o sm" id="ytqDoneBtn" onclick="toggleYtqDone()">완료 보기</button></div></div>
     <div class="small muted" style="margin:0 2px 8px">유튜브 링크를 올려 두면 클로드가 요약·도식·이미지를 만들어 지식채우기(jisikfill.com)에 발행하고 완료 표시를 해요.</div>
-    <div class="card"><input id="ytqUrl" placeholder="유튜브 링크 (https://www.youtube.com/watch?v=…)" style="width:100%;box-sizing:border-box"><input id="ytqNote" placeholder="메모 (선택: 강조할 점, 원하는 카테고리 등)" style="width:100%;box-sizing:border-box;margin-top:8px"><button class="btn p" style="margin-top:10px;width:100%" onclick="addYtq()">대기열에 추가</button></div>
+    <div class="card"><input id="ytqUrl" placeholder="유튜브 링크 (https://www.youtube.com/watch?v=…)" style="width:100%;box-sizing:border-box"><input id="ytqNote" placeholder="영상 제목 (선택)" style="width:100%;box-sizing:border-box;margin-top:8px"><button class="btn p" style="margin-top:10px;width:100%" onclick="addYtq()">대기열에 추가</button></div>
     <div id="ytqList"><div class="empty">불러오는 중…</div></div>
   </section>
   <section class="page" id="p-cal">
@@ -547,9 +547,9 @@ function renderYtq(){var el=document.getElementById('ytqList');if(!el)return;
   function d(ts){if(!ts)return '';var t=new Date(ts);return (t.getMonth()+1)+'/'+t.getDate()+' '+('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2)}
   el.innerHTML=list.length?list.map(function(x){
     var st=x.status==='done'?'<span class="pill" style="background:#dcfce7;color:#166534">✓ 발행 완료</span>':x.status==='working'?'<span class="pill" style="background:#fef3c7;color:#92400e">작업 중</span>':x.status==='failed'?'<span class="pill" style="background:#fee2e2;color:#991b1b">실패</span>':'<span class="pill">대기</span>';
-    var title=x.title?esc(x.title):('영상 '+esc(x.vid));var go=(x.status==='done'&&x.postUrl)?x.postUrl:'';if(go){title='<a href="'+esc(go)+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">'+title+' ↗</a>'}
+    var title=x.title?esc(x.title):(x.note?esc(x.note):('영상 '+esc(x.vid)));var go=(x.status==='done'&&x.postUrl)?x.postUrl:'';if(go){title='<a href="'+esc(go)+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">'+title+' ↗</a>'}
     var body='<div style="font-weight:700;line-height:1.35;word-break:keep-all">'+title+'</div>'+
-      '<div class="small muted" style="margin-top:4px">'+(x.status==='done'&&x.doneAt?'발행 '+d(x.doneAt):'등록 '+d(x.ts))+(x.note?' · '+esc(x.note):'')+(x.err?' · <span style="color:#991b1b">'+esc(x.err)+'</span>':'')+'</div>'+
+      '<div class="small muted" style="margin-top:4px">'+(x.status==='done'&&x.doneAt?'발행 '+d(x.doneAt):'등록 '+d(x.ts))+((x.note&&x.title)?' · '+esc(x.note):'')+(x.err?' · <span style="color:#991b1b">'+esc(x.err)+'</span>':'')+'</div>'+
       '<div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><a href="'+esc(x.url)+'" target="_blank" rel="noopener">유튜브</a>'+(x.postUrl?'<a href="'+esc(x.postUrl)+'" target="_blank" rel="noopener" style="font-weight:700">블로그 글 보기</a>':'')+(x.status==='failed'?'<a href="javascript:void(0)" onclick="ytqRetry(\''+x.id+'\')">다시 시도</a>':'')+'</div>';
     return '<div class="card"'+(go?' data-url="'+esc(go)+'" onclick="ytqGo(event,this)" style="cursor:pointer;display:flex;gap:10px;align-items:flex-start"':' style="display:flex;gap:10px;align-items:flex-start"')+'><div style="flex:1;min-width:0">'+st+'<div style="height:6px"></div>'+body+'</div><span class="x" onclick="if(confirm(\'삭제할까요?\'))delDoc(\'yt_queue\',\''+x.id+'\')">✕</span></div>'
   }).join(''):'<div class="empty">'+(YTQ_SHOWDONE?'완료된 글이 아직 없어요':'대기 중인 영상이 없어요. 위에 링크를 넣어 주세요.')+'</div>'}
