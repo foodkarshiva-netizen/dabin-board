@@ -81,7 +81,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
                     show_timestamps: bool = False, embed_video: bool = False, source_link: bool = False,
                     include_toc: bool = False, include_glossary: bool = False, include_questions: bool = False,
                     include_faq: bool = False, include_numbers: bool = True, max_details: int = 4,
-                    note_auto: bool = True) -> str:
+                    note_auto: bool = True, include_details: bool = False) -> str:
     """학습 노트 구조의 본문. editor_note 가 비어 있으면 요약의 editor_note_draft 를 AI 초안 표시와 함께 넣는다."""
     vid = meta.video_id
     syn = summary.synthesis
@@ -136,7 +136,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         for c in section_cards.get(i, []):
             parts.append(figure(c, url_map))
         parts.append(f"<p>{_e(ensure_period(strip_ts(s.summary)))}</p>")
-        if s.details:
+        if include_details and s.details:
             parts.append("<ul>" + "".join(f"<li>{txt(d)}</li>" for d in s.details[:max_details]) + "</ul>")
         if s.numbers and show_timestamps:
             parts.append("<p class='yt-nums'><strong>기억할 숫자</strong> · " + " · ".join(

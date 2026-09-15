@@ -34,6 +34,7 @@ class ChannelConfig:
     include_numbers: bool = True     # 숫자로 기억하기 카드
     max_sections: int = 6            # 자동 요약 시 구간 수 상한 (수동 모드는 summary.json 그대로)
     max_details: int = 4             # 구간당 본문 항목 수 상한
+    include_details: bool = False    # 구간 요약 문단 아래 항목 나열 (도식과 겹치므로 기본 끔)
     editor_note_auto: bool = True    # True 면 AI 가 쓴 편집자 메모를 그대로 싣는다(초안 안내 없음)
     card_footer: str = "none"        # 카드 하단 줄: none | blog | source
 

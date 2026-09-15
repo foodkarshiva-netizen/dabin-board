@@ -151,7 +151,8 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
                            source_link=channel.source_link, include_toc=channel.include_toc,
                            include_glossary=channel.include_glossary, include_questions=channel.include_questions,
                            include_faq=channel.include_faq, include_numbers=channel.include_numbers,
-                           max_details=channel.max_details, note_auto=channel.editor_note_auto)
+                           max_details=channel.max_details, note_auto=channel.editor_note_auto,
+                           include_details=channel.include_details)
     preview = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>{summary.synthesis.seo.title}</title>" \
               "<style>body{max-width:760px;margin:40px auto;font-family:sans-serif;line-height:1.7;padding:0 16px}img{max-width:100%;border-radius:12px}blockquote{border-left:4px solid #ddd;margin:0;padding:4px 16px;color:#555}.yt-box{background:#f4f6fb;padding:12px 16px;border-radius:12px}</style></head><body>" \
               f"<h1>{summary.synthesis.seo.title}</h1>{html}</body></html>"
