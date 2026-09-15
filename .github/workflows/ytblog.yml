@@ -49,8 +49,8 @@ jobs:
           YT_PROXY_URL: ${{ secrets.YT_PROXY_URL }}
           MODEL_MAIN: ${{ vars.MODEL_MAIN || 'claude-opus-5' }}
           MODEL_LIGHT: ${{ vars.MODEL_LIGHT || 'claude-sonnet-5' }}
-          MAX_POSTS_PER_WEEK: ${{ vars.MAX_POSTS_PER_WEEK || '4' }}
-          MAX_POSTS_PER_DAY: ${{ vars.MAX_POSTS_PER_DAY || '1' }}
+          MAX_POSTS_PER_WEEK: ${{ vars.MAX_POSTS_PER_WEEK || '10' }}
+          MAX_POSTS_PER_DAY: ${{ vars.MAX_POSTS_PER_DAY || '2' }}
           REQUIRE_EDITOR_NOTE: ${{ vars.REQUIRE_EDITOR_NOTE || '1' }}
         run: |
           LIMIT="${{ github.event.inputs.limit || '2' }}"

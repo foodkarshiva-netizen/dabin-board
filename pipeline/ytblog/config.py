@@ -81,8 +81,8 @@ class Settings:
             out_dir=out_dir,
             max_cost_per_video_usd=float(env.get("MAX_COST_PER_VIDEO_USD", "1.5")),
             blog_name=env.get("BLOG_NAME", "유튜브 요약 블로그"),
-            max_posts_per_week=int(env.get("MAX_POSTS_PER_WEEK", "4")),
-            max_posts_per_day=int(env.get("MAX_POSTS_PER_DAY", "1")),
+            max_posts_per_week=int(env.get("MAX_POSTS_PER_WEEK", "10")),
+            max_posts_per_day=int(env.get("MAX_POSTS_PER_DAY", "2")),
             require_editor_note=env.get("REQUIRE_EDITOR_NOTE", "0") not in ("0", "false", "no"),
         )
 
