@@ -71,6 +71,7 @@ class Synthesis(BaseModel):
     editor_note_draft: str = ""   # 편집자 메모 초안(운영자가 발행 전 자기 의견으로 교체)
     study_questions: list[str] = []  # 독자가 이해도를 점검할 질문 3~5개
     category: str = ""               # 블로그 카테고리 이름(channels.json categories 중 하나). 비면 채널 기본값
+    discussion_question: str = ""    # 글 끝 댓글 유도 질문 한 줄 ("여러분은 …?")
     seo: SEO
 
 

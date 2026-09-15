@@ -14,6 +14,8 @@
   python -m ytblog queue done <docId> <postUrl> [제목]   발행 완료 표시
   python -m ytblog queue fail <docId> <사유>        실패 표시
   python -m ytblog finish <ID> --queue <docId>      발행 후 대기열 자동 완료 표시
+  python -m ytblog banner ["헤드라인"] ["부제"]      홈 배너 이미지 갱신(기본: 최근 글 반영)
+  python -m ytblog report [--no-post]               주간 리포트 → 다빈보드 소통 (+배너 갱신)
 """
 from __future__ import annotations
 
@@ -433,6 +435,21 @@ def cmd_queue(args, settings: Settings) -> int:
     log(f"알 수 없는 동작: {args.action}"); return 2
 
 
+def cmd_banner(args, settings: Settings) -> int:
+    from .site import update_banner
+    sub = update_banner(settings, args.head or "", args.sub or "")
+    log(f"배너 갱신 완료: {sub}")
+    return 0
+
+
+def cmd_report(args, settings: Settings) -> int:
+    from .queue import BOARD_JS
+    from .site import weekly_report
+    text = weekly_report(settings, BOARD_JS, post_to_board=not args.no_post)
+    log(text)
+    return 0
+
+
 def cmd_quota(args, settings: Settings) -> int:
     state = State(settings.data_dir / "state.json")
     wp = _wp_client(settings, bool(settings.wp_url))
@@ -472,6 +489,8 @@ def main(argv=None) -> int:
     fi.add_argument("--force", action="store_true", help="이미 글이 있어도 새 글로 다시 올림")
     fi.add_argument("--update", action="store_true", help="이미 글이 있으면 그 글을 갱신(이전 이미지 삭제)")
     fi.add_argument("--queue", default="", help="다빈보드 대기열 문서 id (발행 후 완료 표시)")
+    bn = sub.add_parser("banner", help="홈 배너 갱신"); bn.add_argument("head", nargs="?", default=""); bn.add_argument("sub", nargs="?", default="")
+    rp = sub.add_parser("report", help="주간 리포트"); rp.add_argument("--no-post", action="store_true", help="보드에 올리지 않고 출력만")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "start", "done", "fail"])
     qu.add_argument("doc_id", nargs="?", default=""); qu.add_argument("value", nargs="?", default=""); qu.add_argument("rest", nargs="*")
@@ -480,7 +499,8 @@ def main(argv=None) -> int:
     return {"resolve": cmd_resolve, "discover": cmd_discover, "run": cmd_run,
             "fixture": cmd_fixture, "wp-check": cmd_wp_check,
             "note": cmd_note, "quota": cmd_quota,
-            "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue}[args.cmd](args, settings)
+            "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
+            "banner": cmd_banner, "report": cmd_report}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":

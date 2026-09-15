@@ -205,6 +205,12 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
     if note:
         parts.append(build_note_block(note, note_is_draft))
 
+    # 댓글 유도 질문
+    dq = getattr(syn, "discussion_question", "") or ""
+    if dq:
+        parts.append(H2("여러분 생각은요?"))
+        parts.append(P(_e(ensure_period(dq)) + " 댓글로 편하게 남겨 주세요.", "yt-question"))
+
     # 출처: 한 줄만 정확히 (기본은 링크 없는 텍스트)
     if source_link:
         who = (f"유튜브 채널 <a href=\"https://www.youtube.com/channel/{_e(meta.channel_id)}\" target=\"_blank\" rel=\"noopener\">{_e(meta.channel_title)}</a> · "

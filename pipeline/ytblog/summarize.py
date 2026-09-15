@@ -240,7 +240,8 @@ def synthesize(llm, settings: Settings, system: list[dict], sections: list[Secti
         "- study_questions: 독자가 내용을 이해했는지 스스로 점검할 질문 3~5개. 영상 내용으로 답할 수 있는 것만.\n"
         "- (도식은 별도 단계에서 만듭니다. 여기서는 만들지 않습니다.)\n"
         + (f"- category: 이 글이 속할 카테고리 하나. 반드시 다음 중에서 고릅니다: {', '.join(channel.categories)}.\n" if channel.categories else "")
-        + f"- seo: 검색용 제목(원 영상 제목을 그대로 복사하지 말고 핵심 주제를 담아 45자 내외), 영문 소문자·하이픈 slug, "
+        + "- discussion_question: 글 끝에 넣을 댓글 유도 질문 한 줄. 독자의 상황을 묻는 열린 질문('여러분은 …?').\n"
+        + f"- seo: 검색용 제목은 32자 이내, 핵심 검색어를 맨 앞에, 끝에 '(강연자 이름)'. 원 영상 제목 복사 금지. 영문 소문자·하이픈 slug, "
         f"메타 설명(120자 내외), 태그 5~8개(채널 관련 태그 '{channel.blog_category}' 포함)."
     )
     return llm.parse(settings.model_main, system, prompt, Synthesis)
