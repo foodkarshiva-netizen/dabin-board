@@ -16,6 +16,7 @@
   python -m ytblog finish <ID> --queue <docId>      발행 후 대기열 자동 완료 표시
   python -m ytblog banner ["헤드라인"] ["부제"]      홈 배너 이미지 갱신(기본: 최근 글 반영)
   python -m ytblog report [--no-post]               주간 리포트 → 다빈보드 소통 (+배너 갱신)
+  python -m ytblog threads-auth | threads-refresh | threads-test   스레드 토큰 발급·갱신·게시 테스트
 """
 from __future__ import annotations
 
@@ -450,6 +451,18 @@ def cmd_report(args, settings: Settings) -> int:
     return 0
 
 
+def cmd_threads(args, settings: Settings) -> int:
+    from . import threads as th
+    if args.cmd == "threads-auth":
+        r = th.exchange_code(); log(f"연결됨: @{r['username']} (user_id {r['user_id']}, 만료까지 {r['expires_days']}일). .env 에 저장했습니다.")
+    elif args.cmd == "threads-refresh":
+        log(th.refresh_if_needed(force=True))
+    else:
+        pid = th.post("지식채우기 연결 테스트예요. 30분짜리 강연을 5분 글로 정리하는 블로그, jisikfill.com")
+        log(f"게시 완료: id {pid}")
+    return 0
+
+
 def cmd_quota(args, settings: Settings) -> int:
     state = State(settings.data_dir / "state.json")
     wp = _wp_client(settings, bool(settings.wp_url))
@@ -491,6 +504,8 @@ def main(argv=None) -> int:
     fi.add_argument("--queue", default="", help="다빈보드 대기열 문서 id (발행 후 완료 표시)")
     bn = sub.add_parser("banner", help="홈 배너 갱신"); bn.add_argument("head", nargs="?", default=""); bn.add_argument("sub", nargs="?", default="")
     rp = sub.add_parser("report", help="주간 리포트"); rp.add_argument("--no-post", action="store_true", help="보드에 올리지 않고 출력만")
+    for name in ("threads-auth", "threads-refresh", "threads-test"):
+        sub.add_parser(name, help="스레드 연동")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "start", "done", "fail"])
     qu.add_argument("doc_id", nargs="?", default=""); qu.add_argument("value", nargs="?", default=""); qu.add_argument("rest", nargs="*")
@@ -500,7 +515,8 @@ def main(argv=None) -> int:
             "fixture": cmd_fixture, "wp-check": cmd_wp_check,
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
-            "banner": cmd_banner, "report": cmd_report}[args.cmd](args, settings)
+            "banner": cmd_banner, "report": cmd_report,
+            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":
