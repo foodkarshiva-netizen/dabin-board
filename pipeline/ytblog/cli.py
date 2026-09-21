@@ -200,6 +200,12 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
                                   status=status, slug=summary.synthesis.seo.slug, excerpt=build_excerpt(summary),
                                   categories=cats, tags=tags, featured_media=featured)
             removed = wp.delete_media_in(old.get("content", {}).get("raw", ""), keep=set(url_map.values()))
+            old_feat = old.get("featured_media") or 0
+            if old_feat and old_feat != featured:
+                try:
+                    wp.s.delete(f"{wp.api}/media/{old_feat}", params={"force": "true"}, timeout=60); removed += 1
+                except Exception:  # noqa: BLE001
+                    pass
             log(f"  기존 글 갱신 (이전 이미지 {removed}개 삭제)")
         else:
             post = wp.create_post(
