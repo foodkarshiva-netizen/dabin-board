@@ -35,6 +35,19 @@ def ensure_period(text: str) -> str:
     return t + "."
 
 
+EMPH_RE = re.compile(r"\*\*(.+?)\*\*")
+
+
+def emph(text: str) -> str:
+    """이미 escape 된 문자열의 **강조** 표시를 형광펜 굵은 글씨로 바꾼다."""
+    return EMPH_RE.sub(lambda m: f'<strong class="yt-hl">{m.group(1)}</strong>', text)
+
+
+def strip_emph(text: str) -> str:
+    """카드·요약문 등 강조를 쓰지 않는 곳에서 ** 표시만 제거."""
+    return EMPH_RE.sub(lambda m: m.group(1), text or "")
+
+
 def strip_ts(text: str) -> str:
     """문장 속 [mm:ss] 표기를 제거한다."""
     return TS_STRIP_RE.sub("", text or "").strip()
@@ -54,7 +67,7 @@ def linkify(text: str, video_id: str) -> str:
 def build_note_block(note: str, is_draft: bool) -> str:
     """편집자 메모 블록. is_draft=True 면 AI 초안이라는 표시를 붙인다(발행 전 교체 유도)."""
     paras = [ensure_period(p) for p in re.split(r"\n\s*\n|\n", note or "") if p.strip()]
-    body = "\n".join(P(_e(p)) for p in paras) or P("")
+    body = "\n".join(P(emph(_e(p))) for p in paras) or P("")
     notice = P(f"<em>[{_e(DRAFT_NOTICE)}]</em>", "yt-note-draft") if is_draft else ""
     return f"{NOTE_START}\n{H2('편집자 메모')}\n{notice}\n{body}\n{NOTE_END}"
 
@@ -121,13 +134,13 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         return " " + ts_link(vid, t) if show_timestamps else ""
 
     def txt(t: str) -> str:
-        return linkify(ensure_period(t), vid) if show_timestamps else _e(ensure_period(strip_ts(t)))
+        return emph(linkify(ensure_period(t), vid) if show_timestamps else _e(ensure_period(strip_ts(t))))
 
     fig = lambda c: figure(c, url_map, id_map)  # noqa: E731
 
     # 한 줄 요약 + 도입
-    parts.append(P(f"<strong>{_e(ensure_period(syn.one_liner))}</strong>", "yt-oneliner"))
-    parts.append(P(_e(ensure_period(syn.intro)), "yt-intro"))
+    parts.append(P(f"<strong>{_e(ensure_period(strip_emph(syn.one_liner)))}</strong>", "yt-oneliner"))
+    parts.append(P(emph(_e(ensure_period(syn.intro))), "yt-intro"))
 
     if embed_video:
         parts.append(
@@ -139,7 +152,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
     parts.append(H2("핵심 포인트"))
     if "takeaways" in by_kind:
         parts.append(fig(by_kind["takeaways"]))
-    parts.append(LIST([f"{_e(ensure_period(t.text))}{ts(t.ts)}" for t in syn.key_takeaways], ordered=True))
+    parts.append(LIST([f"{emph(_e(ensure_period(t.text)))}{ts(t.ts)}" for t in syn.key_takeaways], ordered=True))
     for c in top_diagrams:
         parts.append(fig(c))
 
@@ -160,7 +173,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         parts.append(H2(head, anchor=f"sec-{i + 1}"))
         for c in section_cards.get(i, []):
             parts.append(fig(c))
-        parts.append(P(_e(ensure_period(strip_ts(s.summary)))))
+        parts.append(P(emph(_e(ensure_period(strip_ts(s.summary))))))
         if include_details and s.details:
             parts.append(LIST([txt(d) for d in s.details[:max_details]]))
         if s.numbers and show_timestamps:
@@ -173,7 +186,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
 
     # 정리
     parts.append(H2("정리와 시사점"))
-    parts.append(P(_e(ensure_period(syn.conclusion))))
+    parts.append(P(emph(_e(ensure_period(syn.conclusion)))))
 
     if syn.background:
         parts.append(H2("참고: 배경 설명"))
@@ -223,4 +236,4 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
 
 
 def build_excerpt(summary: Summary) -> str:
-    return summary.synthesis.seo.description or summary.synthesis.one_liner
+    return strip_emph(summary.synthesis.seo.description or summary.synthesis.one_liner)

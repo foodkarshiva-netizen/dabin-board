@@ -113,6 +113,13 @@ def test_ensure_period_and_auto_note():
         assert DRAFT_NOTICE in build_post_html(s, meta, [], {}, "b", note_auto=False)      # 사람 검토 모드
 
 
+def test_emphasis():
+    from ytblog.render import emph, strip_emph
+    assert emph("금리가 **핵심 변수**예요.") == '금리가 <strong class="yt-hl">핵심 변수</strong>예요.'
+    assert strip_emph("금리가 **핵심 변수**예요.") == "금리가 핵심 변수예요."
+    assert emph("별표 없음") == "별표 없음"
+
+
 def test_diagrams():
     from ytblog.diagrams import diagram_html
     assert "→" in diagram_html("flow", {"steps": ["A", "B", "C"]}) and "box last" in diagram_html("flow", {"steps": ["A", "B"]})

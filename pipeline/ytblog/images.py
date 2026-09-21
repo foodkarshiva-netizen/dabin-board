@@ -104,7 +104,7 @@ def _source_line(meta: VideoMeta, blog_name: str, footer: str = "none") -> str:
 
 
 def _clip(s: str, n: int) -> str:
-    s = TS_RE.sub("", s or "").strip()
+    s = TS_RE.sub("", s or "").replace("**", "").strip()
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
