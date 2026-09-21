@@ -63,13 +63,13 @@ class WordPressClient:
                 n += 1
         return n
 
-    def upload_media(self, path: Path, alt: str, title: str = "") -> tuple[int, str]:
+    def upload_media(self, path: Path, alt: str, title: str = "", filename: str = "") -> tuple[int, str]:
         mime = mimetypes.guess_type(str(path))[0] or "image/png"
         with open(path, "rb") as f:
             r = self.s.post(
                 f"{self.api}/media", data=f.read(), timeout=180,
                 headers={"Content-Type": mime,
-                         "Content-Disposition": f'attachment; filename="{path.name}"'},
+                         "Content-Disposition": f'attachment; filename="{filename or path.name}"'},
             )
         if r.status_code >= 400:
             raise RuntimeError(f"미디어 업로드 실패 {r.status_code}: {r.text[:500]}")

@@ -117,7 +117,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
                     show_timestamps: bool = False, embed_video: bool = False, source_link: bool = False,
                     include_toc: bool = False, include_glossary: bool = False, include_questions: bool = False,
                     include_faq: bool = False, include_numbers: bool = True, max_details: int = 4,
-                    note_auto: bool = True, include_details: bool = False) -> str:
+                    note_auto: bool = True, include_details: bool = False, include_question: bool = False) -> str:
     """학습 노트 구조의 본문. editor_note 가 비어 있으면 요약의 editor_note_draft 를 AI 초안 표시와 함께 넣는다."""
     vid = meta.video_id
     syn = summary.synthesis
@@ -219,7 +219,7 @@ def build_post_html(summary: Summary, meta: VideoMeta, cards: list[CardImage],
         parts.append(build_note_block(note, note_is_draft))
 
     # 댓글 유도 질문
-    dq = getattr(syn, "discussion_question", "") or ""
+    dq = (getattr(syn, "discussion_question", "") or "") if include_question else ""
     if dq:
         parts.append(H2("여러분 생각은요?"))
         parts.append(P(_e(ensure_period(dq)) + " 댓글로 편하게 남겨 주세요.", "yt-question"))

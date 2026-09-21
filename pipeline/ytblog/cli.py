@@ -145,8 +145,13 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
     featured = 0
     if wp is not None and not dry_run:
         try:
+            import time as _time
+            stamp = _time.strftime("%y%m%d%H%M")
+            safe_vid = re.sub(r"[^A-Za-z0-9]", "", vid).lower() or "v"
             for c in cards:
-                mid, url = wp.upload_media(c.path, c.alt, f"{meta.title} - {c.kind}")
+                # 파일 이름을 영상·시각별로 고유하게: 워드프레스가 비워진 이름을 재사용하면 브라우저 캐시에 다른 글의 옛 이미지가 뜬다
+                mid, url = wp.upload_media(c.path, c.alt, f"{meta.title} - {c.kind}",
+                                           filename=f"{safe_vid}-{c.path.stem}-{stamp}{c.path.suffix}")
                 url_map[str(c.path)] = url
                 id_map[str(c.path)] = mid
                 if c.kind == "hero":
