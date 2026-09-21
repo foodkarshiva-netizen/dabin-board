@@ -38,6 +38,10 @@ class ChannelConfig:
     include_details: bool = False    # 구간 요약 문단 아래 항목 나열 (도식과 겹치므로 기본 끔)
     editor_note_auto: bool = True    # True 면 AI 가 쓴 편집자 메모를 그대로 싣는다(초안 안내 없음)
     card_footer: str = "none"        # 카드 하단 줄: none | blog | source
+    auto_pick: bool = False          # True 면 대기열이 비었을 때 이 채널의 새 영상에서 직접 골라 발행
+    pick_min_sec: int = 480          # 자동 선정 시 최소 길이(8분)
+    pick_max_sec: int = 3600         # 자동 선정 시 최대 길이(60분)
+    pick_note: str = ""              # 선정 기준 메모(예: "경제·투자 위주, 시황 속보는 제외")
 
     @classmethod
     def from_dict(cls, d: dict) -> "ChannelConfig":

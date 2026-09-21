@@ -46,20 +46,28 @@ class WordPressClient:
     def update_post(self, post_id: int, **fields) -> dict:
         return self._post(f"posts/{post_id}", **fields)
 
-    def count_recent_posts(self, days: float, category_id: int = 0, marker: str = "ytblog") -> int:
-        """최근 days 일 안에 만들어진 글(초안·공개 등) 수. 발행 상한 판단용.
+    def count_recent_posts(self, days: float = 0, category_id: int = 0, marker: str = "ytblog", since: datetime | None = None) -> int:
+        """기준 시각 이후 만들어진 글(초안·공개 등) 수. 발행 상한 판단용.
 
-        marker 가 본문에 들어 있는 글만 세므로 손으로 쓴 글은 제외된다.
+        since(시각대 포함 datetime)를 주면 그 시각 이후, 아니면 최근 days 일. marker 가 본문에 든 글만 세므로 손으로 쓴 글은 제외된다.
         """
-        after = (datetime.now(timezone.utc) - timedelta(days=days)).replace(microsecond=0).isoformat()
+        base = since.astimezone(timezone.utc) if since is not None else datetime.now(timezone.utc) - timedelta(days=days)
+        after = base.replace(microsecond=0, tzinfo=None).isoformat()   # WP 'after' 는 시각대 없는 값이면 사이트 시간이 아닌 GMT 로 해석되지 않으므로 아래에서 date_gmt 로 재확인
         params = dict(after=after, status="publish,draft,pending,future,private",
                       per_page=100, context="edit", orderby="date", order="desc")
         if category_id:
             params["categories"] = category_id
+        params["after"] = (base - timedelta(days=1)).replace(microsecond=0, tzinfo=None).isoformat()   # 넉넉히 받아 온 뒤 GMT 시각으로 정확히 거른다
         n = 0
         for p in self._get("posts", **params):
             raw = p.get("content", {}).get("raw", "") or p.get("content", {}).get("rendered", "")
-            if marker in raw:
+            if marker not in raw:
+                continue
+            try:
+                made = datetime.fromisoformat(p.get("date_gmt", "")).replace(tzinfo=timezone.utc)
+            except Exception:  # noqa: BLE001
+                continue
+            if made >= base:
                 n += 1
         return n
 

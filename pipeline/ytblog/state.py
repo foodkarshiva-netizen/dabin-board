@@ -56,9 +56,9 @@ class State:
         v.setdefault("post_created", time.time())
         self.set_status(video_id, status, **fields)
 
-    def count_recent_posts(self, days: float) -> int:
-        """최근 days 일 안에 생성된 글(초안 포함) 수. WordPress 를 못 쓸 때의 대체 집계."""
-        since = time.time() - days * 86400
+    def count_recent_posts(self, days: float = 0, since_ts: float | None = None) -> int:
+        """기준 시각 이후 생성된 글(초안 포함) 수. WordPress 를 못 쓸 때의 대체 집계."""
+        since = since_ts if since_ts is not None else time.time() - days * 86400
         return sum(1 for v in self.data["videos"].values() if v.get("post_created", 0) >= since)
 
     # --- editor notes ---

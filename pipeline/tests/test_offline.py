@@ -150,7 +150,7 @@ def test_state_notes_and_quota():
         st.set_note("v1", "  메모  ")
         assert State(Path(td) / "state.json").note_for("v1") == "메모"
         left, why = quota_left(settings, st, None)
-        assert left == 1 and "7일 0/2" in why and "24시간 0/1" in why
+        assert left == 1 and "이번 주 0/2" in why and "오늘 0/1" in why
         st.mark_post_created("v1", "drafted", wp_post_id=1)
         assert st.count_recent_posts(7) == 1 and st.count_recent_posts(1) == 1
         assert quota_left(settings, st, None)[0] == 0
@@ -158,8 +158,12 @@ def test_state_notes_and_quota():
         assert st.count_recent_posts(7) == 1
 
         class FakeWP:
-            def count_recent_posts(self, days, category_id=0, marker="ytblog"):
-                return 5 if days == 7 else 0
+            def __init__(self):
+                self.n = 0
+
+            def count_recent_posts(self, days=0, category_id=0, marker="ytblog", since=None):
+                self.n += 1                      # 첫 호출 = 이번 주, 둘째 호출 = 오늘
+                return 5 if self.n % 2 == 1 else 0
         assert quota_left(settings, st, FakeWP())[0] == 0  # 주간 상한 초과면 일간 여유가 있어도 0
         os.environ["MAX_POSTS_PER_WEEK"] = "0"; os.environ["MAX_POSTS_PER_DAY"] = "0"
         assert quota_left(Settings.load(), st, FakeWP())[0] > 100  # 0 = 무제한

@@ -241,10 +241,18 @@ def _wp_client(settings: Settings, needed: bool):
 
 
 def _recent_counts(settings: Settings, state: State, wp) -> tuple[int, int]:
-    """(최근 7일 생성 글 수, 최근 24시간 생성 글 수). WordPress 가 있으면 거기서, 없으면 상태 파일에서."""
+    """(이번 주 글 수, 오늘 글 수) — 한국 시간 달력 기준. 주는 월요일 0시에 시작한다.
+
+    '최근 24시간/7일' 로 세면 매일 같은 시각에 도는 작업이 전날 글(23시간 57분 전)에 막혀 격일 발행이 된다.
+    """
+    from datetime import datetime, timedelta, timezone
+    kst = timezone(timedelta(hours=9))
+    now = datetime.now(kst)
+    day0 = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week0 = day0 - timedelta(days=day0.weekday())
     if wp is not None:
-        return wp.count_recent_posts(7), wp.count_recent_posts(1)
-    return state.count_recent_posts(7), state.count_recent_posts(1)
+        return wp.count_recent_posts(since=week0), wp.count_recent_posts(since=day0)
+    return state.count_recent_posts(since_ts=week0.timestamp()), state.count_recent_posts(since_ts=day0.timestamp())
 
 
 def quota_left(settings: Settings, state: State, wp) -> tuple[int, str]:
@@ -254,10 +262,10 @@ def quota_left(settings: Settings, state: State, wp) -> tuple[int, str]:
     why = []
     if settings.max_posts_per_week:
         left = min(left, settings.max_posts_per_week - week)
-        why.append(f"7일 {week}/{settings.max_posts_per_week}")
+        why.append(f"이번 주 {week}/{settings.max_posts_per_week}")
     if settings.max_posts_per_day:
         left = min(left, settings.max_posts_per_day - day)
-        why.append(f"24시간 {day}/{settings.max_posts_per_day}")
+        why.append(f"오늘 {day}/{settings.max_posts_per_day}")
     return max(0, left), ", ".join(why) or "상한 없음"
 
 
@@ -449,6 +457,12 @@ def cmd_queue(args, settings: Settings) -> int:
         for it in items:
             log(f"{it.get('_id') or it.get('id')}  {it.get('vid')}  {it.get('url')}  {('· ' + it['note']) if it.get('note') else ''}")
         return 0
+    if args.action == "add":
+        import time as _t
+        vid = parse_video_id(args.doc_id)
+        doc = {"url": f"https://www.youtube.com/watch?v={vid}", "vid": vid, "note": " ".join([args.value] + args.rest).strip(),
+               "status": "pending", "ts": int(_t.time() * 1000), "by": "auto"}
+        out = q._run("add", q.COL, json.dumps(doc, ensure_ascii=False)); log(f"대기열 추가: {vid} {out.strip()[:80]}"); return 0
     if args.action == "start":
         q.mark(args.doc_id, "working"); log(f"작업 중: {args.doc_id}"); return 0
     if args.action == "done":
@@ -492,6 +506,33 @@ def cmd_threads(args, settings: Settings) -> int:
     else:
         pid = th.post("지식채우기 연결 테스트예요. 30분짜리 강연을 5분 글로 정리하는 블로그, jisikfill.com")
         log(f"게시 완료: id {pid}")
+    return 0
+
+
+def cmd_pick(args, settings: Settings) -> int:
+    """대기열이 비었을 때: auto_pick 채널의 최근 영상 중 아직 다루지 않은 후보를 보여 준다(고르는 건 실행하는 쪽이)."""
+    channels = [c for c in load_channels() if c.enabled and c.auto_pick]
+    if not channels:
+        log("auto_pick 채널이 없습니다. channels.json 에 채널을 추가하고 auto_pick=true 로 두세요."); return 0
+    state = State(settings.data_dir / "state.json")
+    _resolve_all(settings, channels, state)
+    queued = set()
+    try:
+        from . import queue as q
+        queued = {it.get("vid") for it in q._run and json.loads(q._run("list", q.COL, "200") or "[]")}
+    except Exception:  # noqa: BLE001
+        pass
+    for ch in channels:
+        log(f"\n## {ch.title or ch.handle}" + (f"  (기준: {ch.pick_note})" if ch.pick_note else ""))
+        for v in list_recent_videos(ch.channel_id, settings.yt_proxy_url):
+            st = state.data["videos"].get(v.video_id, {}).get("status", "")
+            if st or v.video_id in queued:
+                continue
+            if v.duration_sec and not (ch.pick_min_sec <= v.duration_sec <= ch.pick_max_sec):
+                continue
+            mins = f"{v.duration_sec // 60}분" if v.duration_sec else "길이?"
+            log(f"  {v.video_id}  {mins:>5}  {v.published[:12]:12s}  {v.title}")
+    log("\n고른 영상은 `python -m ytblog queue add <URL> \"제목\"` 으로 대기열에 넣은 뒤 평소 순서대로 처리합니다.")
     return 0
 
 
@@ -540,7 +581,8 @@ def main(argv=None) -> int:
     for name in ("threads-auth", "threads-refresh", "threads-test"):
         sub.add_parser(name, help="스레드 연동")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
-    qu.add_argument("action", nargs="?", default="list", choices=["list", "start", "done", "fail"])
+    qu.add_argument("action", nargs="?", default="list", choices=["list", "add", "start", "done", "fail"])
+    sub.add_parser("pick", help="대기열이 비었을 때 auto_pick 채널에서 후보 영상 보기")
     qu.add_argument("doc_id", nargs="?", default=""); qu.add_argument("value", nargs="?", default=""); qu.add_argument("rest", nargs="*")
     args = p.parse_args(argv)
     settings = Settings.load()
@@ -548,7 +590,7 @@ def main(argv=None) -> int:
             "fixture": cmd_fixture, "wp-check": cmd_wp_check,
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
-            "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats,
+            "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick,
             "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads}[args.cmd](args, settings)
 
 
