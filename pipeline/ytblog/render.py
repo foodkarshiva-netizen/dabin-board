@@ -85,12 +85,21 @@ def replace_note_block(html_text: str, note: str, is_draft: bool = False) -> str
 
 def figure(img: CardImage, url_map: dict[str, str], id_map: dict[str, int] | None = None) -> str:
     """이미지 블록. 블록 주석(<!-- wp:image -->)이 있어야 워드프레스가 이미지 블록 CSS(max-width:100%)를 싣는다."""
-    src = url_map.get(str(img.path), str(img.path))
-    mid = (id_map or {}).get(str(img.path), 0)
-    attrs = f'{{"id":{mid},"sizeSlug":"full","linkDestination":"none"}}' if mid else '{"sizeSlug":"full","linkDestination":"none"}'
-    cls = f" wp-image-{mid}" if mid else ""
-    return (f"<!-- wp:image {attrs} -->\n<figure class=\"wp-block-image size-full\">"
-            f"<img src=\"{_e(src)}\" alt=\"{_e(img.alt)}\" class=\"{cls.strip()}\" loading=\"lazy\"/></figure>\n<!-- /wp:image -->")
+    def block(path, extra_cls: str) -> str:
+        src = url_map.get(str(path), str(path))
+        mid = (id_map or {}).get(str(path), 0)
+        cn = f',"className":"{extra_cls}"' if extra_cls else ""
+        attrs = (f'{{"id":{mid},"sizeSlug":"full","linkDestination":"none"{cn}}}' if mid
+                 else f'{{"sizeSlug":"full","linkDestination":"none"{cn}}}')
+        icls = f"wp-image-{mid}" if mid else ""
+        fcls = ("wp-block-image size-full " + extra_cls).strip()
+        return (f"<!-- wp:image {attrs} -->\n<figure class=\"{fcls}\">"
+                f"<img src=\"{_e(src)}\" alt=\"{_e(img.alt)}\" class=\"{icls}\" loading=\"lazy\"/></figure>\n<!-- /wp:image -->")
+
+    m = getattr(img, "mobile_path", None)
+    if m is not None and str(m) in url_map:      # 화면 폭에 따라 CSS(.yt-d/.yt-m)로 한 장만 보인다
+        return block(img.path, "yt-d") + "\n\n" + block(m, "yt-m")
+    return block(img.path, "")
 
 
 def P(inner: str, cls: str = "") -> str:

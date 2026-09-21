@@ -101,11 +101,17 @@ def flow(data: dict) -> str:
     return f"<div class='dg dg-vflow'>{''.join(parts)}</div>"
 
 
-def cycle(data: dict) -> str:
+def cycle(data: dict, mobile: bool = False) -> str:
     steps = [str(s) for s in data.get("steps", []) if str(s).strip()]
     n = len(steps)
     if n < 2:
         return ""
+    if mobile:  # 좁은 화면: 세로 흐름 + '다시 처음으로' 표시
+        parts = []
+        for i, s in enumerate(steps):
+            parts.append(f"<div class='box'>{_e(s)}</div><div class='arr'>↓</div>")
+        parts.append(f"<div class='box last'>↺ 다시 \"{_e(steps[0])}\"(으)로</div>")
+        return f"<div class='dg dg-vflow'>{''.join(parts)}</div>"
     W, H = 1130, 620
     cx, cy, r = W / 2, H / 2, 215
     bw, bh = 300, 110
@@ -152,13 +158,13 @@ def compare(data: dict) -> str:
     return f"<div class='dg dg-cmp'>{''.join(rows)}</div>"
 
 
-def trend(data: dict) -> str:
+def trend(data: dict, mobile: bool = False) -> str:
     pts = data.get("points", [])
     unit = data.get("unit", "")
     if len(pts) < 2:
         return ""
-    W, H = 1130, 560
-    padL, padR, padT, padB = 40, 40, 90, 90
+    W, H = (632, 560) if mobile else (1130, 560)
+    padL, padR, padT, padB = (10, 10, 90, 90) if mobile else (40, 40, 90, 90)
     vals = [float(p.get("value", 0)) for p in pts]
     lo, hi = min(vals), max(vals)
     span = (hi - lo) or 1
@@ -220,8 +226,10 @@ RENDERERS = {"flow": flow, "cycle": cycle, "compare": compare, "trend": trend,
              "factors": factors, "versus": versus, "steps": steps}
 
 
-def diagram_html(dtype: str, data: dict) -> str:
+def diagram_html(dtype: str, data: dict, mobile: bool = False) -> str:
     fn = RENDERERS.get(dtype)
     if not fn:
         raise ValueError(f"지원하지 않는 도식 type: {dtype}")
+    if mobile and dtype in ("cycle", "trend"):
+        return fn(data or {}, mobile=True)
     return fn(data or {})

@@ -156,10 +156,21 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
                 id_map[str(c.path)] = mid
                 if c.kind == "hero":
                     featured = mid
+                mp = getattr(c, "mobile_path", None)
+                if mp is not None and mp.exists():
+                    m_id, m_url = wp.upload_media(mp, c.alt, f"{meta.title} - {c.kind} (모바일)",
+                                                  filename=f"{safe_vid}-{mp.stem}-{stamp}{mp.suffix}")
+                    url_map[str(mp)] = m_url
+                    id_map[str(mp)] = m_id
         except Exception as e:  # noqa: BLE001
             state.mark_failed(vid, "upload", str(e))
             raise
     note = state.note_for(vid)
+    if not url_map:   # 로컬 미리보기: 데스크톱·모바일 파일을 상대 경로로
+        for c in cards:
+            url_map[str(c.path)] = f"images/{c.path.name}"
+            if getattr(c, "mobile_path", None) is not None:
+                url_map[str(c.mobile_path)] = f"images/{c.mobile_path.name}"
     html = build_post_html(summary, meta, cards, url_map or {str(c.path): f"images/{c.path.name}" for c in cards},
                            settings.blog_name, id_map=id_map, editor_note=note, note_is_draft=False,
                            show_timestamps=channel.show_timestamps, embed_video=channel.embed_video,

@@ -23,12 +23,14 @@ from pathlib import Path
 
 from .config import PIPELINE_DIR
 from .diagrams import DIAGRAM_CSS, diagram_html
+from .thumbs import THUMB_CSS, thumb_html
 from .discover import VideoMeta
 from .schema import Summary
 
 RENDER_JS = PIPELINE_DIR / "render" / "render_card.js"
 FONT_DIR = PIPELINE_DIR / "render" / "fonts"
 W = 1290                      # 본문 645px 의 2배
+MW = 720                      # 모바일용: 같은 글자 크기를 좁은 폭에 그려, 휴대폰(약 350px)에서도 글자가 본문만큼 보이게
 H_STD = 726                   # 16:9
 TS_RE = re.compile(r"\s*\[(?:\d{1,2}:)?\d{1,2}:\d{2}\]")
 
@@ -40,6 +42,28 @@ class CardImage:
     alt: str
     caption: str
     section_index: int = -1
+    mobile_path: Path | None = None
+
+
+MOBILE_CSS = """
+.card.m{padding:48px 44px 56px}
+.card.m .label{font-size:28px}
+.card.m .title{font-size:50px}.card.m .title.sm{font-size:46px}
+.card.m ul.pts li{font-size:38px}
+.card.m ol.tk li{font-size:36px}
+.card.m .grid{grid-template-columns:repeat(2,1fr);gap:16px}
+.card.m .num{padding:24px 20px}
+.card.m .num .v{font-size:44px}.card.m .num .v.m{font-size:36px}.card.m .num .v.s{font-size:30px}
+.card.m .dg-flow{flex-direction:column}
+.card.m .dg-flow .arr{flex:0 0 52px;transform:rotate(90deg)}
+.card.m .dg-flow .box{font-size:36px;padding:22px}
+.card.m .dg-cmp .row{grid-template-columns:1fr 140px;row-gap:8px}
+.card.m .dg-cmp .lab{grid-column:1 / -1}
+.card.m .dg-fac .row{grid-template-columns:1fr;gap:4px}
+.card.m .dg-fac .a{transform:rotate(90deg);height:46px;line-height:46px}
+.card.m .dg-vs{grid-template-columns:1fr}
+.card.m svg.dg{max-width:100%;height:auto}
+"""
 
 
 def _font_css() -> str:
@@ -110,7 +134,7 @@ ol.tk .n{flex:0 0 56px;height:56px;border-radius:14px;background:#1f2937;color:#
 
 
 def _wrap(inner: str, cls: str) -> str:
-    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{_font_css()}{BASE_CSS}{DIAGRAM_CSS}</style></head>"
+    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{_font_css()}{BASE_CSS}{DIAGRAM_CSS}{THUMB_CSS}{MOBILE_CSS}</style></head>"
             f"<body><div class='card {cls}'>{inner}</div></body></html>")
 
 
@@ -181,15 +205,37 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
     src = _source_line(meta, blog_name, card_footer)
     pad = "130px" if src else "76px"
 
-    def add(kind: str, inner: str, cls: str, h: int, alt: str, caption: str, idx: int = -1, suffix: str = ""):
+    def add(kind: str, inner: str, cls: str, h: int, alt: str, caption: str, idx: int = -1, suffix: str = "",
+            inner_m: str | None = None, mobile: bool = True):
         name = kind + (f"-{idx + 1}" if idx >= 0 else "") + suffix
         path = out_dir / f"{name}.png"
         jobs.append({"html": _wrap(inner + src, cls).replace("padding:72px 80px 130px", f"padding:72px 80px {pad}"), "width": W, "height": h, "out": str(path)})
-        cards.append(CardImage(kind=kind, path=path, alt=alt, caption=caption, section_index=idx))
+        m_path = None
+        if mobile:  # 모바일용: 폭 720 에 같은 글자 크기 → 휴대폰에서 글자가 약 2배로 보인다
+            m_path = out_dir / f"{name}-m.png"
+            jobs.append({"html": _wrap((inner_m if inner_m is not None else inner) + src, cls + " m"), "width": MW, "height": 360, "out": str(m_path)})
+        cards.append(CardImage(kind=kind, path=path, alt=alt, caption=caption, section_index=idx, mobile_path=m_path))
 
-    # 1) 대표 이미지 = 썸네일. 본문과 같은 말을 반복하지 않고, 궁금증을 남기는 후킹 문구 + 큰 숫자.
-    add("hero", _thumb_html(summary), "thumb " + _theme_for(getattr(syn, "category", "")), H_STD,
-        alt=f"{syn.seo.title or meta.title} 썸네일", caption="")
+    # 1) 대표 이미지 = 썸네일. 글마다 색·무늬·구도·아이콘이 달라진다(thumbs.py).
+    hist_path = PIPELINE_DIR / "data" / "thumb_history.json"
+    try:
+        hist = json.loads(hist_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        hist = {}
+    if summary.video_id in hist and not getattr(syn, "thumb_palette", ""):
+        try:
+            syn.thumb_palette = hist[summary.video_id]      # 같은 글은 다시 그려도 같은 색
+        except Exception:  # noqa: BLE001
+            pass
+    recent = [p for v, p in list(hist.items())[-3:] if v != summary.video_id]
+    t_inner, t_cls, t_pal = thumb_html(summary, used_palettes=recent)
+    hist.pop(summary.video_id, None); hist[summary.video_id] = t_pal
+    try:
+        hist_path.parent.mkdir(parents=True, exist_ok=True)
+        hist_path.write_text(json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+    add("hero", t_inner, t_cls, H_STD, alt=f"{syn.seo.title or meta.title} 썸네일", caption="", mobile=False)
 
     # 2) 핵심 포인트
     tk = syn.key_takeaways[:5]
@@ -206,11 +252,13 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
         body = diagram_html(dg.type, dg.data)
         if not body:
             continue
+        body_m = diagram_html(dg.type, dg.data, mobile=True)
         label = summary.sections[dg.section_index].title if 0 <= dg.section_index < len(summary.sections) else "핵심 정리"
         cap = f"<div class='dg-cap'>{_e(_sent(dg.caption, 400))}</div>" if dg.caption else ""
         add("diagram",
             f"<div class='label'>{_e(_clip(label, 40))}</div><div class='title sm'>{_e(dg.title)}</div>{body}{cap}",
-            "light", 520, alt=f"{dg.title} 도식", caption=dg.title, idx=dg.section_index, suffix=f"-d{k + 1}")
+            "light", 520, alt=f"{dg.title} 도식", caption=dg.title, idx=dg.section_index, suffix=f"-d{k + 1}",
+            inner_m=f"<div class='label'>{_e(_clip(label, 40))}</div><div class='title sm'>{_e(dg.title)}</div>{body_m}{cap}")
         has_diagram.add(dg.section_index)
 
     # 4) 구간 글자 카드: 도식이 없는 구간만 (핵심 한 줄 + 짧은 항목 최대 3개)

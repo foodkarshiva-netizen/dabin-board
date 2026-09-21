@@ -75,6 +75,10 @@ class Synthesis(BaseModel):
     hook: str = ""                   # 대표 이미지(썸네일)용 후킹 문구. 제목·한줄요약과 다른 말로, 궁금증을 남기는 24자 안팎. **강조** 1곳
     hook_value: str = ""             # 썸네일에 크게 넣을 숫자/키워드 (예: "1,350원", "9,200만"). 없으면 빈 문자열
     hook_label: str = ""             # 그 숫자의 설명 한 줄 (예: "달러 환율")
+    hook_icon: str = ""              # 썸네일 아이콘: chart coin globe bulb book atom pulse clock gear chat target mountain robot scale (비면 자동)
+    hook_photo: str = ""             # (선택) 배경 사진 영어 검색어. PEXELS_API_KEY 가 있을 때만 사용
+    thumb_palette: str = ""          # (선택) ink forest cocoa plum terra olive wine cream amber. 비면 최근 3편과 겹치지 않게 자동
+    thumb_layout: str = ""           # (선택) split | bignum | band. 비면 자동
     seo: SEO
 
 
