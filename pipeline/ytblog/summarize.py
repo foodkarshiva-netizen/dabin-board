@@ -241,7 +241,8 @@ def synthesize(llm, settings: Settings, system: list[dict], sections: list[Secti
         "- study_questions: 독자가 내용을 이해했는지 스스로 점검할 질문 3~5개. 영상 내용으로 답할 수 있는 것만.\n"
         "- (도식은 별도 단계에서 만듭니다. 여기서는 만들지 않습니다.)\n"
         + (f"- category: 이 글이 속할 카테고리 하나. 반드시 다음 중에서 고릅니다: {', '.join(channel.categories)}.\n" if channel.categories else "")
-        + "- discussion_question: 글 끝에 넣을 댓글 유도 질문 한 줄. 독자의 상황을 묻는 열린 질문('여러분은 …?').\n"
+        + "- hook: 목록 썸네일에 크게 들어갈 후킹 문구(24자 안팎). 제목·한줄요약을 되풀이하지 말고, 통념을 뒤집거나 궁금증을 남기는 질문·반전으로. 핵심 구절 한 곳을 **별표**로 강조. 과장·거짓 금지, 영상 내용 안에서만.\n"
+        + "- hook_value / hook_label: 썸네일에 크게 넣을 영상 속 숫자 하나와 그 설명(예: '1,350원' / '달러 환율'). 마땅한 숫자가 없으면 둘 다 빈 문자열.\n"
         + f"- seo: 검색용 제목은 32자 이내, 핵심 검색어를 맨 앞에, 끝에 '(강연자 이름)'. 원 영상 제목 복사 금지. 영문 소문자·하이픈 slug, "
         f"메타 설명(120자 내외), 태그 5~8개(채널 관련 태그 '{channel.blog_category}' 포함)."
     )

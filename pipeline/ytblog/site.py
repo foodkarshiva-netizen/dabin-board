@@ -150,6 +150,30 @@ def update_banner(settings: Settings, head: str = "", sub: str = "") -> str:
     return sub
 
 
+def site_stats(settings: Settings, board_js: Path | None = None) -> dict:
+    """Koko Analytics 에서 오늘·7일·30일 방문자/조회수와 7일 인기 글을 읽는다. board_js 가 있으면 Firestore yt_stats/latest 에 기록."""
+    wp = WordPressClient(settings.wp_url, settings.wp_user, settings.wp_app_password)
+    base = settings.wp_url + "/wp-json/koko-analytics/v1"
+    today = datetime.now(KST).date()
+
+    def totals(days: int) -> dict:
+        start = today - timedelta(days=days - 1)
+        r = wp.s.get(f"{base}/totals", params={"start_date": start.isoformat(), "end_date": today.isoformat()}, timeout=60)
+        j = r.json() if r.ok else {}
+        return {"visitors": int(j.get("visitors") or 0), "pageviews": int(j.get("pageviews") or 0)}
+
+    out = {"today": totals(1), "d7": totals(7), "d30": totals(30), "top": [], "updated": int(time.time() * 1000)}
+    r = wp.s.get(f"{base}/posts", params={"start_date": (today - timedelta(days=6)).isoformat(), "end_date": today.isoformat(), "limit": 5}, timeout=60)
+    for it in (r.json() if r.ok else [])[:5]:
+        out["top"].append({"title": html.unescape(str(it.get("post_title") or it.get("title") or ""))[:60],
+                           "url": it.get("post_permalink") or it.get("permalink") or "",
+                           "pageviews": int(it.get("pageviews") or 0), "visitors": int(it.get("visitors") or 0)})
+    if board_js and board_js.exists():
+        subprocess.run(["node", str(board_js), "set", "yt_stats", "latest", json.dumps(out, ensure_ascii=False)], check=True,
+                       capture_output=True, text=True, encoding="utf-8", timeout=120)
+    return out
+
+
 def weekly_report(settings: Settings, board_js: Path, post_to_board: bool = True) -> str:
     wp = WordPressClient(settings.wp_url, settings.wp_user, settings.wp_app_password)
     posts = recent_posts(wp, 7)
@@ -166,6 +190,13 @@ def weekly_report(settings: Settings, board_js: Path, post_to_board: bool = True
              f"· 발행 {len(posts)}편 · 댓글 {len(comments)}개 · 대기열 {pending}편"]
     for p in posts[:7]:
         lines.append(f"  - {html.unescape(p['title']['rendered'])}  {p['link']}")
+    try:
+        stt = site_stats(settings, board_js if post_to_board else None)
+        lines.append(f"· 방문: 7일 방문자 {stt['d7']['visitors']}명 · 조회 {stt['d7']['pageviews']}회 (30일 {stt['d30']['visitors']}명 · {stt['d30']['pageviews']}회)")
+        for t in stt["top"][:3]:
+            lines.append(f"  - 인기: {t['title']} ({t['pageviews']}회)")
+    except Exception as e:  # noqa: BLE001
+        lines.append(f"· 방문 통계 실패: {str(e)[:80]}")
     if not posts:
         lines.append("  - 지난주 발행 없음. 대기열에 링크를 올려 주세요.")
     try:

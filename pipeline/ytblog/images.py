@@ -80,6 +80,30 @@ ol.tk .n{flex:0 0 56px;height:56px;border-radius:14px;background:#1f2937;color:#
 .num .v.s{font-size:32px;line-height:1.3}
 .num .l{font-size:28px;color:#52606d;margin-top:14px;line-height:1.35;word-break:keep-all}
 .gl{margin-top:34px;display:flex;flex-direction:column;gap:40px}
+.card.thumb{padding:64px 76px;color:#fff;justify-content:space-between;background:#1f2937}
+.card.thumb.t-ink{background:linear-gradient(135deg,#111827 0%,#1f2937 60%,#374151 100%)}
+.card.thumb.t-green{background:linear-gradient(135deg,#052e2b 0%,#134e4a 60%,#1f6f66 100%)}
+.card.thumb.t-brown{background:linear-gradient(135deg,#2a1a10 0%,#4a2c17 60%,#6b4423 100%)}
+.card.thumb.t-plum{background:linear-gradient(135deg,#1f1433 0%,#3b2560 60%,#55378a 100%)}
+.card.thumb.t-terra{background:linear-gradient(135deg,#3a1408 0%,#7c2d12 60%,#9a3c18 100%)}
+.card.thumb.t-olive{background:linear-gradient(135deg,#1a2209 0%,#3f4d17 60%,#566b20 100%)}
+.th-top{display:flex;justify-content:space-between;align-items:center}
+.th-top .cat{background:#fbbf24;color:#111827;font-size:30px;font-weight:700;padding:10px 24px;border-radius:999px}
+.th-top .min{font-size:30px;font-weight:700;color:rgba(255,255,255,.8);border:3px solid rgba(255,255,255,.45);padding:7px 22px;border-radius:999px}
+.th-body{display:flex;align-items:center;gap:48px;flex:1;margin-top:20px}
+.hook{flex:1;font-weight:700;line-height:1.22;letter-spacing:-2px;word-break:keep-all}
+.hook.xl{font-size:112px}.hook.lg{font-size:94px}.hook.md{font-size:78px}
+.hook .hl{color:#fbbf24}
+.stat{flex:0 0 360px;background:rgba(255,255,255,.1);border:3px solid rgba(255,255,255,.25);border-radius:32px;padding:34px 24px;text-align:center}
+.stat .sv{font-size:92px;font-weight:700;color:#fbbf24;line-height:1.1;letter-spacing:-2px;word-break:keep-all}
+.stat .sv.sm{font-size:66px}
+.stat .sl{font-size:28px;color:rgba(255,255,255,.85);margin-top:14px;line-height:1.35;word-break:keep-all}
+.deco{flex:0 0 300px;height:300px;position:relative}
+.deco i{position:absolute;border-radius:50%}
+.deco i:nth-child(1){width:240px;height:240px;right:0;top:0;background:#fbbf24;opacity:.95}
+.deco i:nth-child(2){width:150px;height:150px;left:0;bottom:0;background:rgba(255,255,255,.18)}
+.deco i:nth-child(3){width:90px;height:90px;right:30px;bottom:10px;background:#b45309}
+.th-foot{font-size:26px;color:rgba(255,255,255,.6)}
 .gl .t{font-size:42px;font-weight:700;color:#b45309;line-height:1.3}
 .gl .d{font-size:34px;line-height:1.45;color:#3d4a5c;margin-top:6px;word-break:keep-all}
 """
@@ -120,6 +144,33 @@ def _first_sentence(s: str, n: int) -> str:
     return _clip(m.group(1) if m else s, n)
 
 
+THEMES = {"경제·투자": "t-ink", "건강·의학": "t-green", "역사·인문": "t-brown", "과학·기술": "t-plum",
+          "심리·자기계발": "t-terra", "사회·문화": "t-olive"}
+
+
+def _theme_for(category: str) -> str:
+    return THEMES.get(category or "", "t-ink")
+
+
+def _hl(text: str) -> str:
+    """escape 후 **강조** → 형광 하이라이트 span."""
+    return re.sub(r"\*\*(.+?)\*\*", lambda m: f"<span class='hl'>{m.group(1)}</span>", _e(text))
+
+
+def _thumb_html(summary: Summary) -> str:
+    syn = summary.synthesis
+    hook = (getattr(syn, "hook", "") or "").strip() or (syn.seo.title or "")
+    val = (getattr(syn, "hook_value", "") or "").strip()
+    lab = (getattr(syn, "hook_label", "") or "").strip()
+    cat = (getattr(syn, "category", "") or "").strip()
+    size = "xl" if len(hook.replace("*", "")) <= 18 else ("lg" if len(hook.replace("*", "")) <= 28 else "md")
+    stat = (f"<div class='stat'><div class='sv {'sm' if len(val) > 7 else ''}'>{_e(val)}</div><div class='sl'>{_e(lab)}</div></div>"
+            if val else "<div class='deco'><i></i><i></i><i></i></div>")
+    return (f"<div class='th-top'><span class='cat'>{_e(cat or '핵심 정리')}</span><span class='min'>5분 정리</span></div>"
+            f"<div class='th-body'><div class='hook {size}'>{_hl(hook)}</div>{stat}</div>"
+            f"<div class='th-foot'>지식채우기 · jisikfill.com</div>")
+
+
 def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path,
                 include_glossary: bool = False, include_questions: bool = False, include_numbers: bool = True,
                 card_footer: str = "none") -> list[CardImage]:
@@ -136,11 +187,9 @@ def build_cards(summary: Summary, meta: VideoMeta, blog_name: str, out_dir: Path
         jobs.append({"html": _wrap(inner + src, cls).replace("padding:72px 80px 130px", f"padding:72px 80px {pad}"), "width": W, "height": h, "out": str(path)})
         cards.append(CardImage(kind=kind, path=path, alt=alt, caption=caption, section_index=idx))
 
-    # 1) 대표 이미지
-    add("hero",
-        f"<div class='label'>핵심 정리</div><div class='title'>{_e(_clip(syn.seo.title or meta.title, 70))}</div>"
-        f"<div class='sub'>{_e(_clip(syn.one_liner, 160))}</div>",
-        "dark", H_STD, alt=f"{meta.title} 핵심 정리 대표 이미지", caption="")
+    # 1) 대표 이미지 = 썸네일. 본문과 같은 말을 반복하지 않고, 궁금증을 남기는 후킹 문구 + 큰 숫자.
+    add("hero", _thumb_html(summary), "thumb " + _theme_for(getattr(syn, "category", "")), H_STD,
+        alt=f"{syn.seo.title or meta.title} 썸네일", caption="")
 
     # 2) 핵심 포인트
     tk = syn.key_takeaways[:5]

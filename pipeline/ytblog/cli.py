@@ -454,6 +454,16 @@ def cmd_banner(args, settings: Settings) -> int:
     return 0
 
 
+def cmd_stats(args, settings: Settings) -> int:
+    from .queue import BOARD_JS
+    from .site import site_stats
+    s = site_stats(settings, BOARD_JS)
+    log(f"오늘 방문자 {s['today']['visitors']}명 · 조회 {s['today']['pageviews']}회 | 7일 {s['d7']['visitors']}명 · {s['d7']['pageviews']}회 | 30일 {s['d30']['visitors']}명 · {s['d30']['pageviews']}회")
+    for t in s["top"]:
+        log(f"  - {t['title']}  {t['pageviews']}회")
+    return 0
+
+
 def cmd_report(args, settings: Settings) -> int:
     from .queue import BOARD_JS
     from .site import weekly_report
@@ -515,6 +525,7 @@ def main(argv=None) -> int:
     fi.add_argument("--queue", default="", help="다빈보드 대기열 문서 id (발행 후 완료 표시)")
     bn = sub.add_parser("banner", help="홈 배너 갱신"); bn.add_argument("head", nargs="?", default=""); bn.add_argument("sub", nargs="?", default="")
     rp = sub.add_parser("report", help="주간 리포트"); rp.add_argument("--no-post", action="store_true", help="보드에 올리지 않고 출력만")
+    sub.add_parser("stats", help="방문자·조회수 집계 (다빈보드 블로그 탭에도 기록)")
     for name in ("threads-auth", "threads-refresh", "threads-test"):
         sub.add_parser(name, help="스레드 연동")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
@@ -526,7 +537,7 @@ def main(argv=None) -> int:
             "fixture": cmd_fixture, "wp-check": cmd_wp_check,
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
-            "banner": cmd_banner, "report": cmd_report,
+            "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats,
             "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads}[args.cmd](args, settings)
 
 
