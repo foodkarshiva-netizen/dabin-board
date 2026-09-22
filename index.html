@@ -52,6 +52,13 @@ nav button.on{color:var(--b)}
 .composer{flex:0 0 auto;display:flex;gap:8px;padding-top:8px;align-items:flex-end;border-top:1px solid var(--line)}
 .composer textarea{flex:1;min-height:46px;max-height:130px;border-radius:12px}
 .composer .btn{height:46px;white-space:nowrap}
+/* 세션오더 입력창 아이콘 버튼 (2026-09-22) — 작게 줄여 입력칸을 넓힘 */
+#p-debate .composer{gap:2px}
+#p-debate .composer textarea{margin-right:4px}
+.composer .btn.ic{width:34px;height:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--mut);border-radius:50%;flex:0 0 auto;margin-bottom:6px}
+.composer .btn.ic:hover{background:rgba(0,0,0,.06);color:var(--ink)}
+.composer .btn.snd{width:38px;height:38px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;flex:0 0 auto;font-size:11px;margin:0 0 4px 2px}
+.composer .btn svg{display:block}
 /* today */
 .todo{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:7px;background:#fff}
 .todo.done{opacity:.5}.todo.done .tt{text-decoration:line-through}
@@ -230,7 +237,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
   <section class="page" id="p-debate">
     <div class="small muted" id="dbPanel" style="padding:4px 2px 6px"></div>
     <div class="chat" id="dchat"><div class="empty">불러오는 중…</div></div>
-    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 — 붙어 있는 세션들이 30분 주기로 확인하고 이어가요"></textarea><button class="btn" onclick="document.getElementById('dfile').click()" title="사진·파일 첨부 — 여러 장 한 번에 (장당 10MB)">📎</button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn" onclick="document.getElementById('dimg').click()" title="사진 여러 장 — 갤러리에서 선택">🖼️</button><input type="file" id="dimg" accept="image/*" multiple style="display:none" onchange="dUpload(this)"><button class="btn p" id="dsend" onclick="sendDMsg()">전송</button></div>
+    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 — 붙어 있는 세션들이 30분 주기로 확인하고 이어가요"></textarea><button class="btn ic" onclick="document.getElementById('dimg').click()" title="사진 첨부 — 여러 장 한 번에" aria-label="사진 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button><input type="file" id="dimg" accept="image/*" multiple style="display:none" onchange="dUpload(this)"><button class="btn ic" onclick="document.getElementById('dfile').click()" title="파일 첨부 (장당 10MB)" aria-label="파일 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn p snd" id="dsend" onclick="sendDMsg()" title="전송" aria-label="전송"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button></div>
   </section>
   <section class="page" id="p-today">
     <div class="rowsb"><h2 class="t" id="todayHd" style="margin:0">오늘</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="prog"></span><button class="btn o sm" id="hideBtn" onclick="toggleHide()">완료 숨기기</button></div></div>
@@ -702,7 +709,7 @@ function dSendFiles(fs){
  if(over.length){alert('장당 10MB 이하만 첨부할 수 있어요 — 제외: '+over.map(function(f){return f.name}).join(', '));fs=fs.filter(function(f){return over.indexOf(f)<0})}
  if(!fs.length)return;
  if(fs.length>10){alert('한 번에 10장까지만 보낼 수 있어요 — 앞 10장만 보냅니다');fs=fs.slice(0,10)}
- var btn=document.getElementById('dsend');var lab=btn?btn.textContent:'';
+ var btn=document.getElementById('dsend');var lab=btn?btn.innerHTML:'';
  if(btn){btn.disabled=true;btn.textContent='0/'+fs.length}
  var metas=[],p=Promise.resolve();
  fs.forEach(function(f,ix){p=p.then(function(){return dShrink(f)}).then(function(g){if(g.size>10*1024*1024)throw new Error(f.name+' — 줄여도 10MB 초과');return dPutFile(g)}).then(function(mt){metas.push(mt);if(btn)btn.textContent=(ix+1)+'/'+fs.length})});
@@ -713,7 +720,7 @@ function dSendFiles(fs){
   if(metas.length>1)doc.files=metas;else doc.file=metas[0];
   return db.collection('debate_chat').add(doc);
  }).catch(function(e){alert('업로드 실패: '+e.message)})
-  .then(function(){if(btn){btn.disabled=false;btn.textContent=lab||'전송'}});
+  .then(function(){if(btn){btn.disabled=false;btn.innerHTML=lab||'전송'}});
 }
 function dScrollBot(){var c=document.getElementById('dchat');if(!c||!c.offsetParent)return;c.scrollTop=c.scrollHeight;requestAnimationFrame(function(){c.scrollTop=c.scrollHeight});}
 function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('debate_chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
