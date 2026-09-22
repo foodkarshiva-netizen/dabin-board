@@ -230,7 +230,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
   <section class="page" id="p-debate">
     <div class="small muted" id="dbPanel" style="padding:4px 2px 6px"></div>
     <div class="chat" id="dchat"><div class="empty">불러오는 중…</div></div>
-    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 — 붙어 있는 세션들이 30분 주기로 확인하고 이어가요"></textarea><button class="btn" onclick="document.getElementById('dfile').click()" title="사진·파일 첨부 — 여러 장 한 번에 (장당 10MB)">📎</button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn p" id="dsend" onclick="sendDMsg()">전송</button></div>
+    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 — 붙어 있는 세션들이 30분 주기로 확인하고 이어가요"></textarea><button class="btn" onclick="document.getElementById('dfile').click()" title="사진·파일 첨부 — 여러 장 한 번에 (장당 10MB)">📎</button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn" onclick="document.getElementById('dimg').click()" title="사진 여러 장 — 갤러리에서 선택">🖼️</button><input type="file" id="dimg" accept="image/*" multiple style="display:none" onchange="dUpload(this)"><button class="btn p" id="dsend" onclick="sendDMsg()">전송</button></div>
   </section>
   <section class="page" id="p-today">
     <div class="rowsb"><h2 class="t" id="todayHd" style="margin:0">오늘</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="prog"></span><button class="btn o sm" id="hideBtn" onclick="toggleHide()">완료 숨기기</button></div></div>
@@ -676,16 +676,36 @@ function dPutFile(f){return new Promise(function(res,rej){
  };
  rd.readAsArrayBuffer(f);
 });}
+/* 폰 사진 압축 (2026-09-22) — 긴 변 1600px·JPEG 0.82로 줄여 업로드 시간·Firestore 쓰기량을 줄인다. 작은 파일·GIF·HEIC·실패 시 원본 그대로 */
+function dCanShrink(f){return /^image\/(jpeg|png|webp)$/i.test(f.type||'')}
+function dShrink(f){
+ if(!dCanShrink(f)||f.size<600*1024)return Promise.resolve(f);
+ return new Promise(function(res){
+  var url=URL.createObjectURL(f),im=new Image();
+  im.onload=function(){try{
+   var s=Math.min(1,1600/Math.max(im.naturalWidth,im.naturalHeight));
+   var c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*s);c.height=Math.round(im.naturalHeight*s);
+   var g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(url);
+   c.toBlob(function(b){
+    if(!b||b.size>=f.size){res(f);return}
+    var nm=f.name.replace(/\.[^.]+$/,'')+'.jpg';
+    try{res(new File([b],nm,{type:'image/jpeg'}))}catch(e){b.name=nm;res(b)}
+   },'image/jpeg',0.82);
+  }catch(e){URL.revokeObjectURL(url);res(f)}};
+  im.onerror=function(){URL.revokeObjectURL(url);res(f)};
+  im.src=url;
+ });
+}
 function dSendFiles(fs){
  if(!fs||!fs.length)return;
- var over=fs.filter(function(f){return f.size>10*1024*1024});
- if(over.length){alert('장당 10MB 이하만 첨부할 수 있어요 — 제외: '+over.map(function(f){return f.name}).join(', '));fs=fs.filter(function(f){return f.size<=10*1024*1024})}
+ var over=fs.filter(function(f){return f.size>10*1024*1024&&!dCanShrink(f)});
+ if(over.length){alert('장당 10MB 이하만 첨부할 수 있어요 — 제외: '+over.map(function(f){return f.name}).join(', '));fs=fs.filter(function(f){return over.indexOf(f)<0})}
  if(!fs.length)return;
  if(fs.length>10){alert('한 번에 10장까지만 보낼 수 있어요 — 앞 10장만 보냅니다');fs=fs.slice(0,10)}
  var btn=document.getElementById('dsend');var lab=btn?btn.textContent:'';
  if(btn){btn.disabled=true;btn.textContent='0/'+fs.length}
  var metas=[],p=Promise.resolve();
- fs.forEach(function(f,ix){p=p.then(function(){return dPutFile(f)}).then(function(mt){metas.push(mt);if(btn)btn.textContent=(ix+1)+'/'+fs.length})});
+ fs.forEach(function(f,ix){p=p.then(function(){return dShrink(f)}).then(function(g){if(g.size>10*1024*1024)throw new Error(f.name+' — 줄여도 10MB 초과');return dPutFile(g)}).then(function(mt){metas.push(mt);if(btn)btn.textContent=(ix+1)+'/'+fs.length})});
  p.then(function(){
   var el=document.getElementById('dmsg');var t=el?el.value.trim():'';if(el){el.value='';el.style.height=''}
   var nImg=metas.filter(function(f){return (f.mime||'').indexOf('image/')===0}).length;
