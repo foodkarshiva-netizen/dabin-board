@@ -162,12 +162,21 @@ def site_stats(settings: Settings, board_js: Path | None = None) -> dict:
         j = r.json() if r.ok else {}
         return {"visitors": int(j.get("visitors") or 0), "pageviews": int(j.get("pageviews") or 0)}
 
-    out = {"today": totals(1), "d7": totals(7), "d30": totals(30), "top": [], "updated": int(time.time() * 1000)}
-    r = wp.s.get(f"{base}/posts", params={"start_date": (today - timedelta(days=6)).isoformat(), "end_date": today.isoformat(), "limit": 5}, timeout=60)
-    for it in (r.json() if r.ok else [])[:5]:
-        out["top"].append({"title": html.unescape(str(it.get("post_title") or it.get("title") or ""))[:60],
-                           "url": it.get("post_permalink") or it.get("permalink") or "",
-                           "pageviews": int(it.get("pageviews") or 0), "visitors": int(it.get("visitors") or 0)})
+    out = {"today": totals(1), "d7": totals(7), "d30": totals(30), "top": [], "posts": [], "updated": int(time.time() * 1000)}
+
+    def per_post(days: int) -> dict:
+        r = wp.s.get(f"{base}/posts", params={"start_date": (today - timedelta(days=days - 1)).isoformat(), "end_date": today.isoformat(), "limit": 100}, timeout=60)
+        rows = r.json() if r.ok else []
+        return {int(it.get("post_id") or 0): it for it in rows if int(it.get("post_id") or 0) > 0}   # 홈·카테고리 같은 글 아닌 경로 제외
+
+    p7, p30 = per_post(7), per_post(30)
+    for pid, it in sorted(p7.items(), key=lambda kv: -int(kv[1].get("pageviews") or 0))[:5]:
+        out["top"].append({"title": html.unescape(str(it.get("post_title") or it.get("label") or ""))[:60],
+                           "url": it.get("post_permalink") or "", "pageviews": int(it.get("pageviews") or 0), "visitors": int(it.get("visitors") or 0)})
+    for p in wp._get("posts", per_page=50, status="publish", orderby="date", order="desc"):
+        st = p30.get(p["id"], {})
+        out["posts"].append({"id": p["id"], "title": html.unescape(p["title"]["rendered"])[:60], "url": p["link"],
+                             "date": (p.get("date") or "")[:10], "pv30": int(st.get("pageviews") or 0)})
     if board_js and board_js.exists():
         subprocess.run(["node", str(board_js), "set", "yt_stats", "latest", json.dumps(out, ensure_ascii=False)], check=True,
                        capture_output=True, text=True, encoding="utf-8", timeout=120)
