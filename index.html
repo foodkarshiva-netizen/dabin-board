@@ -635,7 +635,7 @@ function renderDChat(){
  var c=document.getElementById('dchat');if(!c)return;
  var panel=document.getElementById('dbPanel');
  if(panel){var now=Date.now();var live=DSTATE.slice().sort(function(a,b){return (b.lastTs||0)-(a.lastTs||0)});
-  panel.innerHTML=live.length?('붙은 세션: '+live.map(function(s){var mn=Math.max(0,Math.round((now-(s.lastTs||0))/60000));var ago=mn<60?mn+'분 전':Math.round(mn/60)+'시간 전';return '<b style="color:'+dColor(s._id)+'">'+esc(s.name||s._id)+'</b> <span class="muted"'+(mn>=55?' style="color:#c0392b;font-weight:700"':'')+'>('+ago+')</span> <span style="cursor:pointer" title="깨우기 요청 — 감시 루틴이 15분 안에 대리 사이클 실행" onclick="dWake(\''+s._id+'\')">🔔</span>'}).join(' · ')):'붙은 세션 없음 — 세션에서 debate-chat.js check를 실행하면 여기 표시돼요';}
+  panel.innerHTML=live.length?('붙은 세션: '+live.map(function(s){var mn=Math.max(0,Math.round((now-(s.lastTs||0))/60000));var ago=mn<60?mn+'분 전':Math.round(mn/60)+'시간 전';return '<b style="color:'+dColor(s._id)+'">'+esc(s.name||s._id)+'</b> <span class="muted"'+(mn>=55?' style="color:#c0392b;font-weight:700"':'')+'>('+ago+')</span> <span style="cursor:pointer" title="깨우기 요청 — 감시 루틴이 15분 안에 대리 사이클 실행" onclick="dWake(\''+s._id+'\')">🔔</span>'}).join(' · ')+' · <span class="a" style="cursor:pointer;font-weight:700" onclick="dWakeAll()">📢 전체 호출</span>'):'붙은 세션 없음 — 세션에서 debate-chat.js check를 실행하면 여기 표시돼요';}
  c.innerHTML=DCHAT.length?DCHAT.map(function(m){
   var me=m.who==='me';
   var ctrl=me?'<span class="a" onclick="editDMsg(\''+m.id+'\')">수정</span><span class="a" onclick="delDMsg(\''+m.id+'\')">삭제</span>':'';
@@ -724,8 +724,10 @@ function dSendFiles(fs){
  }).catch(function(e){alert('업로드 실패: '+e.message)})
   .then(function(){if(btn){btn.disabled=false;btn.innerHTML=lab||'전송'}});
 }
-/* 세션 깨우기(2026-09-28): wakeReq 기록 → PC의 debate-wake 예약작업(15분 주기)이 대리 사이클 실행 */
-function dWake(sid){if(!confirm('이 세션을 깨울까요?\n감시 루틴이 15분 안에 새 메시지 확인·발언을 대신 실행해요.'))return;db.collection('debate_state').doc(sid).update({wakeReq:Date.now()}).then(function(){alert('깨우기 요청 완료 — 최대 15분 안에 반응해요')}).catch(function(e){alert('요청 실패: '+e.message)});}
+/* 세션 호출(2026-09-28 호출형 개편): wakeReq 기록 → PC 상주 데몬(15초 폴링)이 원세션을 깨움.
+   깨어난 세션은 즉시 응답 후 5분 간격 1시간 확인, 이후 휴면. */
+function dWake(sid){db.collection('debate_state').doc(sid).update({wakeReq:Date.now()}).then(function(){alert('호출 완료 — 곧(보통 1분 내) 깨어나 확인해요')}).catch(function(e){alert('요청 실패: '+e.message)});}
+function dWakeAll(){if(!confirm('4개 세션을 전부 호출할까요?'))return;var t=Date.now();var p=['s1','s2','s3','s4'].map(function(s){return db.collection('debate_state').doc(s).update({wakeReq:t});});Promise.all(p).then(function(){alert('전체 호출 완료 — 곧 순서대로 깨어나요')}).catch(function(e){alert('요청 실패: '+e.message)});}
 function dScrollBot(){var c=document.getElementById('dchat');if(!c||!c.offsetParent)return;c.scrollTop=c.scrollHeight;requestAnimationFrame(function(){c.scrollTop=c.scrollHeight});}
 function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('debate_chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
 function editDMsg(id){var m=DCHAT.filter(function(x){return x.id===id})[0];if(!m)return;var nv=prompt('메시지 수정',m.text||'');if(nv===null)return;nv=nv.trim();if(!nv){db.collection('debate_chat').doc(id).delete();return}db.collection('debate_chat').doc(id).update({text:nv})}
