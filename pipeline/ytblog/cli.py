@@ -202,6 +202,8 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
         if chosen and channel.categories and chosen not in channel.categories:
             chosen = ""
         cats = wp.category_ids([chosen or channel.blog_category])
+        # 검색 설명(meta description): Yoast SEO 가 설치돼 있으면 글마다 넣는다(네이버 SEO 진단 항목)
+        seo_meta = {"_yoast_wpseo_metadesc": build_excerpt(summary)[:155]}
         tags = wp.tag_ids(list(dict.fromkeys(summary.synthesis.seo.tags + channel.extra_tags)))
         if update_post_id:
             old = wp.get_post(update_post_id)
@@ -209,7 +211,7 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
                 status = "publish"          # 이미 공개된 글은 공개 상태 유지
             post = wp.update_post(update_post_id, title=summary.synthesis.seo.title or meta.title, content=html,
                                   status=status, slug=summary.synthesis.seo.slug, excerpt=build_excerpt(summary),
-                                  categories=cats, tags=tags, featured_media=featured)
+                                  categories=cats, tags=tags, featured_media=featured, meta=seo_meta)
             removed = wp.delete_media_in(old.get("content", {}).get("raw", ""), keep=set(url_map.values()))
             old_feat = old.get("featured_media") or 0
             if old_feat and old_feat != featured:
@@ -222,7 +224,7 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
             post = wp.create_post(
                 title=summary.synthesis.seo.title or meta.title,
                 content=html, status=status, slug=summary.synthesis.seo.slug,
-                excerpt=build_excerpt(summary), categories=cats, tags=tags, featured_media=featured,
+                excerpt=build_excerpt(summary), categories=cats, tags=tags, featured_media=featured, meta=seo_meta,
             )
         final = "published" if status == "publish" else ("needs_review" if summary.needs_review else "drafted")
         state.mark_post_created(vid, final, wp_post_id=post["id"], wp_link=post.get("link", ""))

@@ -115,9 +115,11 @@ class WordPressClient:
 
     def create_post(self, *, title: str, content: str, status: str, slug: str = "",
                     excerpt: str = "", categories: list[int] | None = None,
-                    tags: list[int] | None = None, featured_media: int = 0) -> dict:
+                    tags: list[int] | None = None, featured_media: int = 0, meta: dict | None = None) -> dict:
         payload = {"title": title, "content": content, "status": status, "excerpt": excerpt,
                    "categories": categories or [], "tags": tags or []}
+        if meta:
+            payload["meta"] = meta
         if slug:
             payload["slug"] = slug
         if featured_media:
