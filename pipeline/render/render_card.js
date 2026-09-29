@@ -23,8 +23,11 @@ function loadPlaywright() {
         const c = document.querySelector(".card");
         return c ? Math.ceil(c.scrollHeight) : 0;
       });
-      if (need > job.height) await page.setViewportSize({ width: job.width, height: need });
-      await page.screenshot({ path: job.out, type: "png", fullPage: false });
+      if (need > job.height && !job.fixed) await page.setViewportSize({ width: job.width, height: need });
+      // .jpg 로 끝나면 JPEG (인스타그램은 JPEG 만 받는다)
+      const jpg = /\.jpe?g$/i.test(job.out);
+      await page.screenshot(jpg ? { path: job.out, type: "jpeg", quality: 92, fullPage: false }
+                                : { path: job.out, type: "png", fullPage: false });
       await page.close();
       console.log("rendered", job.out);
     }

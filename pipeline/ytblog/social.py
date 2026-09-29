@@ -150,3 +150,104 @@ def post_to_threads(settings, summary, link: str, wp, state, out_dir: Path, dry_
         return f"스레드 게시 완료 (id {tid}, 링크 답글 달림, 주제 {topic})"
     except Exception as e:  # noqa: BLE001
         return f"스레드 게시 완료 (id {tid}) · 링크 답글 실패: {str(e)[:100]}"
+
+
+# ---------------------------------------------------------------- 인스타그램 캐러셀
+IG_CSS = """
+.ig{position:absolute;inset:0;padding:84px 84px 76px;display:flex;flex-direction:column;color:var(--fg);
+    background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);overflow:hidden}
+.ig::before{content:'';position:absolute;inset:0;z-index:0;opacity:.9}
+.ig.p-dots::before{background-image:radial-gradient(var(--soft) 3px,transparent 3px);background-size:38px 38px}
+.ig.p-grid::before{background-image:linear-gradient(var(--soft) 2px,transparent 2px),linear-gradient(90deg,var(--soft) 2px,transparent 2px);background-size:64px 64px}
+.ig.p-stripes::before{background-image:repeating-linear-gradient(135deg,var(--soft) 0 18px,transparent 18px 60px)}
+.ig.p-rings::before{background-image:radial-gradient(circle at 88% 18%,transparent 0 150px,var(--soft) 150px 170px,transparent 170px 260px,var(--soft) 260px 280px,transparent 280px)}
+.ig>*{position:relative;z-index:1}
+.ig-top{display:flex;justify-content:space-between;align-items:center;font-size:30px;font-weight:700}
+.ig-top .c{background:var(--chipbg);color:var(--chipfg);padding:10px 24px;border-radius:999px}
+.ig-top .n{opacity:.7}
+.ig-body{flex:1;display:flex;flex-direction:column;justify-content:center}
+.ig-no{font-size:150px;font-weight:700;color:var(--ac);line-height:1;letter-spacing:-4px}
+.ig-h{font-size:72px;font-weight:700;line-height:1.28;letter-spacing:-2px;margin-top:40px;word-break:keep-all}
+.ig-p{font-size:40px;line-height:1.6;margin-top:44px;opacity:.9;word-break:keep-all}
+.ig-foot{font-size:30px;font-weight:700;opacity:.75;display:flex;justify-content:space-between}
+.ig-cta .ig-h{font-size:84px}
+.ig-cta .ig-url{margin-top:48px;display:inline-block;background:var(--ac);color:var(--bg1);font-size:52px;font-weight:700;padding:20px 40px;border-radius:24px;align-self:flex-start}
+"""
+
+
+def _ig_style(summary) -> tuple[str, str]:
+    bg1, bg2, fg, ac, chipbg, chipfg, soft = PALETTES[_palette(summary)]
+    return (f"--bg1:{bg1};--bg2:{bg2};--fg:{fg};--ac:{ac};--chipbg:{chipbg};--chipfg:{chipfg};--soft:{soft};",
+            _pick(summary.video_id, "pattern", PATTERNS))
+
+
+def ig_slides(summary, out_dir: Path) -> list[Path]:
+    """표지(스레드 카드와 같은 디자인) + 핵심 한 장씩 + 마지막 안내 장. 1080x1350 JPEG."""
+    syn = summary.synthesis
+    style, pattern = _ig_style(summary)
+    cat = (getattr(syn, "category", "") or "").strip() or "핵심 정리"
+    tks = syn.key_takeaways[:5]
+    total = len(tks) + 2
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cover = out_dir / "ig-01.jpg"
+    threads_card(summary, cover)          # 같은 HTML 을 JPEG 으로 한 번 더 렌더
+    jobs, paths = [], [cover]
+    for i, t in enumerate(tks, 1):
+        head = _plain(t.short or t.text)
+        body = _plain(t.text)
+        sents = re.split(r"(?<=[.!?])\s+", body)
+        hw = set(head.replace(".", "").split())
+        if sents and hw and len(hw & set(sents[0].replace(".", "").split())) / len(hw) >= 0.6:
+            sents = sents[1:]                 # 첫 문장이 제목과 거의 같으면 뺀다
+        body = " ".join(sents).strip()
+        inner = (f"<style>{IG_CSS}</style><div class='ig p-{pattern}' style=\"{style}\">"
+                 f"<div class='ig-top'><span class='c'>{_e(cat)}</span><span class='n'>{i + 1} / {total}</span></div>"
+                 f"<div class='ig-body'><div class='ig-no'>{i:02d}</div><div class='ig-h'>{_e(head)}</div>"
+                 + (f"<div class='ig-p'>{_e(body)}</div>" if body else "") +
+                 f"</div><div class='ig-foot'><span>지식채우기</span><span>밀어서 계속 →</span></div></div>")
+        p = out_dir / f"ig-{i + 1:02d}.jpg"
+        jobs.append({"html": _wrap(inner, "tbcard"), "width": TW, "height": TH, "out": str(p), "fixed": True}); paths.append(p)
+    inner = (f"<style>{IG_CSS}</style><div class='ig ig-cta p-{pattern}' style=\"{style}\">"
+             f"<div class='ig-top'><span class='c'>{_e(cat)}</span><span class='n'>{total} / {total}</span></div>"
+             f"<div class='ig-body'><div class='ig-h'>30분 강연,<br>5분 정리 전문은<br>프로필 링크에서.</div>"
+             f"<div class='ig-url'>jisikfill.com</div></div>"
+             f"<div class='ig-foot'><span>저장해 두고 다시 보기</span><span>지식채우기</span></div></div>")
+    p = out_dir / f"ig-{total:02d}.jpg"
+    jobs.append({"html": _wrap(inner, "tbcard"), "width": TW, "height": TH, "out": str(p), "fixed": True}); paths.append(p)
+    render_jobs(jobs)
+    return paths
+
+
+def ig_caption(summary) -> str:
+    syn = summary.synthesis
+    tags = ["#" + re.sub(r"[^0-9A-Za-z가-힣]", "", t) for t in (syn.seo.tags or [])[:5]]
+    tags = [t for t in dict.fromkeys(tags + ["#지식채우기", "#공부기록"]) if len(t) > 1]
+    return f"{threads_text(summary)}\n\n5분 정리 전문은 프로필 링크 → jisikfill.com\n\n{' '.join(tags)}"
+
+
+def post_to_instagram(settings, summary, link: str, wp, state, out_dir: Path, dry_run: bool = False) -> str:
+    """캐러셀 렌더 → WP 미디어 업로드 → 인스타 게시. state 의 ig_id 로 중복 방지."""
+    from . import instagram as ig
+    vid = summary.video_id
+    v = state.video(vid)
+    if v.get("ig_id") and not dry_run:
+        return f"이미 게시됨 ({v['ig_id']})"
+    slides = ig_slides(summary, out_dir / "images" / "ig")
+    cap = ig_caption(summary)
+    if dry_run:
+        return f"[dry-run] 슬라이드 {len(slides)}장 {slides[0].parent}\n{cap}"
+    if not os.environ.get("IG_ACCESS_TOKEN"):
+        return "건너뜀: IG_ACCESS_TOKEN 없음"
+    ig.refresh_if_needed()
+    safe = re.sub(r"[^A-Za-z0-9]", "", vid).lower() or "v"
+    stamp = time.strftime("%y%m%d%H%M")
+    urls = []
+    for s in slides:
+        _mid, url = wp.upload_media(s, f"{_plain(summary.synthesis.seo.title)} {s.stem}", "인스타 카드",
+                                    filename=f"{safe}-{s.stem}-{stamp}.jpg")
+        urls.append(url)
+    time.sleep(5)
+    mid = ig.post_carousel(urls, cap)
+    v["ig_id"] = mid; v["ig_at"] = time.time()
+    state.save()
+    return f"인스타 게시 완료 (id {mid}, {len(urls)}장)"

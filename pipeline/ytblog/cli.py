@@ -241,6 +241,11 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
                     log(f"  Threads: {post_to_threads(settings, summary, post['link'], wp, state, out_dir)}")
                 except Exception as _e:  # noqa: BLE001
                     log(f"  Threads 실패(무시, threads-post 로 재시도): {str(_e)[:120]}")
+                try:
+                    from .social import post_to_instagram
+                    log(f"  Instagram: {post_to_instagram(settings, summary, post['link'], wp, state, out_dir)}")
+                except Exception as _e:  # noqa: BLE001
+                    log(f"  Instagram 실패(무시, ig-post 로 재시도): {str(_e)[:120]}")
         log(f"  WordPress {status}: {post.get('link', '')}")
         return final
     except Exception as e:  # noqa: BLE001
@@ -528,19 +533,46 @@ def cmd_threads(args, settings: Settings) -> int:
 
 
 def cmd_threads_backlog(args, settings: Settings) -> int:
-    """스레드에 아직 안 올린 공개 글을 오래된 순으로 --max 편만 올린다(기존 글 나눠 소개용)."""
-    from .social import post_to_threads
+    """SNS(스레드·인스타)에 아직 안 올린 공개 글을 플랫폼마다 오래된 순으로 --max 편씩 올린다(기존 글 나눠 소개용)."""
+    import os
+    from .social import post_to_instagram, post_to_threads
     state = State(settings.data_dir / "state.json")
-    todo = sorted(((v.get("post_created", 0), vid) for vid, v in state.data["videos"].items()
-                   if v.get("status") == "published" and v.get("wp_link") and not v.get("threads_id")
-                   and (settings.out_dir / vid / "summary.json").exists()))
-    if not todo:
-        log("남은 글 0편: 스레드에 올릴 기존 글이 없습니다."); return 0
+    platforms = [("스레드", "threads_id", post_to_threads)]
+    if os.environ.get("IG_ACCESS_TOKEN"):
+        platforms.append(("인스타", "ig_id", post_to_instagram))
     wp = None if args.dry_run else _wp_client(settings, True)
-    for _, vid in todo[: args.max]:
+    left = 0
+    for name, key, fn in platforms:
+        todo = sorted(((v.get("post_created", 0), vid) for vid, v in state.data["videos"].items()
+                       if v.get("status") == "published" and v.get("wp_link") and not v.get(key)
+                       and (settings.out_dir / vid / "summary.json").exists()))
+        for _, vid in todo[: args.max]:
+            summary = Summary.model_validate_json((settings.out_dir / vid / "summary.json").read_text(encoding="utf-8"))
+            try:
+                log(f"[{name}] {vid}: {fn(settings, summary, state.video(vid)['wp_link'], wp, state, settings.out_dir / vid, dry_run=args.dry_run)}")
+            except Exception as e:  # noqa: BLE001
+                log(f"[{name}] {vid}: 실패 {str(e)[:150]}")
+        rest = max(len(todo) - (0 if args.dry_run else args.max), 0)
+        log(f"[{name}] 남은 글 {rest}편"); left = max(left, rest)
+    log(f"남은 글 {left}편")
+    return 0
+
+
+def cmd_ig(args, settings: Settings) -> int:
+    from . import instagram as ig
+    if args.cmd == "ig-auth":
+        r = ig.adopt_token()
+        log(f"연결됨: @{r['username']} ({r['account_type']}, user_id {r['user_id']}, 만료까지 {r['expires_days']}일)")
+    elif args.cmd == "ig-refresh":
+        log(ig.refresh_if_needed(force=True))
+    else:
+        from .social import post_to_instagram
+        vid = args.video_id
         summary = Summary.model_validate_json((settings.out_dir / vid / "summary.json").read_text(encoding="utf-8"))
-        log(f"{vid}: {post_to_threads(settings, summary, state.video(vid)['wp_link'], wp, state, settings.out_dir / vid, dry_run=args.dry_run)}")
-    log(f"남은 글 {max(len(todo) - (0 if args.dry_run else args.max), 0)}편")
+        state = State(settings.data_dir / "state.json")
+        link = state.video(vid).get("wp_link", "")
+        wp = None if args.dry_run else _wp_client(settings, True)
+        log(post_to_instagram(settings, summary, link, wp, state, settings.out_dir / vid, dry_run=args.dry_run))
     return 0
 
 
@@ -650,7 +682,9 @@ def main(argv=None) -> int:
     sub.add_parser("stats", help="방문자·조회수 집계 (다빈보드 블로그 탭에도 기록)")
     for name in ("threads-auth", "threads-refresh", "threads-test"):
         sub.add_parser(name, help="스레드 연동")
-    tb = sub.add_parser("threads-backlog", help="안 올린 기존 글을 오래된 순으로 스레드에"); tb.add_argument("--max", type=int, default=1); tb.add_argument("--dry-run", action="store_true")
+    tb = sub.add_parser("threads-backlog", help="안 올린 기존 글을 오래된 순으로 스레드·인스타에"); tb.add_argument("--max", type=int, default=1); tb.add_argument("--dry-run", action="store_true")
+    sub.add_parser("ig-auth", help="인스타 토큰 채택"); sub.add_parser("ig-refresh", help="인스타 토큰 갱신")
+    ip = sub.add_parser("ig-post", help="공개된 글을 인스타 캐러셀로 게시"); ip.add_argument("video_id"); ip.add_argument("--dry-run", action="store_true")
     tp = sub.add_parser("threads-post", help="공개된 글을 스레드에 올리기"); tp.add_argument("video_id"); tp.add_argument("--dry-run", action="store_true")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "add", "start", "done", "fail"])
@@ -665,7 +699,7 @@ def main(argv=None) -> int:
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
             "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick, "indexnow": cmd_indexnow, "demand": cmd_demand,
-            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog}[args.cmd](args, settings)
+            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog, "ig-auth": cmd_ig, "ig-refresh": cmd_ig, "ig-post": cmd_ig}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":

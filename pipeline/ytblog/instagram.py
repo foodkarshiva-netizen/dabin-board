@@ -1,0 +1,103 @@
+"""인스타그램(Instagram API with Instagram Login) 연동: 토큰 채택·갱신, 캐러셀 게시.
+
+페이스북 페이지 없이 프로페셔널(비즈니스/크리에이터) 계정만 있으면 된다.
+
+.env 항목
+  IG_ACCESS_TOKEN     개발자 콘솔 → 이용 사례 → Instagram API → 'Instagram 로그인이 포함된 API 설정' → 계정 추가 → 토큰 생성
+  IG_USER_ID          ig-auth 가 채운다
+  IG_TOKEN_EXPIRES    토큰 만료 시각(epoch). ig-refresh 가 갱신 (60일)
+
+명령
+  python -m ytblog ig-auth       토큰 확인 → 사용자 ID·만료 저장
+  python -m ytblog ig-refresh    장기 토큰 갱신(만료 7일 전이면 자동)
+"""
+from __future__ import annotations
+
+import os
+import time
+
+import requests
+
+from .threads import _save_env
+
+API = "https://graph.instagram.com/v21.0"
+
+
+def _env(k: str, default: str = "") -> str:
+    return os.environ.get(k, default)
+
+
+def adopt_token() -> dict:
+    token = _env("IG_ACCESS_TOKEN").strip()
+    if not token:
+        raise RuntimeError("IG_ACCESS_TOKEN 이 비어 있습니다")
+    r = requests.get(f"{API}/me", params={"fields": "user_id,username,account_type", "access_token": token}, timeout=60)
+    if r.status_code >= 400:
+        raise RuntimeError(f"토큰 확인 실패 {r.status_code}: {r.text[:300]}")
+    me = r.json()
+    expires = int(_env("IG_TOKEN_EXPIRES", "0") or 0) or int(time.time()) + 5184000
+    _save_env(IG_ACCESS_TOKEN=token, IG_USER_ID=str(me.get("user_id") or me["id"]), IG_TOKEN_EXPIRES=str(expires))
+    return {"username": me.get("username"), "user_id": me.get("user_id") or me["id"], "account_type": me.get("account_type"),
+            "expires_days": round((expires - time.time()) / 86400)}
+
+
+def refresh_if_needed(force: bool = False) -> str:
+    token = _env("IG_ACCESS_TOKEN")
+    if not token:
+        return "토큰 없음 (ig-auth 먼저)"
+    exp = int(_env("IG_TOKEN_EXPIRES", "0") or 0)
+    if not force and exp and exp - time.time() > 7 * 86400:
+        return f"갱신 불필요 (만료까지 {round((exp - time.time()) / 86400)}일)"
+    r = requests.get("https://graph.instagram.com/refresh_access_token",
+                     params={"grant_type": "ig_refresh_token", "access_token": token}, timeout=60)
+    if r.status_code >= 400:
+        raise RuntimeError(f"토큰 갱신 실패 {r.status_code}: {r.text[:300]}")
+    j = r.json(); new_exp = int(time.time()) + int(j.get("expires_in", 5184000))
+    _save_env(IG_ACCESS_TOKEN=j["access_token"], IG_TOKEN_EXPIRES=str(new_exp))
+    return f"갱신 완료 (만료까지 {round((new_exp - time.time()) / 86400)}일)"
+
+
+def _create(uid: str, token: str, data: dict) -> str:
+    """컨테이너 생성. 방금 올린 이미지를 못 가져오는 일시 오류는 잠시 뒤 재시도."""
+    for attempt in range(4):
+        r = requests.post(f"{API}/{uid}/media", data={**data, "access_token": token}, timeout=90)
+        if r.status_code < 400 or attempt == 3 or not r.json().get("error", {}).get("is_transient", True):
+            break
+        time.sleep(15 * (attempt + 1))
+    if r.status_code >= 400:
+        raise RuntimeError(f"컨테이너 생성 실패 {r.status_code}: {r.text[:300]}")
+    return r.json()["id"]
+
+
+def _wait(cid: str, token: str) -> None:
+    for _ in range(20):
+        st = requests.get(f"{API}/{cid}", params={"fields": "status_code,status", "access_token": token}, timeout=60).json()
+        code = st.get("status_code")
+        if code in ("FINISHED", "PUBLISHED", None):
+            return
+        if code in ("ERROR", "EXPIRED"):
+            raise RuntimeError(f"미디어 처리 오류: {st.get('status')}")
+        time.sleep(3)
+
+
+def post_carousel(image_urls: list[str], caption: str) -> str:
+    """JPEG 이미지 2~10장 캐러셀 게시. 게시물 id 반환."""
+    token, uid = _env("IG_ACCESS_TOKEN"), _env("IG_USER_ID")
+    if not (token and uid):
+        raise RuntimeError("IG_ACCESS_TOKEN / IG_USER_ID 가 없습니다 (ig-auth 먼저)")
+    kids = []
+    for u in image_urls[:10]:
+        kids.append(_create(uid, token, {"image_url": u, "is_carousel_item": "true"}))
+    for k in kids:
+        _wait(k, token)
+    cid = _create(uid, token, {"media_type": "CAROUSEL", "children": ",".join(kids), "caption": caption[:2200]})
+    _wait(cid, token)
+    r = requests.post(f"{API}/{uid}/media_publish", data={"creation_id": cid, "access_token": token}, timeout=90)
+    if r.status_code >= 400:
+        raise RuntimeError(f"게시 실패 {r.status_code}: {r.text[:300]}")
+    return r.json()["id"]
+
+
+def permalink(media_id: str) -> str:
+    r = requests.get(f"{API}/{media_id}", params={"fields": "permalink", "access_token": _env("IG_ACCESS_TOKEN")}, timeout=60)
+    return r.json().get("permalink", "") if r.ok else ""

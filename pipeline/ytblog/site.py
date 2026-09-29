@@ -220,6 +220,12 @@ def weekly_report(settings: Settings, board_js: Path, post_to_board: bool = True
             lines.append(f"· 스레드 토큰: {refresh_if_needed()}")
         except Exception as e:  # noqa: BLE001
             lines.append(f"· 스레드 토큰 갱신 실패: {str(e)[:80]} (threads-auth 다시 필요)")
+    if os.environ.get("IG_ACCESS_TOKEN"):
+        try:
+            from .instagram import refresh_if_needed as ig_refresh
+            lines.append(f"· 인스타 토큰: {ig_refresh()}")
+        except Exception as e:  # noqa: BLE001
+            lines.append(f"· 인스타 토큰 갱신 실패: {str(e)[:80]} (토큰 재발급 필요)")
     text ="\n".join(lines)
     if post_to_board and board_js.exists():
         doc = {"who": "cl", "text": text, "t": now.strftime("%H:%M"), "ts": int(time.time() * 1000)}
