@@ -53,7 +53,9 @@ def auth_url() -> str:
 def exchange_code() -> dict:
     """인증 code → 단기 토큰 → 장기 토큰. 결과를 .env 에 저장."""
     app_id, secret = _env("THREADS_APP_ID"), _env("THREADS_APP_SECRET")
-    code = _env("THREADS_AUTH_CODE").split("#")[0].strip()
+    code = _env("THREADS_AUTH_CODE").strip()
+    m = re.search(r"[?&]code=([^&#]+)", code)   # 주소창 전체를 붙여 넣어도 된다
+    code = (m.group(1) if m else code).split("#")[0].strip()
     redirect = _env("THREADS_REDIRECT_URI", "https://jisikfill.com/")
     if not (app_id and secret and code):
         raise RuntimeError("THREADS_APP_ID / THREADS_APP_SECRET / THREADS_AUTH_CODE 를 .env 에 넣어 주세요")
@@ -114,7 +116,11 @@ def post(text: str, image_url: str = "") -> str:
         data.update({"media_type": "IMAGE", "image_url": image_url})
     else:
         data["media_type"] = "TEXT"
-    r = requests.post(f"{API}/v1.0/{uid}/threads", data=data, timeout=60)
+    for attempt in range(4):  # 방금 올린 이미지는 Meta 가 바로 못 가져올 때가 있다(2207052 미디어 다운로드 실패) → 잠시 뒤 재시도
+        r = requests.post(f"{API}/v1.0/{uid}/threads", data=data, timeout=60)
+        if r.status_code < 400 or not image_url or "2207052" not in r.text or attempt == 3:
+            break
+        time.sleep(15 * (attempt + 1))
     if r.status_code >= 400:
         raise RuntimeError(f"컨테이너 생성 실패 {r.status_code}: {r.text[:300]}")
     cid = r.json()["id"]
