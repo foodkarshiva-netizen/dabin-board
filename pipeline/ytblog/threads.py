@@ -106,12 +106,16 @@ def refresh_if_needed(force: bool = False) -> str:
     return f"갱신 완료 (만료까지 {round((new_exp - time.time()) / 86400)}일)"
 
 
-def post(text: str, image_url: str = "") -> str:
-    """이미지(+글) 또는 글만 게시. 게시된 스레드 id 반환."""
+def post(text: str, image_url: str = "", reply_to: str = "", topic: str = "") -> str:
+    """이미지(+글) 또는 글만 게시. reply_to 를 주면 그 글의 답글로, topic 은 주제 태그. 게시된 스레드 id 반환."""
     token, uid = _env("THREADS_ACCESS_TOKEN"), _env("THREADS_USER_ID")
     if not (token and uid):
         raise RuntimeError("THREADS_ACCESS_TOKEN / THREADS_USER_ID 가 없습니다 (threads-auth 먼저)")
     data = {"access_token": token, "text": text[:500]}
+    if reply_to:
+        data["reply_to_id"] = reply_to
+    if topic:
+        data["topic_tag"] = re.sub(r"[.&]", "", topic)[:50]   # 주제 태그에는 마침표·& 불가
     if image_url:
         data.update({"media_type": "IMAGE", "image_url": image_url})
     else:

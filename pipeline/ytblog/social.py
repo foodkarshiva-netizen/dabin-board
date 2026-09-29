@@ -100,15 +100,26 @@ def threads_card(summary, out_path: Path) -> Path:
     return out_path
 
 
-def threads_text(summary, link: str) -> str:
-    """스레드 본문(음슴체). threads_text 가 있으면 그대로, 없으면 후킹 + 핵심 3줄로 만든다."""
+TOPICS = {"경제·투자": "재테크", "건강·의학": "건강", "역사·인문": "역사", "과학·기술": "과학",
+          "심리·자기계발": "자기계발", "사회·문화": "사회"}
+
+
+def threads_text(summary, link: str = "") -> str:
+    """스레드 본문(음슴체, 링크 없음). 링크는 알고리즘이 외부 링크 글을 덜 퍼뜨려서 본인 답글로 따로 단다."""
     syn = summary.synthesis
-    tail = f"\n\n30분 강연 5분 정리 → {link}"
     body = (getattr(syn, "threads_text", "") or "").strip()
     if not body:
         head = _plain(getattr(syn, "hook", "") or "") or _plain(syn.seo.title)
         body = f"{head}\n\n" + "\n".join(f"· {p}" for p in _points(summary))
-    return body[: 500 - len(tail)].rstrip() + tail
+    return body[:500].rstrip()
+
+
+def threads_reply(link: str) -> str:
+    return f"강연 30분짜리 5분 정리해 둔 거 여기 있음\n{link}"
+
+
+def threads_topic(summary) -> str:
+    return TOPICS.get((getattr(summary.synthesis, "category", "") or "").strip(), "공부")
 
 
 def post_to_threads(settings, summary, link: str, wp, state, out_dir: Path, dry_run: bool = False) -> str:
@@ -119,16 +130,23 @@ def post_to_threads(settings, summary, link: str, wp, state, out_dir: Path, dry_
     if v.get("threads_id") and not dry_run:
         return f"이미 게시됨 ({v['threads_id']})"
     card = threads_card(summary, out_dir / "images" / "threads.png")
-    text = threads_text(summary, link)
+    text = threads_text(summary)
+    topic = threads_topic(summary)
     if dry_run:
-        return f"[dry-run] 카드 {card}\n{text}"
+        return f"[dry-run] 카드 {card} · 주제 {topic}\n{text}\n  └ 답글: {threads_reply(link)}"
     if not os.environ.get("THREADS_ACCESS_TOKEN"):
         return "건너뜀: THREADS_ACCESS_TOKEN 없음"
     th.refresh_if_needed()
     safe = re.sub(r"[^A-Za-z0-9]", "", vid).lower() or "v"
     _mid, url = wp.upload_media(card, f"{_plain(summary.synthesis.seo.title)} 요약 카드", "스레드 카드",
                                 filename=f"{safe}-threads-{time.strftime('%y%m%d%H%M')}.png")
-    tid = th.post(text, url)
+    tid = th.post(text, url, topic=topic)
     v["threads_id"] = tid; v["threads_at"] = time.time()
     state.save()
-    return f"스레드 게시 완료 (id {tid})"
+    try:
+        time.sleep(5)
+        v["threads_reply_id"] = th.post(threads_reply(link), reply_to=tid)
+        state.save()
+        return f"스레드 게시 완료 (id {tid}, 링크 답글 달림, 주제 {topic})"
+    except Exception as e:  # noqa: BLE001
+        return f"스레드 게시 완료 (id {tid}) · 링크 답글 실패: {str(e)[:100]}"
