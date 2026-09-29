@@ -228,6 +228,12 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
             )
         final = "published" if status == "publish" else ("needs_review" if summary.needs_review else "drafted")
         state.mark_post_created(vid, final, wp_post_id=post["id"], wp_link=post.get("link", ""))
+        if status == "publish" and post.get("link"):
+            try:
+                from .seo import submit as _indexnow
+                log(f"  IndexNow: {_indexnow(settings, [post['link'], settings.wp_url + '/'], wp)}")
+            except Exception as _e:  # noqa: BLE001
+                log(f"  IndexNow 실패(무시): {str(_e)[:80]}")
         log(f"  WordPress {status}: {post.get('link', '')}")
         return final
     except Exception as e:  # noqa: BLE001
@@ -538,6 +544,26 @@ def cmd_pick(args, settings: Settings) -> int:
     return 0
 
 
+def cmd_indexnow(args, settings: Settings) -> int:
+    from .seo import submit
+    urls = list(args.urls)
+    if not urls:
+        wp = _wp_client(settings, True)
+        urls = [settings.wp_url + "/"] + [p["link"] for p in wp._get("posts", per_page=100, status="publish")]
+    log(f"{len(urls)}개 제출 → {submit(settings, urls)}")
+    return 0
+
+
+def cmd_demand(args, settings: Settings) -> int:
+    from .seo import demand
+    rows = sorted((demand(k) for k in args.keywords), key=lambda d: -d["score"])
+    for d in rows:
+        log(f"[{d['score']:>2}점{' ·정확일치' if d['exact'] else ''}] {d['keyword']}")
+        if d["phrases"]:
+            log("    추천 검색어: " + " | ".join(d["phrases"][:8]))
+    return 0
+
+
 def cmd_quota(args, settings: Settings) -> int:
     state = State(settings.data_dir / "state.json")
     wp = _wp_client(settings, bool(settings.wp_url))
@@ -585,6 +611,8 @@ def main(argv=None) -> int:
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "add", "start", "done", "fail"])
     sub.add_parser("pick", help="대기열이 비었을 때 auto_pick 채널에서 후보 영상 보기")
+    ix = sub.add_parser("indexnow", help="네이버·IndexNow 에 URL 알림"); ix.add_argument("urls", nargs="*")
+    dm = sub.add_parser("demand", help="자동완성 기반 검색 수요"); dm.add_argument("keywords", nargs="+")
     qu.add_argument("doc_id", nargs="?", default=""); qu.add_argument("value", nargs="?", default=""); qu.add_argument("rest", nargs="*")
     args = p.parse_args(argv)
     settings = Settings.load()
@@ -592,7 +620,7 @@ def main(argv=None) -> int:
             "fixture": cmd_fixture, "wp-check": cmd_wp_check,
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
-            "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick,
+            "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick, "indexnow": cmd_indexnow, "demand": cmd_demand,
             "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads}[args.cmd](args, settings)
 
 
