@@ -98,3 +98,23 @@ PYTHONUTF8=1 .venv/Scripts/python.exe -m ytblog threads-test
 | threads-auth에서 "user not tester" 류 오류 | 테스터 초대 미수락 | 휴대폰 Threads 앱 → 설정 → 계정 → 웹사이트 권한 → 초대 수락 |
 | 게시는 되는데 이미지가 안 뜸 | 이미지 주소가 비공개이거나 8MB 초과 | 워드프레스 미디어 공개 URL 사용(파이프라인이 자동 처리) |
 | 60일 뒤 갑자기 게시 실패 | 토큰 만료 | `threads-refresh` 또는 3~4단계 다시 |
+
+## 실제 설정 결과 (2026-09-29)
+
+- Meta 앱: `jisikfill-threads` (Meta 앱 ID 2186793142243700, **Threads 앱 ID 2555830498177475**). 비즈니스 포트폴리오 연결 안 함.
+- 권한: threads_basic, threads_content_publish (테스트 준비 완료).
+- 리디렉션·제거·삭제 콜백: `https://jisikfill.com/`
+- Threads 테스터: `@jisikfill211204` (초대 후 Threads 앱 → 설정 → 계정 → 웹사이트 권한 → 초대에서 수락 필요)
+
+### 더 쉬운 토큰 발급: 사용자 토큰 생성기
+시크릿·인증코드 없이 된다.
+1. 개발자 콘솔 → 이용 사례 → Threads API 액세스 → 맞춤 설정 → **설정** → 아래 "사용자 토큰 생성기"
+2. 테스터 계정 옆 **액세스 토큰 생성** → Threads 로그인·허용 → 장기 토큰(60일)이 뜬다
+3. 그 값을 `pipeline/.env` 의 `THREADS_ACCESS_TOKEN=` 뒤에 붙여 넣고 저장
+4. `python -m ytblog threads-auth` → 사용자 ID·만료를 채운다 (AUTH_CODE 가 비어 있으면 토큰 채택 모드)
+5. `python -m ytblog threads-test` 로 게시 확인
+
+### 자동 게시
+- `finish --publish` 로 **새 글**이 공개되면 1080x1350 카드 + 후킹·핵심 3줄·링크를 스레드에 올린다(`--update` 재발행은 제외, state 의 threads_id 로 중복 방지).
+- 실패해도 글 발행은 그대로. 재시도: `python -m ytblog threads-post VIDEO_ID` (미리보기 `--dry-run`)
+- 토큰 갱신: 주간 리포트가 만료 7일 전이면 자동 갱신.

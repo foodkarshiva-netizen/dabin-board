@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import html
+import os
 import json
 import re
 import subprocess
@@ -213,7 +214,13 @@ def weekly_report(settings: Settings, board_js: Path, post_to_board: bool = True
         lines.append(f"· 홈 배너 갱신: {sub}")
     except Exception as e:  # noqa: BLE001
         lines.append(f"· 홈 배너 갱신 실패: {str(e)[:80]}")
-    text = "\n".join(lines)
+    if os.environ.get("THREADS_ACCESS_TOKEN"):
+        try:
+            from .threads import refresh_if_needed
+            lines.append(f"· 스레드 토큰: {refresh_if_needed()}")
+        except Exception as e:  # noqa: BLE001
+            lines.append(f"· 스레드 토큰 갱신 실패: {str(e)[:80]} (threads-auth 다시 필요)")
+    text ="\n".join(lines)
     if post_to_board and board_js.exists():
         doc = {"who": "cl", "text": text, "t": now.strftime("%H:%M"), "ts": int(time.time() * 1000)}
         subprocess.run(["node", str(board_js), "add", "chat", json.dumps(doc, ensure_ascii=False)], check=True,

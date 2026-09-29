@@ -17,6 +17,7 @@
   python -m ytblog banner ["헤드라인"] ["부제"]      홈 배너 이미지 갱신(기본: 최근 글 반영)
   python -m ytblog report [--no-post]               주간 리포트 → 다빈보드 소통 (+배너 갱신)
   python -m ytblog threads-auth | threads-refresh | threads-test   스레드 토큰 발급·갱신·게시 테스트
+  python -m ytblog threads-post VIDEO_ID [--dry-run]           공개된 글을 스레드 카드로 게시
 """
 from __future__ import annotations
 
@@ -234,6 +235,12 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
                 log(f"  IndexNow: {_indexnow(settings, [post['link'], settings.wp_url + '/'], wp)}")
             except Exception as _e:  # noqa: BLE001
                 log(f"  IndexNow 실패(무시): {str(_e)[:80]}")
+            if not update_post_id:  # 새 글만 스레드에 올린다(수정 재발행은 제외)
+                try:
+                    from .social import post_to_threads
+                    log(f"  Threads: {post_to_threads(settings, summary, post['link'], wp, state, out_dir)}")
+                except Exception as _e:  # noqa: BLE001
+                    log(f"  Threads 실패(무시, threads-post 로 재시도): {str(_e)[:120]}")
         log(f"  WordPress {status}: {post.get('link', '')}")
         return final
     except Exception as e:  # noqa: BLE001
@@ -508,12 +515,30 @@ def cmd_report(args, settings: Settings) -> int:
 def cmd_threads(args, settings: Settings) -> int:
     from . import threads as th
     if args.cmd == "threads-auth":
-        r = th.exchange_code(); log(f"연결됨: @{r['username']} (user_id {r['user_id']}, 만료까지 {r['expires_days']}일). .env 에 저장했습니다.")
+        import os
+        # 인증 code 가 있으면 교환, 없고 토큰 생성기로 받은 토큰만 있으면 그대로 채택
+        r = th.exchange_code() if os.environ.get("THREADS_AUTH_CODE", "").strip() else th.adopt_token()
+        log(f"연결됨: @{r['username']} (user_id {r['user_id']}, 만료까지 {r['expires_days']}일). .env 에 저장했습니다.")
     elif args.cmd == "threads-refresh":
         log(th.refresh_if_needed(force=True))
     else:
         pid = th.post("지식채우기 연결 테스트예요. 30분짜리 강연을 5분 글로 정리하는 블로그, jisikfill.com")
         log(f"게시 완료: id {pid}")
+    return 0
+
+
+def cmd_threads_post(args, settings: Settings) -> int:
+    """이미 공개된 글을 스레드에 올린다(자동 게시 실패 시 재시도·기존 글 소개용)."""
+    from .social import post_to_threads
+    vid = args.video_id
+    sum_path = settings.out_dir / vid / "summary.json"
+    summary = Summary.model_validate_json(sum_path.read_text(encoding="utf-8"))
+    state = State(settings.data_dir / "state.json")
+    link = state.video(vid).get("wp_link", "")
+    if not link:
+        log(f"{vid}: 발행 링크가 state 에 없습니다"); return 1
+    wp = None if args.dry_run else _wp_client(settings, True)
+    log(post_to_threads(settings, summary, link, wp, state, settings.out_dir / vid, dry_run=args.dry_run))
     return 0
 
 
@@ -608,6 +633,7 @@ def main(argv=None) -> int:
     sub.add_parser("stats", help="방문자·조회수 집계 (다빈보드 블로그 탭에도 기록)")
     for name in ("threads-auth", "threads-refresh", "threads-test"):
         sub.add_parser(name, help="스레드 연동")
+    tp = sub.add_parser("threads-post", help="공개된 글을 스레드에 올리기"); tp.add_argument("video_id"); tp.add_argument("--dry-run", action="store_true")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "add", "start", "done", "fail"])
     sub.add_parser("pick", help="대기열이 비었을 때 auto_pick 채널에서 후보 영상 보기")
@@ -621,7 +647,7 @@ def main(argv=None) -> int:
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
             "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick, "indexnow": cmd_indexnow, "demand": cmd_demand,
-            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads}[args.cmd](args, settings)
+            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":

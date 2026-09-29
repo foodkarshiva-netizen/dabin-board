@@ -75,6 +75,20 @@ def exchange_code() -> dict:
     return {"username": me.get("username"), "user_id": me.get("id"), "expires_days": round((expires - time.time()) / 86400)}
 
 
+def adopt_token() -> dict:
+    """개발자 콘솔 '사용자 토큰 생성기'로 받은 장기 토큰만 .env 에 넣은 경우: 사용자 ID·만료를 채운다."""
+    token = _env("THREADS_ACCESS_TOKEN").strip()
+    if not token:
+        raise RuntimeError("THREADS_ACCESS_TOKEN 이 비어 있습니다")
+    me = requests.get(f"{API}/v1.0/me", params={"fields": "id,username", "access_token": token}, timeout=60)
+    if me.status_code >= 400:
+        raise RuntimeError(f"토큰 확인 실패 {me.status_code}: {me.text[:300]}")
+    me = me.json()
+    expires = int(_env("THREADS_TOKEN_EXPIRES", "0") or 0) or int(time.time()) + 5184000
+    _save_env(THREADS_ACCESS_TOKEN=token, THREADS_USER_ID=str(me["id"]), THREADS_TOKEN_EXPIRES=str(expires))
+    return {"username": me.get("username"), "user_id": me["id"], "expires_days": round((expires - time.time()) / 86400)}
+
+
 def refresh_if_needed(force: bool = False) -> str:
     token = _env("THREADS_ACCESS_TOKEN")
     if not token:
