@@ -59,11 +59,13 @@ def refresh_if_needed(force: bool = False) -> str:
 
 def _create(uid: str, token: str, data: dict) -> str:
     """컨테이너 생성. 방금 올린 이미지를 못 가져오는 일시 오류는 잠시 뒤 재시도."""
-    for attempt in range(4):
+    for attempt in range(10):
         r = requests.post(f"{API}/{uid}/media", data={**data, "access_token": token}, timeout=90)
-        if r.status_code < 400 or attempt == 3 or not r.json().get("error", {}).get("is_transient", True):
+        err = r.json().get("error", {}) if r.status_code >= 400 else {}
+        # 2207052 = 미디어 다운로드 실패(방금 올린 이미지를 아직 못 가져감). is_transient=false 로 와도 잠시 뒤엔 된다
+        if r.status_code < 400 or attempt == 9 or not (err.get("is_transient") or err.get("error_subcode") == 2207052):
             break
-        time.sleep(15 * (attempt + 1))
+        time.sleep(8)   # 카페24 가 Meta 요청에 가끔 응답을 못 함 → 짧게 여러 번
     if r.status_code >= 400:
         raise RuntimeError(f"컨테이너 생성 실패 {r.status_code}: {r.text[:300]}")
     return r.json()["id"]
@@ -87,7 +89,8 @@ def post_carousel(image_urls: list[str], caption: str) -> str:
         raise RuntimeError("IG_ACCESS_TOKEN / IG_USER_ID 가 없습니다 (ig-auth 먼저)")
     kids = []
     for u in image_urls[:10]:
-        kids.append(_create(uid, token, {"image_url": u, "is_carousel_item": "true"}))
+        # media_type=IMAGE 를 빼면 "Only photo or video can be accepted"(2207052)로 거절된다
+        kids.append(_create(uid, token, {"image_url": u, "media_type": "IMAGE", "is_carousel_item": "true"}))
     for k in kids:
         _wait(k, token)
     cid = _create(uid, token, {"media_type": "CAROUSEL", "children": ",".join(kids), "caption": caption[:2200]})

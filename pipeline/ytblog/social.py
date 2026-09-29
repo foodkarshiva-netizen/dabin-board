@@ -34,6 +34,11 @@ V_CSS = """
 """
 
 
+def _cdn(url: str) -> str:
+    """Meta 가 카페24 에서 이미지를 가끔 못 가져온다(해외 요청 거름). 워드프레스 공식 이미지 CDN(i0.wp.com)을 거치면 안정적."""
+    return re.sub(r"^https?://", "https://i0.wp.com/", url) if url.startswith("http") else url
+
+
 def _plain(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").replace("**", "").replace("*", "")).strip()
 
@@ -140,7 +145,7 @@ def post_to_threads(settings, summary, link: str, wp, state, out_dir: Path, dry_
     safe = re.sub(r"[^A-Za-z0-9]", "", vid).lower() or "v"
     _mid, url = wp.upload_media(card, f"{_plain(summary.synthesis.seo.title)} 요약 카드", "스레드 카드",
                                 filename=f"{safe}-threads-{time.strftime('%y%m%d%H%M')}.png")
-    tid = th.post(text, url, topic=topic)
+    tid = th.post(text, _cdn(url), topic=topic)
     v["threads_id"] = tid; v["threads_at"] = time.time()
     state.save()
     try:
@@ -245,7 +250,7 @@ def post_to_instagram(settings, summary, link: str, wp, state, out_dir: Path, dr
     for s in slides:
         _mid, url = wp.upload_media(s, f"{_plain(summary.synthesis.seo.title)} {s.stem}", "인스타 카드",
                                     filename=f"{safe}-{s.stem}-{stamp}.jpg")
-        urls.append(url)
+        urls.append(_cdn(url))
     time.sleep(5)
     mid = ig.post_carousel(urls, cap)
     v["ig_id"] = mid; v["ig_at"] = time.time()
