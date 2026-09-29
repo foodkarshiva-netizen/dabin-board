@@ -79,6 +79,8 @@ class Synthesis(BaseModel):
     hook_photo: str = ""             # (선택) 배경 사진 영어 검색어. PEXELS_API_KEY 가 있을 때만 사용
     thumb_palette: str = ""          # (선택) ink forest cocoa plum terra olive wine cream amber. 비면 최근 3편과 겹치지 않게 자동
     thumb_layout: str = ""           # (선택) split | bignum | band. 비면 자동
+    threads_points: list[str] = []   # 스레드 카드의 핵심 3줄, 음슴체("~임", "~함"), 각 34자 안팎
+    threads_text: str = ""           # 스레드 본문(링크 제외), 음슴체 300자 이내: 후킹 한두 줄 + "· " 3줄 + 짧은 감상 한 줄
     seo: SEO
 
 

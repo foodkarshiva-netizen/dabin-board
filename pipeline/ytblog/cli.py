@@ -527,6 +527,23 @@ def cmd_threads(args, settings: Settings) -> int:
     return 0
 
 
+def cmd_threads_backlog(args, settings: Settings) -> int:
+    """스레드에 아직 안 올린 공개 글을 오래된 순으로 --max 편만 올린다(기존 글 나눠 소개용)."""
+    from .social import post_to_threads
+    state = State(settings.data_dir / "state.json")
+    todo = sorted(((v.get("post_created", 0), vid) for vid, v in state.data["videos"].items()
+                   if v.get("status") == "published" and v.get("wp_link") and not v.get("threads_id")
+                   and (settings.out_dir / vid / "summary.json").exists()))
+    if not todo:
+        log("남은 글 0편: 스레드에 올릴 기존 글이 없습니다."); return 0
+    wp = None if args.dry_run else _wp_client(settings, True)
+    for _, vid in todo[: args.max]:
+        summary = Summary.model_validate_json((settings.out_dir / vid / "summary.json").read_text(encoding="utf-8"))
+        log(f"{vid}: {post_to_threads(settings, summary, state.video(vid)['wp_link'], wp, state, settings.out_dir / vid, dry_run=args.dry_run)}")
+    log(f"남은 글 {max(len(todo) - (0 if args.dry_run else args.max), 0)}편")
+    return 0
+
+
 def cmd_threads_post(args, settings: Settings) -> int:
     """이미 공개된 글을 스레드에 올린다(자동 게시 실패 시 재시도·기존 글 소개용)."""
     from .social import post_to_threads
@@ -633,6 +650,7 @@ def main(argv=None) -> int:
     sub.add_parser("stats", help="방문자·조회수 집계 (다빈보드 블로그 탭에도 기록)")
     for name in ("threads-auth", "threads-refresh", "threads-test"):
         sub.add_parser(name, help="스레드 연동")
+    tb = sub.add_parser("threads-backlog", help="안 올린 기존 글을 오래된 순으로 스레드에"); tb.add_argument("--max", type=int, default=1); tb.add_argument("--dry-run", action="store_true")
     tp = sub.add_parser("threads-post", help="공개된 글을 스레드에 올리기"); tp.add_argument("video_id"); tp.add_argument("--dry-run", action="store_true")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "add", "start", "done", "fail"])
@@ -647,7 +665,7 @@ def main(argv=None) -> int:
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
             "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick, "indexnow": cmd_indexnow, "demand": cmd_demand,
-            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post}[args.cmd](args, settings)
+            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":

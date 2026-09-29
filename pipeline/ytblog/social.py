@@ -38,10 +38,32 @@ def _plain(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").replace("**", "").replace("*", "")).strip()
 
 
+def _eum(s: str) -> str:
+    """존댓말 문장 끝을 음슴체로 (threads_points 가 없을 때의 대체용). 했습니다→했음, 됩니다→됨, 해요→함."""
+    def ending(m: re.Match) -> str:
+        word = m.group(1)
+        if word.endswith("습니다"):
+            return word[:-3] + "음"
+        syl = word[-3]                      # '~ㅂ니다' 의 앞 글자: 받침 ㅂ → ㅁ (됩→됨, 합→함, 입→임)
+        code = ord(syl) - 0xAC00
+        if 0 <= code < 11172 and code % 28 == 17:
+            return word[:-3] + chr(ord(syl) - 1)  # 받침 ㅂ(17) → ㅁ(16)
+        return word
+    s = re.sub(r"(\S+니다)(?=[.!?]?(\s|$))", ending, s)
+    s = re.sub(r"(았|었|였|했|됐|왔|웠)어요(?=[.!?]?(\s|$))", r"\1음", s)
+    for a, b in (("이에요", "임"), ("예요", "임"), ("해요", "함"), ("돼요", "됨"), ("있어요", "있음"), ("없어요", "없음")):
+        s = re.sub(a + r"(?=[.!?]?(\s|$))", b, s)
+    return s
+
+
 def _points(summary, n: int = 3) -> list[str]:
+    syn = summary.synthesis
+    src = [p for p in (getattr(syn, "threads_points", None) or []) if p.strip()]
+    if not src:
+        src = [_eum(_plain(t.short or t.text)) for t in syn.key_takeaways]
     out = []
-    for t in summary.synthesis.key_takeaways[:n]:
-        s = _plain(t.short or t.text)
+    for s in src[:n]:
+        s = _plain(s)
         out.append(s if len(s) <= 62 else s[:60].rstrip() + "…")
     return out
 
@@ -79,13 +101,14 @@ def threads_card(summary, out_path: Path) -> Path:
 
 
 def threads_text(summary, link: str) -> str:
+    """스레드 본문(음슴체). threads_text 가 있으면 그대로, 없으면 후킹 + 핵심 3줄로 만든다."""
     syn = summary.synthesis
-    head = _plain(getattr(syn, "hook", "") or "") or _plain(syn.seo.title)
-    if not head.endswith((".", "?", "!")):
-        head += "."
-    body = "\n".join(f"· {p}" for p in _points(summary))
-    tail = f"\n\n30분 강연을 5분 글로 정리했어요.\n{link}"
-    return (f"{head}\n\n{body}"[: 500 - len(tail)] + tail)
+    tail = f"\n\n30분 강연 5분 정리 → {link}"
+    body = (getattr(syn, "threads_text", "") or "").strip()
+    if not body:
+        head = _plain(getattr(syn, "hook", "") or "") or _plain(syn.seo.title)
+        body = f"{head}\n\n" + "\n".join(f"· {p}" for p in _points(summary))
+    return body[: 500 - len(tail)].rstrip() + tail
 
 
 def post_to_threads(settings, summary, link: str, wp, state, out_dir: Path, dry_run: bool = False) -> str:
