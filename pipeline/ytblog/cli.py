@@ -123,6 +123,23 @@ def process_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, s
     return finish_video(settings, channel, meta, summary, state, out_dir, publish=publish, dry_run=dry_run, wp=wp)
 
 
+def _after_publish(settings: Settings, summary: Summary, link: str, wp, state: State, out_dir: Path, sns: bool = True) -> None:
+    """글이 공개된 직후: 검색엔진 알림(IndexNow) + 스레드·인스타 게시. 하나가 실패해도 나머지는 계속한다."""
+    try:
+        from .seo import submit as _indexnow
+        log(f"  IndexNow: {_indexnow(settings, [link, settings.wp_url + '/'], wp)}")
+    except Exception as _e:  # noqa: BLE001
+        log(f"  IndexNow 실패(무시): {str(_e)[:80]}")
+    if not sns:   # 수정 재발행은 SNS 에 다시 올리지 않는다
+        return
+    from .social import post_to_instagram, post_to_threads
+    for name, fn, retry in (("Threads", post_to_threads, "threads-post"), ("Instagram", post_to_instagram, "ig-post")):
+        try:
+            log(f"  {name}: {fn(settings, summary, link, wp, state, out_dir)}")
+        except Exception as _e:  # noqa: BLE001
+            log(f"  {name} 실패(무시, {retry} 로 재시도): {str(_e)[:120]}")
+
+
 def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, summary: Summary, state: State,
                  out_dir: Path, publish: bool = False, dry_run: bool = False, wp=None, update_post_id: int = 0) -> str:
     """요약(summary)이 준비된 뒤의 공통 단계: 이미지 → 글 HTML → WordPress 업로드/발행."""
@@ -195,7 +212,8 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
         status = "draft"
         if publish and summary.needs_review:
             log("  공개 보류: 근거 검증/비용 기준 미달 → 초안")
-        elif publish and settings.require_editor_note and not note:
+        elif publish and settings.require_editor_note and not (
+                note or (channel.editor_note_auto and (summary.synthesis.editor_note_draft or "").strip())):
             log(f"  공개 보류: 편집자 메모 없음 → 초안. `python -m ytblog note {vid} \"메모\" --publish` 로 공개")
         elif publish:
             status = "publish"
@@ -230,22 +248,7 @@ def finish_video(settings: Settings, channel: ChannelConfig, meta: VideoMeta, su
         final = "published" if status == "publish" else ("needs_review" if summary.needs_review else "drafted")
         state.mark_post_created(vid, final, wp_post_id=post["id"], wp_link=post.get("link", ""))
         if status == "publish" and post.get("link"):
-            try:
-                from .seo import submit as _indexnow
-                log(f"  IndexNow: {_indexnow(settings, [post['link'], settings.wp_url + '/'], wp)}")
-            except Exception as _e:  # noqa: BLE001
-                log(f"  IndexNow 실패(무시): {str(_e)[:80]}")
-            if not update_post_id:  # 새 글만 스레드에 올린다(수정 재발행은 제외)
-                try:
-                    from .social import post_to_threads
-                    log(f"  Threads: {post_to_threads(settings, summary, post['link'], wp, state, out_dir)}")
-                except Exception as _e:  # noqa: BLE001
-                    log(f"  Threads 실패(무시, threads-post 로 재시도): {str(_e)[:120]}")
-                try:
-                    from .social import post_to_instagram
-                    log(f"  Instagram: {post_to_instagram(settings, summary, post['link'], wp, state, out_dir)}")
-                except Exception as _e:  # noqa: BLE001
-                    log(f"  Instagram 실패(무시, ig-post 로 재시도): {str(_e)[:120]}")
+            _after_publish(settings, summary, post["link"], wp, state, out_dir, sns=not update_post_id)
         log(f"  WordPress {status}: {post.get('link', '')}")
         return final
     except Exception as e:  # noqa: BLE001
@@ -463,7 +466,12 @@ def cmd_note(args, settings: Settings) -> int:
             fields["status"] = "publish"
     updated = wp.update_post(post_id, **fields)
     if updated.get("status") == "publish":
+        was_published = v.get("status") == "published"
         state.mark_post_created(args.video_id, "published", wp_link=updated.get("link", ""))
+        sum_path = settings.out_dir / args.video_id / "summary.json"
+        if not was_published and updated.get("link") and sum_path.exists():   # 초안 → 공개로 바뀐 순간에만
+            _after_publish(settings, Summary.model_validate_json(sum_path.read_text(encoding="utf-8")),
+                           updated["link"], wp, state, settings.out_dir / args.video_id)
     log(f"WordPress 글 갱신 ({updated.get('status')}): {updated.get('link', '')}")
     return 0
 
