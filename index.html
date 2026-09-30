@@ -248,9 +248,9 @@ nav button .ic svg{width:24px;height:24px;display:block}
     <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 후 🔔 호출 — 세션이 깨어나 확인하고 답해요"></textarea><button class="btn ic" onclick="document.getElementById('dimg').click()" title="사진 첨부 — 여러 장 한 번에" aria-label="사진 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button><input type="file" id="dimg" accept="image/*" multiple style="display:none" onchange="dUpload(this)"><button class="btn ic" onclick="document.getElementById('dfile').click()" title="파일 첨부 (장당 10MB)" aria-label="파일 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn p snd" id="dsend" onclick="sendDMsg()" title="전송" aria-label="전송"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button></div>
   </section>
   <section class="page" id="p-amemo">
-    <div class="small muted" style="margin:0 2px 8px">관리보드 📝 메모와 같은 곳이에요 — 여기 적어도 관리보드 메모·히스토리에 쌓이고, AI가 보통 5분 안에 확인 답을 달아요.</div>
+    <div class="small muted" style="margin:0 2px 8px">AI는 [🔔 AI 호출]을 누를 때만 확인 답을 달아요(보통 1분 안) — [남기기]만 하면 저장만 됩니다. 관리보드 📝 메모와 같은 곳이에요.</div>
     <div class="chat" id="amChat"><div class="empty">불러오는 중…</div></div>
-    <div class="composer"><textarea id="amMsg" rows="2" placeholder="관리보드 메모 남기기"></textarea><button class="btn p" onclick="amSend()">남기기</button></div>
+    <div class="composer"><textarea id="amMsg" rows="2" placeholder="관리보드 메모 남기기"></textarea><button class="btn" onclick="amSend()">남기기</button><button class="btn p" onclick="amRing()">🔔 AI 호출</button></div>
   </section>
   <section class="page" id="p-today">
     <div class="rowsb"><h2 class="t" id="todayHd" style="margin:0">오늘</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="prog"></span><button class="btn o sm" id="hideBtn" onclick="toggleHide()">완료 숨기기</button></div></div>
@@ -428,12 +428,21 @@ var MISU=[],CUSTOM=null,PREPORT=null,PCUR=null,PSUPD=0,PDAILY=null,CASHFLOW=null
 var AM_API='https://service.masterc.co.kr/mastercco-access/memo_ext.php',AM_T=null,AM_SIG='';
 function amCall(opt){var u=firebase.auth().currentUser;if(!u)return Promise.reject(new Error('로그인 필요'));return u.getIdToken().then(function(t){opt=opt||{};opt.headers=Object.assign({'Authorization':'Bearer '+t,'X-Id-Token':t},opt.headers||{});return fetch(AM_API,opt)}).then(function(r){return r.json()})}
 function amLoad(){var c=document.getElementById('amChat');return amCall().then(function(d){if(!d.ok){c.innerHTML='<div class="empty">불러오지 못했어요 ('+esc(d.err||'')+')</div>';return}
-  var L=d.rows||[],sig=L.map(function(m){return m.id+':'+(m.ai_ack?1:0)}).join(',');if(sig===AM_SIG&&c.children.length)return;AM_SIG=sig;var last='';
+  var L=d.rows||[],sig=L.map(function(m){return m.id+':'+(m.ai_ack?1:0)+':'+(m.call_at?1:0)}).join(',');AM_PEND=L.some(function(m){return m.call_at&&!m.ai_ack});if(sig===AM_SIG&&c.children.length)return;AM_SIG=sig;var last='';
   c.innerHTML=L.length?L.map(function(m){var day=String(m.created_at||'').slice(0,10),h='';if(day!==last){last=day;h+='<div class="small muted" style="text-align:center;margin:6px 0">'+esc(day)+'</div>'}
     var me=m.who_email===d.me;h+='<div class="brow '+(me?'me':'cl')+'"><div class="bub">'+esc(m.body||'')+'</div><div class="bmeta">'+esc(m.who_name||'')+' · '+esc(String(m.created_at||'').slice(11,16))+' · '+esc(m.via||'관리보드')+'</div></div>';
-    h+=m.ai_ack?'<div class="brow cl"><div class="bub" style="background:#f0fdf4;border-color:#bbf7d0">🤖 '+esc(m.ai_ack)+'</div><div class="bmeta">'+esc(String(m.ai_ack_at||'').slice(11,16))+'</div></div>':'<div class="small muted" style="text-align:'+(me?'right':'left')+';margin:-4px 4px 4px">🤖 확인 대기</div>';return h}).join(''):'<div class="empty">아직 메모가 없어요</div>';
+    h+=m.ai_ack?'<div class="brow cl"><div class="bub" style="background:#f0fdf4;border-color:#bbf7d0">🤖 '+esc(m.ai_ack)+'</div><div class="bmeta">'+esc(String(m.ai_ack_at||'').slice(11,16))+'</div></div>':'<div class="small muted" style="text-align:'+(me?'right':'left')+';margin:-4px 4px 4px">'+(m.call_at?'🔔 AI 호출함 ('+esc(String(m.call_at||'').slice(11,16))+') · 확인 대기':'💾 저장됨 · AI 호출 전')+'</div>';return h}).join(''):'<div class="empty">아직 메모가 없어요</div>';
   c.scrollTop=c.scrollHeight}).catch(function(e){c.innerHTML='<div class="empty">불러오지 못했어요: '+esc(e.message)+'</div>'})}
 function amSend(){var el=document.getElementById('amMsg'),v=el.value.trim();if(!v)return;el.disabled=true;amCall({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:v})}).then(function(d){el.disabled=false;if(!d.ok){alert('남기지 못했어요: '+(d.err||''));return}el.value='';AM_SIG='';amLoad()}).catch(function(e){el.disabled=false;alert('남기지 못했어요: '+e.message)})}
+var AM_PEND=false,AM_F=null,AM_FE=0;
+function amRing(){var el=document.getElementById('amMsg'),v=el.value.trim();el.disabled=true;
+ amCall({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(v?{body:v,call:1}:{call:1})}).then(function(d){el.disabled=false;if(!d.ok){alert('호출 실패: '+(d.err||''));return}
+  el.value='';AM_SIG='';amLoad();var c=d.call||{};
+  if(!c.pending){alert('확인 답을 기다리는 메모가 없습니다')}else{alert((c['new']===false?'이미 부른 AI가 곧 확인해요':'AI를 불렀습니다')+' — 메모 '+c.pending+'개 확인 대기');amFast()}
+ }).catch(function(e){el.disabled=false;alert('호출 실패: '+e.message)})}
+function amFast(){AM_FE=Date.now()+180000;if(AM_F)clearInterval(AM_F);AM_F=setInterval(function(){var p=document.getElementById('p-amemo');
+ if(!p||!p.classList.contains('on')||Date.now()>AM_FE||!AM_PEND){clearInterval(AM_F);AM_F=null;return}
+ amLoad()},10000)}
 function amOn(){AM_SIG='';amLoad();if(AM_T)clearInterval(AM_T);AM_T=setInterval(function(){var p=document.getElementById('p-amemo');if(p&&p.classList.contains('on')&&!document.hidden)amLoad()},60000)}
 function startApp(){
   unsub.forEach(function(f){f&&f()});unsub=[];
