@@ -672,7 +672,7 @@ function renderDChat(){
  var panel=document.getElementById('dbPanel');
  if(panel){var now=Date.now();var live=DSTATE.slice().sort(function(a,b){return (b.lastTs||0)-(a.lastTs||0)});
   var chips=live.map(function(s){var mn=Math.max(0,Math.round((now-(s.lastTs||0))/60000));var ago=mn<60?mn+'분 전':Math.round(mn/60)+'시간 전';var act=mn<35;return '<button class="wakebtn'+(act?' live':'')+'" onclick="dWake(\''+s._id+'\')"><b style="color:'+dColor(s._id)+'">'+esc(s.name||s._id)+'</b><span class="ago">'+(act?'활동 중 · ':'휴면 · ')+ago+'</span><span>🔔</span></button>';}).join('');
-  panel.innerHTML='<div class="wakebar">'+chips+'<button class="wakebtn all" onclick="dWakeAll()">📢 전체 호출</button></div>'+(live.length?'':'<div class="small muted" style="margin:-6px 0 8px">등록된 세션 없음 — 세션에서 debate-chat.js check를 실행하면 표시돼요</div>');}
+  panel.innerHTML='<div class="wakebar">'+chips+'</div>'+(live.length?'':'<div class="small muted" style="margin:-6px 0 8px">등록된 세션 없음 — 세션에서 debate-chat.js check를 실행하면 표시돼요</div>');}
  c.innerHTML=DCHAT.length?DCHAT.map(function(m){
   var me=m.who==='me';
   var ctrl=me?'<span class="a" onclick="editDMsg(\''+m.id+'\')">수정</span><span class="a" onclick="delDMsg(\''+m.id+'\')">삭제</span>':'';
@@ -765,7 +765,6 @@ function dSendFiles(fs){
    깨어난 세션은 즉시 응답 후 5분 간격 1시간 확인, 이후 휴면. */
 /* 호출 신호는 debate_state/_wake 단일 문서로 — 데몬이 60초마다 이 문서 1건만 읽음(읽기한도 절약, 2026-09-30) */
 function dWake(sid){db.collection('debate_state').doc('_wake').set({sids:sid,ts:Date.now()},{merge:true}).then(function(){alert('호출 완료 — 1분 안에 깨어나 30분 동안 3분마다 확인해요')}).catch(function(e){alert('요청 실패: '+e.message)});}
-function dWakeAll(){if(!confirm('4개 세션을 전부 호출할까요?'))return;db.collection('debate_state').doc('_wake').set({sids:'s1,s2,s3,s4',ts:Date.now()},{merge:true}).then(function(){alert('전체 호출 완료 — 순서대로 깨어나요')}).catch(function(e){alert('요청 실패: '+e.message)});}
 function dScrollBot(){var c=document.getElementById('dchat');if(!c||!c.offsetParent)return;c.scrollTop=c.scrollHeight;requestAnimationFrame(function(){c.scrollTop=c.scrollHeight});}
 function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('debate_chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
 function editDMsg(id){var m=DCHAT.filter(function(x){return x.id===id})[0];if(!m)return;var nv=prompt('메시지 수정',m.text||'');if(nv===null)return;nv=nv.trim();if(!nv){db.collection('debate_chat').doc(id).delete();return}db.collection('debate_chat').doc(id).update({text:nv})}
