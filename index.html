@@ -60,9 +60,10 @@ nav button.on{color:var(--b)}
 .composer .btn.snd{width:38px;height:38px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;flex:0 0 auto;font-size:11px;margin:0 0 4px 2px}
 .composer .btn svg{display:block}
 /* 세션오더 호출 버튼(2026-09-29) — 크게, 상태 한눈에 */
-.wakebar{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
-.wakebtn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.06)}
-.wakebtn .ago{font-size:11.5px;color:var(--mut);font-weight:600}
+.wakebar{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 10px}
+.wakebtn{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1.5px solid var(--line);border-radius:11px;background:var(--card);font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.wakebtn .ago{font-size:11px;color:var(--mut);font-weight:600}
+@media(max-width:560px){.wakebar{gap:5px;margin:0 0 8px}.wakebtn{padding:5px 8px;font-size:11.5px;gap:5px;border-radius:9px}.wakebtn .ago{font-size:9.5px}}
 .wakebtn.live{border-color:#9ed6b8;background:#f2fbf6}
 .wakebtn.live .ago{color:#1f8a4c}
 .wakebtn.all{background:var(--b2);color:#fff;border-color:var(--b2)}
@@ -244,7 +245,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
   <section class="page" id="p-debate">
     <div id="dbPanel"></div>
     <div class="chat" id="dchat"><div class="empty">불러오는 중…</div></div>
-    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 — 붙어 있는 세션들이 30분 주기로 확인하고 이어가요"></textarea><button class="btn ic" onclick="document.getElementById('dimg').click()" title="사진 첨부 — 여러 장 한 번에" aria-label="사진 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button><input type="file" id="dimg" accept="image/*" multiple style="display:none" onchange="dUpload(this)"><button class="btn ic" onclick="document.getElementById('dfile').click()" title="파일 첨부 (장당 10MB)" aria-label="파일 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn p snd" id="dsend" onclick="sendDMsg()" title="전송" aria-label="전송"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button></div>
+    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 후 🔔 호출 — 세션이 깨어나 확인하고 답해요"></textarea><button class="btn ic" onclick="document.getElementById('dimg').click()" title="사진 첨부 — 여러 장 한 번에" aria-label="사진 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button><input type="file" id="dimg" accept="image/*" multiple style="display:none" onchange="dUpload(this)"><button class="btn ic" onclick="document.getElementById('dfile').click()" title="파일 첨부 (장당 10MB)" aria-label="파일 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn p snd" id="dsend" onclick="sendDMsg()" title="전송" aria-label="전송"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button></div>
   </section>
   <section class="page" id="p-today">
     <div class="rowsb"><h2 class="t" id="todayHd" style="margin:0">오늘</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="prog"></span><button class="btn o sm" id="hideBtn" onclick="toggleHide()">완료 숨기기</button></div></div>
@@ -734,8 +735,9 @@ function dSendFiles(fs){
 }
 /* 세션 호출(2026-09-28 호출형 개편): wakeReq 기록 → PC 상주 데몬(15초 폴링)이 원세션을 깨움.
    깨어난 세션은 즉시 응답 후 5분 간격 1시간 확인, 이후 휴면. */
-function dWake(sid){db.collection('debate_state').doc(sid).update({wakeReq:Date.now()}).then(function(){alert('호출 완료 — 곧 깨어나서 30분 동안 3분마다 확인해요')}).catch(function(e){alert('요청 실패: '+e.message)});}
-function dWakeAll(){if(!confirm('4개 세션을 전부 호출할까요?'))return;var t=Date.now();var p=['s1','s2','s3','s4'].map(function(s){return db.collection('debate_state').doc(s).update({wakeReq:t});});Promise.all(p).then(function(){alert('전체 호출 완료 — 곧 순서대로 깨어나요')}).catch(function(e){alert('요청 실패: '+e.message)});}
+/* 호출 신호는 debate_state/_wake 단일 문서로 — 데몬이 60초마다 이 문서 1건만 읽음(읽기한도 절약, 2026-09-30) */
+function dWake(sid){db.collection('debate_state').doc('_wake').set({sids:sid,ts:Date.now()},{merge:true}).then(function(){alert('호출 완료 — 1분 안에 깨어나 30분 동안 3분마다 확인해요')}).catch(function(e){alert('요청 실패: '+e.message)});}
+function dWakeAll(){if(!confirm('4개 세션을 전부 호출할까요?'))return;db.collection('debate_state').doc('_wake').set({sids:'s1,s2,s3,s4',ts:Date.now()},{merge:true}).then(function(){alert('전체 호출 완료 — 순서대로 깨어나요')}).catch(function(e){alert('요청 실패: '+e.message)});}
 function dScrollBot(){var c=document.getElementById('dchat');if(!c||!c.offsetParent)return;c.scrollTop=c.scrollHeight;requestAnimationFrame(function(){c.scrollTop=c.scrollHeight});}
 function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('debate_chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
 function editDMsg(id){var m=DCHAT.filter(function(x){return x.id===id})[0];if(!m)return;var nv=prompt('메시지 수정',m.text||'');if(nv===null)return;nv=nv.trim();if(!nv){db.collection('debate_chat').doc(id).delete();return}db.collection('debate_chat').doc(id).update({text:nv})}
