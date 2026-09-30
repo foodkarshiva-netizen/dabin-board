@@ -130,6 +130,11 @@ def _after_publish(settings: Settings, summary: Summary, link: str, wp, state: S
         log(f"  IndexNow: {_indexnow(settings, [link, settings.wp_url + '/'], wp)}")
     except Exception as _e:  # noqa: BLE001
         log(f"  IndexNow 실패(무시): {str(_e)[:80]}")
+    try:
+        from .related import refresh as _related
+        log(f"  추천 글: {_related(settings, wp)}")
+    except Exception as _e:  # noqa: BLE001
+        log(f"  추천 글 갱신 실패(무시): {str(_e)[:100]}")
     if not sns:   # 수정 재발행은 SNS 에 다시 올리지 않는다
         return
     from .social import post_to_instagram, post_to_threads
@@ -514,6 +519,9 @@ def cmd_stats(args, settings: Settings) -> int:
     log(f"오늘 방문자 {s['today']['visitors']}명 · 조회 {s['today']['pageviews']}회 | 7일 {s['d7']['visitors']}명 · {s['d7']['pageviews']}회 | 30일 {s['d30']['visitors']}명 · {s['d30']['pageviews']}회")
     for t in s["top"]:
         log(f"  - {t['title']}  {t['pageviews']}회")
+    from .sns import report_lines
+    for ln in report_lines(s.get("sns") or {}):
+        log(ln)
     return 0
 
 
@@ -537,6 +545,38 @@ def cmd_threads(args, settings: Settings) -> int:
     else:
         pid = th.post("지식채우기 연결 테스트예요. 30분짜리 강연을 5분 글로 정리하는 블로그, jisikfill.com")
         log(f"게시 완료: id {pid}")
+    return 0
+
+
+def cmd_sns(args, settings: Settings) -> int:
+    from . import sns
+    from .queue import BOARD_JS
+    if args.cmd == "sns-stats":
+        st = sns.sns_stats()
+        for key, name in (("threads", "스레드"), ("instagram", "인스타")):
+            d = st.get(key) or {}
+            if d.get("error"):
+                log(f"[{name}] 실패: {d['error']}"); continue
+            log(f"[{name}] 팔로워 {d.get('followers', 0)} · 조회 {d.get('views', 0)} · 좋아요 {d.get('likes', 0)}")
+            for x in d.get("posts", []):
+                log(f"  {x['date']}  조회 {x['views']:>5}  좋아요 {x['likes']:>3}  댓글 {x['replies']:>3}  {x['title']}")
+    elif args.cmd == "sns-comments":
+        state = State(settings.data_dir / "state.json")
+        rows = sns.new_comments(state, mark=not args.peek)
+        log(json.dumps(rows, ensure_ascii=False, indent=1) if rows else "새 댓글 없음")
+    elif args.cmd == "sns-reply":
+        log(f"답글 완료: {sns.reply(args.platform, args.comment_id, args.text)}")
+    else:  # notify
+        text = Path(args.file).read_text(encoding="utf-8") if args.file else (args.text or "")
+        if not text.strip():
+            log("메시지가 비어 있습니다"); return 2
+        sns.notify(text.strip(), BOARD_JS); log("다빈보드 소통에 올렸습니다")
+    return 0
+
+
+def cmd_related(args, settings: Settings) -> int:
+    from .related import refresh
+    log(refresh(settings, dry_run=args.dry_run))
     return 0
 
 
@@ -612,16 +652,33 @@ def cmd_pick(args, settings: Settings) -> int:
         queued = {it.get("vid") for it in q._run and json.loads(q._run("list", q.COL, "200") or "[]")}
     except Exception:  # noqa: BLE001
         pass
+    from statistics import median
+    from .discover import list_videos_from_page
+    max_age = getattr(args, "days", 21)
     for ch in channels:
         log(f"\n## {ch.title or ch.handle}" + (f"  (기준: {ch.pick_note})" if ch.pick_note else ""))
-        for v in list_recent_videos(ch.channel_id, settings.yt_proxy_url):
+        try:   # 조회수·게시일은 채널 페이지에서만 나온다(RSS 에는 없음)
+            vids = list_videos_from_page(ch.channel_id, settings.yt_proxy_url)
+        except Exception as e:  # noqa: BLE001
+            log(f"  (목록 실패: {str(e)[:80]})"); continue
+        base = median([v.views for v in vids if v.views] or [0]) or 1
+        rows = []
+        for v in vids:
             st = state.data["videos"].get(v.video_id, {}).get("status", "")
             if st or v.video_id in queued:
                 continue
             if v.duration_sec and not (ch.pick_min_sec <= v.duration_sec <= ch.pick_max_sec):
                 continue
+            if v.age_days > max_age:       # 최근 영상만
+                continue
+            rows.append(v)
+        rows.sort(key=lambda v: -(v.views / base))
+        for v in rows[:8]:
             mins = f"{v.duration_sec // 60}분" if v.duration_sec else "길이?"
-            log(f"  {v.video_id}  {mins:>5}  {v.published[:12]:12s}  {v.title}")
+            hot = f"채널 평균의 {v.views / base:.1f}배" if v.views else ""
+            log(f"  {v.video_id}  {mins:>5}  {v.published:8s}  조회 {v.views:>9,}  {hot:14s}  {v.title}")
+        if not rows:
+            log(f"  (최근 {max_age}일 안에 조건에 맞는 새 영상 없음)")
     log("\n고른 영상은 `python -m ytblog queue add <URL> \"제목\"` 으로 대기열에 넣은 뒤 평소 순서대로 처리합니다.")
     return 0
 
@@ -693,10 +750,15 @@ def main(argv=None) -> int:
     tb = sub.add_parser("threads-backlog", help="안 올린 기존 글을 오래된 순으로 스레드·인스타에"); tb.add_argument("--max", type=int, default=1); tb.add_argument("--dry-run", action="store_true")
     sub.add_parser("ig-auth", help="인스타 토큰 채택"); sub.add_parser("ig-refresh", help="인스타 토큰 갱신")
     ip = sub.add_parser("ig-post", help="공개된 글을 인스타 캐러셀로 게시"); ip.add_argument("video_id"); ip.add_argument("--dry-run", action="store_true")
+    rl = sub.add_parser("related", help="같이 읽으면 좋은 글 갱신"); rl.add_argument("--dry-run", action="store_true")
+    sub.add_parser("sns-stats", help="스레드·인스타 성과")
+    sc = sub.add_parser("sns-comments", help="새 댓글 확인"); sc.add_argument("--peek", action="store_true", help="알림 완료로 기록하지 않음")
+    sr = sub.add_parser("sns-reply", help="댓글에 답글"); sr.add_argument("platform", choices=["threads", "ig"]); sr.add_argument("comment_id"); sr.add_argument("text")
+    nf = sub.add_parser("notify", help="다빈보드 소통에 메시지"); nf.add_argument("text", nargs="?", default=""); nf.add_argument("--file", default="")
     tp = sub.add_parser("threads-post", help="공개된 글을 스레드에 올리기"); tp.add_argument("video_id"); tp.add_argument("--dry-run", action="store_true")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "add", "start", "done", "fail"])
-    sub.add_parser("pick", help="대기열이 비었을 때 auto_pick 채널에서 후보 영상 보기")
+    pk = sub.add_parser("pick", help="대기열이 비었을 때 auto_pick 채널에서 후보 영상 보기"); pk.add_argument("--days", type=int, default=21, help="게시 후 며칠 안의 영상만")
     ix = sub.add_parser("indexnow", help="네이버·IndexNow 에 URL 알림"); ix.add_argument("urls", nargs="*")
     dm = sub.add_parser("demand", help="자동완성 기반 검색 수요"); dm.add_argument("keywords", nargs="+")
     qu.add_argument("doc_id", nargs="?", default=""); qu.add_argument("value", nargs="?", default=""); qu.add_argument("rest", nargs="*")
@@ -707,7 +769,7 @@ def main(argv=None) -> int:
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
             "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick, "indexnow": cmd_indexnow, "demand": cmd_demand,
-            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog, "ig-auth": cmd_ig, "ig-refresh": cmd_ig, "ig-post": cmd_ig}[args.cmd](args, settings)
+            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog, "ig-auth": cmd_ig, "ig-refresh": cmd_ig, "ig-post": cmd_ig, "related": cmd_related, "sns-stats": cmd_sns, "sns-comments": cmd_sns, "sns-reply": cmd_sns, "notify": cmd_sns}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":

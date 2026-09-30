@@ -178,6 +178,11 @@ def site_stats(settings: Settings, board_js: Path | None = None) -> dict:
         st = p30.get(p["id"], {})
         out["posts"].append({"id": p["id"], "title": html.unescape(p["title"]["rendered"])[:60], "url": p["link"],
                              "date": (p.get("date") or "")[:10], "pv30": int(st.get("pageviews") or 0)})
+    try:
+        from .sns import sns_stats
+        out["sns"] = sns_stats()
+    except Exception:  # noqa: BLE001
+        out["sns"] = {}
     if board_js and board_js.exists():
         subprocess.run(["node", str(board_js), "set", "yt_stats", "latest", json.dumps(out, ensure_ascii=False)], check=True,
                        capture_output=True, text=True, encoding="utf-8", timeout=120)
@@ -200,6 +205,7 @@ def weekly_report(settings: Settings, board_js: Path, post_to_board: bool = True
              f"· 발행 {len(posts)}편 · 댓글 {len(comments)}개 · 대기열 {pending}편"]
     for p in posts[:7]:
         lines.append(f"  - {html.unescape(p['title']['rendered'])}  {p['link']}")
+    stt: dict = {}
     try:
         stt = site_stats(settings, board_js if post_to_board else None)
         lines.append(f"· 방문: 7일 방문자 {stt['d7']['visitors']}명 · 조회 {stt['d7']['pageviews']}회 (30일 {stt['d30']['visitors']}명 · {stt['d30']['pageviews']}회)")
@@ -207,6 +213,11 @@ def weekly_report(settings: Settings, board_js: Path, post_to_board: bool = True
             lines.append(f"  - 인기: {t['title']} ({t['pageviews']}회)")
     except Exception as e:  # noqa: BLE001
         lines.append(f"· 방문 통계 실패: {str(e)[:80]}")
+    try:
+        from .sns import report_lines, sns_stats
+        lines += report_lines(stt.get("sns") or sns_stats())
+    except Exception as e:  # noqa: BLE001
+        lines.append(f"· SNS 성과 실패: {str(e)[:80]}")
     if not posts:
         lines.append("  - 지난주 발행 없음. 대기열에 링크를 올려 주세요.")
     try:

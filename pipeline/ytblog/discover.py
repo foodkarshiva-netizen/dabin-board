@@ -29,6 +29,8 @@ class VideoMeta:
     keywords: list[str] = field(default_factory=list)
     thumbnail_url: str = ""
     chapters: list[dict] = field(default_factory=list)  # [{"start": sec, "title": str}]
+    views: int = 0            # 채널 목록에서 읽은 조회수(자동 선정용). 모르면 0
+    age_days: float = -1      # 게시 후 지난 날(자동 선정용). 모르면 -1
 
     @property
     def url(self) -> str:
@@ -95,6 +97,26 @@ def _extract_initial_data(html: str) -> dict:
         return {}
 
 
+def _parse_views(text: str) -> int:
+    """'조회수 12만회' / '조회수 3.4천회' / '조회수 1,234회' → 정수."""
+    m = re.search(r"([\d.,]+)\s*(억|만|천)?", text.replace("조회수", ""))
+    if not m:
+        return 0
+    try:
+        n = float(m.group(1).replace(",", ""))
+    except ValueError:
+        return 0
+    return int(n * {"억": 100_000_000, "만": 10_000, "천": 1_000}.get(m.group(2) or "", 1))
+
+
+def _parse_age_days(text: str) -> float:
+    """'3일 전' / '5시간 전' / '2주 전' / '1개월 전' → 지난 날 수. 모르면 -1."""
+    m = re.search(r"(\d+)\s*(분|시간|일|주|개월|년)\s*전", text or "")
+    if not m:
+        return -1
+    return int(m.group(1)) * {"분": 1 / 1440, "시간": 1 / 24, "일": 1, "주": 7, "개월": 30, "년": 365}[m.group(2)]
+
+
 def list_videos_from_page(channel_id: str, proxy_url: str = "") -> list[VideoMeta]:
     """채널 '동영상' 탭(ytInitialData)에서 최근 영상을 최신순으로 파싱. RSS 가 404 일 때의 대체 경로.
 
@@ -121,11 +143,14 @@ def list_videos_from_page(channel_id: str, proxy_url: str = "") -> list[VideoMet
         md = lk.get("metadata", {}).get("lockupMetadataViewModel", {})
         title = md.get("title", {}).get("content", "")
         published = ""
+        views = 0
         for row in md.get("metadata", {}).get("contentMetadataViewModel", {}).get("metadataRows", []):
             parts = [p.get("text", {}).get("content", "") for p in row.get("metadataParts", [])]
             for p in parts:
                 if p.endswith("전") or "스트리밍" in p or "예정" in p:
                     published = p
+                elif "조회수" in p or re.fullmatch(r"[\d.,]+\s*(억|만|천)?\s*(회|views)?", p.strip()):
+                    views = _parse_views(p)   # 채널 목록에는 "12만" 처럼 숫자만 나온다
         duration = 0
         for badge in _walk(lk.get("contentImage", {}), "thumbnailBadgeViewModel"):
             txt = badge.get("text", "")
@@ -137,7 +162,8 @@ def list_videos_from_page(channel_id: str, proxy_url: str = "") -> list[VideoMet
         if srcs:
             thumb = srcs[-1].get("url", "")
         out.append(VideoMeta(video_id=vid, title=title, channel_id=channel_id, channel_title=channel_title,
-                             published=published, duration_sec=duration, thumbnail_url=thumb))
+                             published=published, duration_sec=duration, thumbnail_url=thumb,
+                             views=views, age_days=_parse_age_days(published)))
     return out
 
 

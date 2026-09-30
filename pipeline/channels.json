@@ -1,17 +1,14 @@
 {
   "channels": [
     {
-      "handle": "@지식인사이드",
-      "channel_id": "",
-      "title": "지식인사이드",
+      "handle": "@jamtoori",
+      "channel_id": "UCz0vfs-XRMrpG78WtMVE1mg",
+      "title": "잼투리",
       "enabled": true,
       "min_duration_sec": 180,
       "max_duration_sec": 5400,
       "language_hint": "ko",
       "blog_category": "그 밖의 이야기",
-      "extra_tags": [
-        "지식인사이드"
-      ],
       "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
       "categories": [
         "경제·투자",
@@ -21,7 +18,230 @@
         "심리·자기계발",
         "사회·문화",
         "그 밖의 이야기"
-      ]
+      ],
+      "extra_tags": [
+        "잼투리"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상."
+    },
+    {
+      "handle": "@지식인사이드",
+      "channel_id": "UCA_hgsFzmynpv1zkvA5A7jA",
+      "title": "지식인사이드",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "그 밖의 이야기",
+      "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
+      "categories": [
+        "경제·투자",
+        "건강·의학",
+        "역사·인문",
+        "과학·기술",
+        "심리·자기계발",
+        "사회·문화",
+        "그 밖의 이야기"
+      ],
+      "extra_tags": [
+        "지식인사이드"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상."
+    },
+    {
+      "handle": "@sosumonkey",
+      "channel_id": "UCC3yfxS5qC6PCwDzetUuEWg",
+      "title": "소수몽키",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "그 밖의 이야기",
+      "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
+      "categories": [
+        "경제·투자",
+        "건강·의학",
+        "역사·인문",
+        "과학·기술",
+        "심리·자기계발",
+        "사회·문화",
+        "그 밖의 이야기"
+      ],
+      "extra_tags": [
+        "소수몽키"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상. 시황 속보·주간 브리핑은 피하고, 오래 읽힐 분석·정리 영상 위주."
+    },
+    {
+      "handle": "@thewriter-song",
+      "channel_id": "UCrxr7eBgbKdz0e1t5ax9kCg",
+      "title": "작가 송희구",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "그 밖의 이야기",
+      "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
+      "categories": [
+        "경제·투자",
+        "건강·의학",
+        "역사·인문",
+        "과학·기술",
+        "심리·자기계발",
+        "사회·문화",
+        "그 밖의 이야기"
+      ],
+      "extra_tags": [
+        "작가 송희구"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상."
+    },
+    {
+      "handle": "@supe-tv",
+      "channel_id": "UCfnqgWlC5IvJEAPTmyjaixA",
+      "title": "수페TV",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "그 밖의 이야기",
+      "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
+      "categories": [
+        "경제·투자",
+        "건강·의학",
+        "역사·인문",
+        "과학·기술",
+        "심리·자기계발",
+        "사회·문화",
+        "그 밖의 이야기"
+      ],
+      "extra_tags": [
+        "수페TV"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상."
+    },
+    {
+      "handle": "@stockingssam",
+      "channel_id": "UCo3hYKWIB0PqezNK0w2rJzQ",
+      "title": "김진의 투자캠프",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "그 밖의 이야기",
+      "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
+      "categories": [
+        "경제·투자",
+        "건강·의학",
+        "역사·인문",
+        "과학·기술",
+        "심리·자기계발",
+        "사회·문화",
+        "그 밖의 이야기"
+      ],
+      "extra_tags": [
+        "김진의 투자캠프"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상. 종목 추천·단기 시황보다 원리·전략 설명 영상 위주."
+    },
+    {
+      "handle": "@buiknam_tv",
+      "channel_id": "UC2QeHNJFfuQWB4cy3M-745g",
+      "title": "부읽남TV",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "그 밖의 이야기",
+      "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
+      "categories": [
+        "경제·투자",
+        "건강·의학",
+        "역사·인문",
+        "과학·기술",
+        "심리·자기계발",
+        "사회·문화",
+        "그 밖의 이야기"
+      ],
+      "extra_tags": [
+        "부읽남TV"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상."
+    },
+    {
+      "handle": "@리뷰엉이",
+      "channel_id": "UCXD1p0ghcxXj8u4s5jYbGkw",
+      "title": "리뷰엉이",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "그 밖의 이야기",
+      "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
+      "categories": [
+        "경제·투자",
+        "건강·의학",
+        "역사·인문",
+        "과학·기술",
+        "심리·자기계발",
+        "사회·문화",
+        "그 밖의 이야기"
+      ],
+      "extra_tags": [
+        "리뷰엉이"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상."
+    },
+    {
+      "handle": "@doctordinho",
+      "channel_id": "UCedNxnMK3b2-_hzqLyo4stg",
+      "title": "닥터딩요",
+      "enabled": true,
+      "min_duration_sec": 180,
+      "max_duration_sec": 5400,
+      "language_hint": "ko",
+      "blog_category": "그 밖의 이야기",
+      "tone": "블로그 이웃에게 설명하듯 친근한 '~해요' 체. 짧고 쉬운 문장, 모든 문장은 마침표로 끝냄. 딱딱한 보고서 말투와 '~라고 말한다' 식 화법 서술 금지.",
+      "categories": [
+        "경제·투자",
+        "건강·의학",
+        "역사·인문",
+        "과학·기술",
+        "심리·자기계발",
+        "사회·문화",
+        "그 밖의 이야기"
+      ],
+      "extra_tags": [
+        "닥터딩요"
+      ],
+      "auto_pick": true,
+      "pick_min_sec": 480,
+      "pick_max_sec": 3600,
+      "pick_note": "최근 2주 안 영상 우선. 사람들이 지금 궁금해하는 주제(돈·건강·AI·일자리·생활에 닿는 과학)로, 검색 수요(demand) 점수가 높은 검색어를 제목에 쓸 수 있는 영상. 건강 정보는 영상에 나온 내용만, 과장 없이."
     }
   ]
 }
