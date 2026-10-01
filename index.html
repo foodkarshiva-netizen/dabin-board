@@ -1050,17 +1050,37 @@ function partnerRepHTML(nm){
 }
 
 /* ===== 청약 ===== */
-var CHUNGCFG={cash:36265,loanRate:4.5,stockRate:10,holdYears:2},CHUNGCFGOPEN=false;
+var CHUNGCFG={cash:36265,loanRate:4.5,stockRate:10,holdYears:2,monthlySave:800},CHUNGCFGOPEN=false;
 function chW(m){if(m===''||m===null||m===undefined||isNaN(m))return '—';var neg=m<0;m=Math.abs(Math.round(m));var e=Math.floor(m/10000),n=m%10000;var s=e?(e+'억'+(n?' '+n.toLocaleString()+'만':'')):(n.toLocaleString()+'만');return (neg?'-':'')+s}
 function chungTax(p){var t;if(p<=60000)t=p*0.011;else if(p<=90000)t=p*(((p/10000)*2/3-3)/100+0.002);else t=p*0.033;if(p<=120000)t=Math.max(0,t-200);return Math.round(t)}
 function chungLoan(p){return Math.min(Math.round(p*0.7),60000)}
-function chungCalc(it){var price=+it.price||0,market=+it.market||0;var loan=chungLoan(price),tax=chungTax(price);var need=price-loan+tax;var cash=+CHUNGCFG.cash||0;var y=+it.liveYears||+CHUNGCFG.holdYears||2;var sr=(+CHUNGCFG.stockRate||10)/100,lr=(+CHUNGCFG.loanRate||4.5)/100;var opp=need*(Math.pow(1+sr,y)-1)*0.78;var itr=loan*lr*y;var bar=Math.round(opp+itr);var gain=market?market-price:null;return {loan:loan,tax:tax,need:need,ok:need<=cash,short:Math.max(0,need-cash),y:y,bar:bar,gain:gain,pass:gain!==null&&gain>=bar}}
+function chungIsPre(it){return (it.group==='\uC77C\uBC18\uBD84\uC591')||((it.kind||'').indexOf('\uC77C\uBC18\uBD84\uC591')>=0)}
+function chungCalc(it){
+ var price=+it.price||0,market=+it.market||0;
+ var loan=chungLoan(price),tax=chungTax(price);
+ var need=price-loan+tax;
+ var cash=+CHUNGCFG.cash||0, save=+CHUNGCFG.monthlySave||0;
+ var pre=chungIsPre(it);
+ var mo=pre?(+it.moveInMonths||30):0;
+ var cashAt=cash+save*mo;
+ var down=pre?Math.round(price*0.1):0;
+ var ok = pre ? (down<=cash && need<=cashAt) : (need<=cash);
+ var short = pre ? Math.max(0,need-cashAt) : Math.max(0,need-cash);
+ var downShort = pre ? Math.max(0,down-cash) : 0;
+ var y=+it.liveYears||+CHUNGCFG.holdYears||2;
+ var sr=(+CHUNGCFG.stockRate||10)/100,lr=(+CHUNGCFG.loanRate||4.5)/100;
+ var opp=need*(Math.pow(1+sr,y)-1)*0.78;
+ var itr=loan*lr*y;
+ var bar=Math.round(opp+itr);
+ var gain=market?market-price:null;
+ return {loan:loan,tax:tax,need:need,ok:ok,short:short,pre:pre,mo:mo,down:down,downShort:downShort,cashAt:cashAt,y:y,bar:bar,gain:gain,pass:gain!==null&&gain>=bar}
+}
 function chungMax(cash){var lo=0,hi=300000;for(var i=0;i<45;i++){var mid=(lo+hi)/2;if(mid-chungLoan(mid)+chungTax(mid)<=cash)lo=mid;else hi=mid}return Math.round(lo)}
 function chungDday(d){if(!d)return '';var t=new Date(d+'T00:00:00'),n=new Date();n.setHours(0,0,0,0);var g=Math.round((t-n)/86400000);if(g>0)return 'D-'+g;if(g===0)return 'D-DAY';return '종료'}
-function chungToggleCfg(){CHUNGCFGOPEN=!CHUNGCFGOPEN;var b=document.getElementById('chungCfgBox');b.style.display=CHUNGCFGOPEN?'':'none';if(CHUNGCFGOPEN)b.innerHTML='<div class="card"><label class="fl">동원 가능 현금(만원)</label><input id="ccCash" inputmode="numeric" value="'+(CHUNGCFG.cash||'')+'"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><div><label class="fl">대출금리(%)</label><input id="ccLoan" inputmode="decimal" value="'+(CHUNGCFG.loanRate||4.5)+'"></div><div><label class="fl">주식수익률(%)</label><input id="ccStock" inputmode="decimal" value="'+(CHUNGCFG.stockRate||10)+'"></div><div><label class="fl">기본보유(년)</label><input id="ccHold" inputmode="numeric" value="'+(CHUNGCFG.holdYears||2)+'"></div></div><button class="btn p" style="margin-top:10px;width:100%" onclick="saveChungCfg()">저장</button></div>'}
-function saveChungCfg(){var c={cash:+document.getElementById('ccCash').value||0,loanRate:+document.getElementById('ccLoan').value||4.5,stockRate:+document.getElementById('ccStock').value||10,holdYears:+document.getElementById('ccHold').value||2};db.collection('chungyak_cfg').doc('main').set(c,{merge:true}).then(function(){CHUNGCFG=c;CHUNGCFGOPEN=false;document.getElementById('chungCfgBox').style.display='none';renderChung()})}
+function chungToggleCfg(){CHUNGCFGOPEN=!CHUNGCFGOPEN;var b=document.getElementById('chungCfgBox');b.style.display=CHUNGCFGOPEN?'':'none';if(CHUNGCFGOPEN)b.innerHTML='<div class="card"><label class="fl">동원 가능 현금(만원)</label><input id="ccCash" inputmode="numeric" value="'+(CHUNGCFG.cash||'')+'"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><div><label class="fl">대출금리(%)</label><input id="ccLoan" inputmode="decimal" value="'+(CHUNGCFG.loanRate||4.5)+'"></div><div><label class="fl">주식수익률(%)</label><input id="ccStock" inputmode="decimal" value="'+(CHUNGCFG.stockRate||10)+'"></div><div><label class="fl">기본보유(년)</label><input id="ccHold" inputmode="numeric" value="'+(CHUNGCFG.holdYears||2)+'"></div></div><div style="margin-top:8px"><label class="fl">月 저축액(만원) — 선분양 잔금 계산에 쓰임</label><input id="ccSave" inputmode="numeric" value="'+(CHUNGCFG.monthlySave||800)+'"></div><button class="btn p" style="margin-top:10px;width:100%" onclick="saveChungCfg()">저장</button></div>'}
+function saveChungCfg(){var c={cash:+document.getElementById('ccCash').value||0,loanRate:+document.getElementById('ccLoan').value||4.5,stockRate:+document.getElementById('ccStock').value||10,holdYears:+document.getElementById('ccHold').value||2,monthlySave:+document.getElementById('ccSave').value||0};db.collection('chungyak_cfg').doc('main').set(c,{merge:true}).then(function(){CHUNGCFG=c;CHUNGCFGOPEN=false;document.getElementById('chungCfgBox').style.display='none';renderChung()})}
 function addChung(){var o={name:(document.getElementById('cgName').value||'').trim(),area:(document.getElementById('cgArea').value||'').trim(),kind:document.getElementById('cgKind').value,price:+document.getElementById('cgPrice').value||0,market:+document.getElementById('cgMarket').value||0,applyStart:document.getElementById('cgStart').value||'',winDate:document.getElementById('cgWin').value||'',liveYears:+document.getElementById('cgLive').value||0,url:(document.getElementById('cgUrl').value||'').trim(),src:'manual',ts:Date.now()};if(!o.name||!o.price){alert('단지명과 분양가는 필수예요');return}db.collection('chungyak').add(o).then(function(){['cgName','cgArea','cgPrice','cgMarket','cgStart','cgWin','cgLive','cgUrl'].forEach(function(id){document.getElementById(id).value=''});renderChung()})}
-function editChungPrice(id){var p=prompt('\uBD84\uC591\uAC00(\uB9CC\uC6D0)');if(p===null)return;var m=prompt('\uC8FC\uBCC0 \uC2DC\uC138(\uB9CC\uC6D0, \uBAA8\uB974\uBA74 \uBE44\uC6CC\uB450\uC138\uC694)');var y=prompt('\uAC70\uC8FC\uC758\uBB34(\uB144, \uBAA8\uB974\uBA74 \uBE44\uC6C0=2\uB144)');var u=prompt('\uB2E8\uC9C0 \uCD1D \uC138\uB300\uC218(300\uC138\uB300 \uBBF8\uB9CC\uC740 \uC790\uB3D9 \uC81C\uC678)');var o={price:+p||0};if(m!==null&&m!=='')o.market=+m||0;if(y!==null&&y!=='')o.liveYears=+y||0;if(u!==null&&u!=='')o.units=+u||0;db.collection('chungyak').doc(id).set(o,{merge:true}).then(renderChung)}
+function editChungPrice(id){var p=prompt('\uBD84\uC591\uAC00(\uB9CC\uC6D0)');if(p===null)return;var m=prompt('\uC8FC\uBCC0 \uC2DC\uC138(\uB9CC\uC6D0, \uBAA8\uB974\uBA74 \uBE44\uC6CC\uB450\uC138\uC694)');var y=prompt('\uAC70\uC8FC\uC758\uBB34(\uB144, \uBAA8\uB974\uBA74 \uBE44\uC6C0=2\uB144)');var u=prompt('\uB2E8\uC9C0 \uCD1D \uC138\uB300\uC218(300\uC138\uB300 \uBBF8\uB9CC\uC740 \uC790\uB3D9 \uC81C\uC678)');var mm=prompt('\uC785\uC8FC\uAE4C\uC9C0 \uAC1C\uC6D4\uC218(\uC120\uBD84\uC591\uB9CC, \uBE44\uC6B0\uBA74 30\uAC1C\uC6D4)');var o={price:+p||0};if(m!==null&&m!=='')o.market=+m||0;if(y!==null&&y!=='')o.liveYears=+y||0;if(u!==null&&u!=='')o.units=+u||0;if(mm!==null&&mm!=='')o.moveInMonths=+mm||0;db.collection('chungyak').doc(id).set(o,{merge:true}).then(renderChung)}
 function delChung(id){if(!confirm('삭제할까요?'))return;db.collection('chungyak').doc(id).delete().then(renderChung)}
 var CHUNGSHOWALL=false;
 function chungToggleAll(){CHUNGSHOWALL=!CHUNGSHOWALL;renderChung()}
@@ -1084,7 +1104,7 @@ function openChungNotice(it){
 }
 function renderChung(){
  var box=document.getElementById('chungList');box.innerHTML='<div class="empty">\uBD88\uB7EC\uC624\uB294 \uC911\u2026</div>';
- db.collection('chungyak_cfg').doc('main').get().then(function(d){if(d.exists)CHUNGCFG=Object.assign({cash:36265,loanRate:4.5,stockRate:10,holdYears:2},d.data());return db.collection('chungyak').get()}).then(function(qs){
+ db.collection('chungyak_cfg').doc('main').get().then(function(d){if(d.exists)CHUNGCFG=Object.assign({cash:36265,loanRate:4.5,stockRate:10,holdYears:2,monthlySave:800},d.data());return db.collection('chungyak').get()}).then(function(qs){
   var arr=[];qs.forEach(function(d){var o=d.data()||{};o._id=d.id;arr.push(o)});
   var today=new Date().toISOString().slice(0,10);
   // 접수 안 끝난 것 먼저(접수일 빠른 순) → 끝난 것 나중(최근 순)
@@ -1118,8 +1138,15 @@ function renderChung(){
     h+='<td class="num">'+chW(it.price)+'</td>';
     h+='<td class="num">'+(+it.market>0?chW(it.market):'<span class="muted">\u2014</span>')+'</td>';
     h+='<td class="num '+(c.gain>0?'gpos':(c.gain<0?'gneg':''))+'">'+(c.gain===null?'<span class="muted">\u2014</span>':chW(c.gain))+'</td>';
-    h+='<td class="num">'+chW(c.need)+(c.ok?'':'<div class="sub bad">'+chW(c.short)+' \uBD80\uC871</div>')+'</td>';
-    h+='<td class="judge">'+(c.ok?'<span class="ptag good">\uC790\uAE08 OK</span>':'<span class="ptag warn">\uC790\uAE08 \uBD80\uC871</span>')
+    if(c.pre){
+     h+='<td class="num"><div>\uACC4\uC57D\uAE08 '+chW(c.down)+'</div>'
+      +'<div class="sub muted">'+Math.round(c.mo/12*10)/10+'\uB144 \uB4A4 '+chW(c.need)+'</div>'
+      +(c.downShort?'<div class="sub bad">\uACC4\uC57D\uAE08 '+chW(c.downShort)+' \uBD80\uC871</div>':'')
+      +(c.short?'<div class="sub bad">\uC794\uAE08 '+chW(c.short)+' \uBD80\uC871</div>':'')+'</td>';
+    }else{
+     h+='<td class="num">'+chW(c.need)+(c.ok?'':'<div class="sub bad">'+chW(c.short)+' \uBD80\uC871</div>')+'</td>';
+    }
+    h+='<td class="judge">'+(c.pre?'<div class="sub muted" style="margin-bottom:3px">\uC911\uB3C4\uAE08\uB300\uCD9C \uC804\uC81C</div>':'')+(c.ok?'<span class="ptag good">\uC790\uAE08 OK</span>':'<span class="ptag warn">\uC790\uAE08 \uBD80\uC871</span>')
       +(c.gain===null?'':'<br><span class="ptag '+(c.pass?'good':'warn')+'">'+(c.pass?'\uC8FC\uC2DD\uBCF4\uB2E4 \uC720\uB9AC':'\uC8FC\uC2DD\uC774 \uB098\uC74C')+'</span><div class="sub muted">'+c.y+'\uB144 \uD569\uACA9\uC120 '+chW(c.bar)+'</div>')+'</td>';
    }
    h+='<td class="act"><button class="btn o sm" onclick=\'openChungNotice('+JSON.stringify({hmno:it.hmno||'',pbno:it.pbno||'',group:it.group||'',url:it.url||''}).replace(/'/g,"&#39;")+')\'>\uACF5\uACE0</button>'
