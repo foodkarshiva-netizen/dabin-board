@@ -1044,7 +1044,7 @@ function renderChung(){
   var arr=[];qs.forEach(function(d){var o=d.data()||{};o._id=d.id;arr.push(o)});
   arr.sort(function(a,b){return String(b.applyStart||'').localeCompare(String(a.applyStart||''))});
   var mx=chungMax(+CHUNGCFG.cash||0);
-  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">내 현금 '+chW(CHUNGCFG.cash)+' · 대출 최대 6억(수도권 칤)</div><div style="font-size:19px;font-weight:700;margin-top:2px">분양가 '+chW(mx)+' 까지 가능</div></div><div class="muted small" style="text-align:right">생애최초 LTV 70%<br>취득세 포함</div></div></div>';
+  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">내 현금 '+chW(CHUNGCFG.cash)+' · 대출 최대 6억(수도권 캡)</div><div style="font-size:19px;font-weight:700;margin-top:2px">분양가 '+chW(mx)+' 까지 가능</div></div><div class="muted small" style="text-align:right">생애최초 LTV 70%<br>취득세 포함</div></div></div>';
   if(!arr.length){box.innerHTML='<div class="empty">등록된 공고가 없어요. 아래에서 직접 추가하거나 수집기가 채워줍니다.</div>';return}
   var h='';
   arr.forEach(function(it){
