@@ -237,6 +237,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
 .ctbl .cdate .d3{font-size:11px;color:#99a;margin-top:2px}
 .ctbl .cname .n1{font-size:14px;font-weight:700;line-height:1.3}
 .ctbl .cname .n2{font-size:11px;color:#8a92a6;margin-top:2px}
+.ctbl .cname .n3{font-size:11px;color:#6b7280;margin-top:4px;line-height:1.45;max-width:440px;white-space:normal}
 .ctbl .hotdot{color:#e8590c}
 .ctbl .num{text-align:right;white-space:nowrap;font-weight:600}
 .ctbl .num.gpos{color:#0a8a4a}
@@ -1094,7 +1095,7 @@ function renderChung(){
    // 접수일 — 크게
    h+='<td class="cdate"><div class="d1">'+esc((it.applyStart||'').slice(5).replace('-','/')||'\u2014')+'</div><div class="d2 '+(dd==='\uC885\uB8CC'?'muted':'hot')+'">'+esc(dd)+'</div>'+(it.winDate?'<div class="d3">\uBC1C\uD45C '+esc(it.winDate.slice(5).replace('-','/'))+'</div>':'')+'</td>';
    // 단지
-   h+='<td class="cname"><div class="n1">'+(hot?'<span class="hotdot">\u2605</span> ':'')+esc(it.name||'')+'</div><div class="n2">'+esc(it.area||'')+' \u00B7 '+esc(it.kind||'')+'</div></td>';
+   h+='<td class="cname"><div class="n1">'+(hot?'<span class="hotdot">\u2605</span> ':'')+esc(it.name||'')+'</div><div class="n2">'+esc(it.area||'')+' \u00B7 '+esc(it.kind||'')+'</div>'+(it.note?'<div class="n3">'+esc(it.note)+'</div>':'')+'</td>';
    if(noP){
     h+='<td colspan="5" class="muted small" style="text-align:center">\uBD84\uC591\uAC00 \uBBF8\uD655\uC778 \u2014 <button class="btn o sm" onclick="editChungPrice(\''+it._id+'\')">\uAE08\uC561 \uC785\uB825</button></td>';
    }else{
