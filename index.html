@@ -1081,7 +1081,7 @@ function renderChung(){
    return al? String(a.applyStart||'').localeCompare(String(b.applyStart||'')) : String(b.applyStart||'').localeCompare(String(a.applyStart||''));
   });
   var mx=chungMax(+CHUNGCFG.cash||0);
-  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">\uB0B4 \uD604\uAE08 '+chW(CHUNGCFG.cash)+' \u00B7 \uB300\uCD9C \uCD5C\uB300 6\uC5B5(\uC218\uB3C4\uAD8C \uCE61)</div><div style="font-size:19px;font-weight:700;margin-top:2px">\uBD84\uC591\uAC00 '+chW(mx)+' \uAE4C\uC9C0 \uAC00\uB2A5</div></div><div class="muted small" style="text-align:right">\uC0DD\uC560\uCD5C\uCD08 LTV 70%<br>\uCDE8\uB4DD\uC138 \uD3EC\uD568</div></div></div>';
+  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">\uB0B4 \uD604\uAE08 '+chW(CHUNGCFG.cash)+' \u00B7 \uB300\uCD9C \uCD5C\uB300 6\uC5B5(\uC218\uB3C4\uAD8C \uCEA1)</div><div style="font-size:19px;font-weight:700;margin-top:2px">\uBD84\uC591\uAC00 '+chW(mx)+' \uAE4C\uC9C0 \uAC00\uB2A5</div></div><div class="muted small" style="text-align:right">\uC0DD\uC560\uCD5C\uCD08 LTV 70%<br>\uCDE8\uB4DD\uC138 \uD3EC\uD568</div></div></div>';
   if(!arr.length){box.innerHTML='<div class="empty">\uB4F1\uB85D\uB41C \uACF5\uACE0\uAC00 \uC5C6\uC5B4\uC694.</div>';return}
   var h='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="ctbl"><thead><tr>'
    +'<th>\uC811\uC218\uC77C</th><th>\uB2E8\uC9C0</th><th>\uBD84\uC591\uAC00</th><th>\uC2DC\uC138</th><th>\uCC28\uC775</th><th>\uD544\uC694\uD604\uAE08</th><th>\uD310\uC815</th><th></th></tr></thead><tbody>';
