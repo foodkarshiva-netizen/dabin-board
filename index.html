@@ -230,8 +230,8 @@ nav button .ic svg{width:24px;height:24px;display:block}
 .ctbl th{background:#f5f7fa;color:#667;font-weight:600;font-size:12px;padding:9px 8px;text-align:center;border-bottom:1px solid #e6e9ef;white-space:nowrap}
 .ctbl td{padding:11px 8px;border-bottom:1px solid #eef1f5;vertical-align:middle}
 .ctbl tr.cdone{opacity:.45}
-.ctbl .cdate{text-align:center;white-space:nowrap;width:86px}
-.ctbl .cdate .d1{font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
+.ctbl .cdate{text-align:center;white-space:nowrap;width:118px}
+.ctbl .cdate .d1{font-size:17px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
 .ctbl .cdate .d2{font-size:13px;font-weight:700;margin-top:1px}
 .ctbl .cdate .d2.hot{color:#e8590c}
 .ctbl .cdate .d3{font-size:11px;color:#99a;margin-top:2px}
@@ -1076,6 +1076,7 @@ function chungCalc(it){
  return {loan:loan,tax:tax,need:need,ok:ok,short:short,pre:pre,mo:mo,down:down,downShort:downShort,cashAt:cashAt,y:y,bar:bar,gain:gain,pass:gain!==null&&gain>=bar}
 }
 function chungMax(cash){var lo=0,hi=300000;for(var i=0;i<45;i++){var mid=(lo+hi)/2;if(mid-chungLoan(mid)+chungTax(mid)<=cash)lo=mid;else hi=mid}return Math.round(lo)}
+function chungPeriod(it){var a=(it.applyStart||'').slice(5).replace('-','/'),b=(it.applyEnd||'').slice(5).replace('-','/');if(!a)return '\u2014';return (b&&b!==a)?a+'~'+b:a}
 function chungDday(d){if(!d)return '';var t=new Date(d+'T00:00:00'),n=new Date();n.setHours(0,0,0,0);var g=Math.round((t-n)/86400000);if(g>0)return 'D-'+g;if(g===0)return 'D-DAY';return '종료'}
 function chungToggleCfg(){CHUNGCFGOPEN=!CHUNGCFGOPEN;var b=document.getElementById('chungCfgBox');b.style.display=CHUNGCFGOPEN?'':'none';if(CHUNGCFGOPEN)b.innerHTML='<div class="card"><label class="fl">동원 가능 현금(만원)</label><input id="ccCash" inputmode="numeric" value="'+(CHUNGCFG.cash||'')+'"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><div><label class="fl">대출금리(%)</label><input id="ccLoan" inputmode="decimal" value="'+(CHUNGCFG.loanRate||4.5)+'"></div><div><label class="fl">주식수익률(%)</label><input id="ccStock" inputmode="decimal" value="'+(CHUNGCFG.stockRate||10)+'"></div><div><label class="fl">기본보유(년)</label><input id="ccHold" inputmode="numeric" value="'+(CHUNGCFG.holdYears||2)+'"></div></div><div style="margin-top:8px"><label class="fl">月 저축액(만원) — 선분양 잔금 계산에 쓰임</label><input id="ccSave" inputmode="numeric" value="'+(CHUNGCFG.monthlySave||800)+'"></div><button class="btn p" style="margin-top:10px;width:100%" onclick="saveChungCfg()">저장</button></div>'}
 function saveChungCfg(){var c={cash:+document.getElementById('ccCash').value||0,loanRate:+document.getElementById('ccLoan').value||4.5,stockRate:+document.getElementById('ccStock').value||10,holdYears:+document.getElementById('ccHold').value||2,monthlySave:+document.getElementById('ccSave').value||0};db.collection('chungyak_cfg').doc('main').set(c,{merge:true}).then(function(){CHUNGCFG=c;CHUNGCFGOPEN=false;document.getElementById('chungCfgBox').style.display='none';renderChung()})}
@@ -1125,11 +1126,11 @@ function renderChung(){
    var c=chungCalc(it);
    var hot=(it.kind||'').indexOf('\uBD88\uBC95\uD589\uC704')>=0;
    var closed=(it.applyEnd||it.applyStart||'')<today;
-   var dd=chungDday(it.applyStart);
+   var dd=chungDday(it.applyEnd||it.applyStart);
    var noP=!(+it.price>0);
    h+='<tr class="'+(closed?'cdone':'')+'">';
    // 접수일 — 크게
-   h+='<td class="cdate"><div class="d1">'+esc((it.applyStart||'').slice(5).replace('-','/')||'\u2014')+'</div><div class="d2 '+(dd==='\uC885\uB8CC'?'muted':'hot')+'">'+esc(dd)+'</div>'+(it.winDate?'<div class="d3">\uBC1C\uD45C '+esc(it.winDate.slice(5).replace('-','/'))+'</div>':'')+'</td>';
+   h+='<td class="cdate"><div class="d1">'+esc(chungPeriod(it))+'</div><div class="d2 '+(dd==='\uC885\uB8CC'?'muted':'hot')+'">'+esc(dd)+'</div>'+(it.winDate?'<div class="d3">\uBC1C\uD45C '+esc(it.winDate.slice(5).replace('-','/'))+'</div>':'')+'</td>';
    // 단지
    h+='<td class="cname"><div class="n1">'+(hot?'<span class="hotdot">\u2605</span> ':'')+esc(it.name||'')+'</div><div class="n2">'+esc(it.area||'')+' \u00B7 '+esc(it.kind||'')+(+it.units>0?' \u00B7 '+Number(it.units).toLocaleString()+'\uC138\uB300':'')+'</div>'+(it.note?'<div class="n3">'+esc(it.note)+'</div>':'')+'</td>';
    if(noP){
