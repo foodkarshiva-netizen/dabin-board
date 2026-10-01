@@ -1062,6 +1062,16 @@ function saveChungCfg(){var c={cash:+document.getElementById('ccCash').value||0,
 function addChung(){var o={name:(document.getElementById('cgName').value||'').trim(),area:(document.getElementById('cgArea').value||'').trim(),kind:document.getElementById('cgKind').value,price:+document.getElementById('cgPrice').value||0,market:+document.getElementById('cgMarket').value||0,applyStart:document.getElementById('cgStart').value||'',winDate:document.getElementById('cgWin').value||'',liveYears:+document.getElementById('cgLive').value||0,url:(document.getElementById('cgUrl').value||'').trim(),src:'manual',ts:Date.now()};if(!o.name||!o.price){alert('단지명과 분양가는 필수예요');return}db.collection('chungyak').add(o).then(function(){['cgName','cgArea','cgPrice','cgMarket','cgStart','cgWin','cgLive','cgUrl'].forEach(function(id){document.getElementById(id).value=''});renderChung()})}
 function editChungPrice(id){var p=prompt('\uBD84\uC591\uAC00(\uB9CC\uC6D0)');if(p===null)return;var m=prompt('\uC8FC\uBCC0 \uC2DC\uC138(\uB9CC\uC6D0, \uBAA8\uB974\uBA74 \uBE44\uC6CC\uB450\uC138\uC694)');var y=prompt('\uAC70\uC8FC\uC758\uBB34(\uB144, \uBAA8\uB974\uBA74 \uBE44\uC6C0=2\uB144)');var o={price:+p||0};if(m!==null&&m!=='')o.market=+m||0;if(y!==null&&y!=='')o.liveYears=+y||0;db.collection('chungyak').doc(id).set(o,{merge:true}).then(renderChung)}
 function delChung(id){if(!confirm('삭제할까요?'))return;db.collection('chungyak').doc(id).delete().then(renderChung)}
+var CHUNGSHOWALL=false;
+function chungToggleAll(){CHUNGSHOWALL=!CHUNGSHOWALL;renderChung()}
+function chungCat(it,today){
+ if((it.applyEnd||it.applyStart||"")<today)return "out";
+ if(!(+it.price>0))return "need";
+ var c=chungCalc(it);
+ if(!c.ok)return "out";
+ if(c.gain===null)return "need";
+ return c.pass?"ok":"out";
+}
 function openChungNotice(it){
  var hm=it.hmno,pb=it.pbno;
  if(!hm||!pb){ if(it.url) window.open(it.url,'_blank'); else alert('\uACF5\uACE0 \uC815\uBCF4\uAC00 \uC5C6\uC5B4\uC694. \uB2E4\uC74C \uC218\uC9D1 \uB4A4\uC5D0 \uB2E4\uC2DC \uB20C\uB7EC\uBCF4\uC138\uC694.'); return; }
@@ -1081,12 +1091,15 @@ function renderChung(){
    if(al!==bl)return al?-1:1;
    return al? String(a.applyStart||'').localeCompare(String(b.applyStart||'')) : String(b.applyStart||'').localeCompare(String(a.applyStart||''));
   });
+  var cnt={ok:0,need:0,out:0};
+  arr.forEach(function(it){it._cat=chungCat(it,today);cnt[it._cat]++});
+  var shown=CHUNGSHOWALL?arr:arr.filter(function(it){return it._cat!=='out'});
   var mx=chungMax(+CHUNGCFG.cash||0);
-  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">\uB0B4 \uD604\uAE08 '+chW(CHUNGCFG.cash)+' \u00B7 \uB300\uCD9C \uCD5C\uB300 6\uC5B5(\uC218\uB3C4\uAD8C \uCEA1)</div><div style="font-size:19px;font-weight:700;margin-top:2px">\uBD84\uC591\uAC00 '+chW(mx)+' \uAE4C\uC9C0 \uAC00\uB2A5</div></div><div class="muted small" style="text-align:right">\uC0DD\uC560\uCD5C\uCD08 LTV 70%<br>\uCDE8\uB4DD\uC138 \uD3EC\uD568</div></div></div>';
-  if(!arr.length){box.innerHTML='<div class="empty">\uB4F1\uB85D\uB41C \uACF5\uACE0\uAC00 \uC5C6\uC5B4\uC694.</div>';return}
+  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">\uB0B4 \uD604\uAE08 '+chW(CHUNGCFG.cash)+' \u00B7 \uB300\uCD9C \uCD5C\uB300 6\uC5B5(\uC218\uB3C4\uAD8C \uCEA1)</div><div style="font-size:19px;font-weight:700;margin-top:2px">\uBD84\uC591\uAC00 '+chW(mx)+' \uAE4C\uC9C0 \uAC00\uB2A5</div></div><div class="muted small" style="text-align:right">\uC0DD\uC560\uCD5C\uCD08 LTV 70%<br>\uCDE8\uB4DD\uC138 \uD3EC\uD568</div></div><div style="margin-top:10px;padding-top:10px;border-top:1px solid #eef1f5;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="ptag good">\uD6C4\uBCF4 '+cnt.ok+'\uAC74</span><span class="ptag warn">\uC2DC\uC138 \uD655\uC778\uD544\uC694 '+cnt.need+'\uAC74</span><span class="muted small">\uD0C8\uB77D\u00B7\uC885\uB8CC '+cnt.out+'\uAC74</span><button class="btn o sm" style="margin-left:auto" onclick="chungToggleAll()">'+(CHUNGSHOWALL?'\uD0C8\uB77D \uC228\uAE30\uAE30':'\uD0C8\uB77D\uB3C4 \uBCF4\uAE30')+'</button></div></div>';
+  if(!shown.length){box.innerHTML='<div class="empty">\uC9C0\uAE08 \uB123\uC744 \uB9CC\uD55C \uACF5\uACE0\uAC00 \uC5C6\uC5B4\uC694.'+(cnt.out?' \uD0C8\uB77D\u00B7\uC885\uB8CC '+cnt.out+'\uAC74\uC740 \uC704 \uBC84\uD2BC\uC73C\uB85C \uBCFC \uC218 \uC788\uC5B4\uC694.':'')+'</div>';return}
   var h='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="ctbl"><thead><tr>'
    +'<th>\uC811\uC218\uC77C</th><th>\uB2E8\uC9C0</th><th>\uBD84\uC591\uAC00</th><th>\uC2DC\uC138</th><th>\uCC28\uC775</th><th>\uD544\uC694\uD604\uAE08</th><th>\uD310\uC815</th><th></th></tr></thead><tbody>';
-  arr.forEach(function(it){
+  shown.forEach(function(it){
    var c=chungCalc(it);
    var hot=(it.kind||'').indexOf('\uBD88\uBC95\uD589\uC704')>=0;
    var closed=(it.applyEnd||it.applyStart||'')<today;
