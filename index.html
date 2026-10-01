@@ -259,6 +259,28 @@ nav button .ic svg{width:24px;height:24px;display:block}
     <div id="todoList"><div class="empty">불러오는 중…</div></div>
     <div class="addbar"><input id="newTodo" placeholder="할 일 직접 추가"><button class="btn p" onclick="addTodo()">추가</button></div>
   </section>
+  <section class="page" id="p-chung">
+    <div class="rowsb"><h2 class="t" style="margin:0">청약</h2><button class="btn o sm" onclick="chungToggleCfg()">⚙ 내 조건</button></div>
+    <div class="small muted" style="margin:0 2px 8px">무순위·불법행위 재공급(줍줍) 공고를 모아 <b>자금이 되는지</b>와 <b>주식보다 낫는지</b>를 자동으로 판정해요.</div>
+    <div id="chungCfgBox" style="display:none"></div>
+    <div id="chungSum"></div>
+    <div id="chungList"><div class="empty">불러오는 중…</div></div>
+    <details style="margin-top:12px"><summary class="muted small" style="cursor:pointer;padding:6px">+ 공고 직접 추가</summary>
+      <div class="card" style="margin-top:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input id="cgName" placeholder="단지명"><input id="cgArea" placeholder="지역 (예: 서울 광진구)">
+          <input id="cgPrice" placeholder="분양가(만원)" inputmode="numeric"><input id="cgMarket" placeholder="시세(만원)" inputmode="numeric">
+          <input id="cgStart" type="date"><input id="cgWin" type="date">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <select id="cgKind"><option value="불법행위 재공급">불법행위 재공급(로또)</option><option value="무순위(사후)">무순위(사후)</option><option value="무순위(사전)">무순위(사전)</option><option value="임의공급">임의공급</option><option value="일반분양">일반분양</option></select>
+          <input id="cgLive" placeholder="거주의무(년)" inputmode="numeric">
+        </div>
+        <input id="cgUrl" placeholder="공고 링크(선택)" style="margin-top:8px">
+        <button class="btn p" style="margin-top:10px;width:100%" onclick="addChung()">추가</button>
+      </div>
+    </details>
+  </section>
   <section class="page" id="p-blog">
     <div class="rowsb"><h2 class="t" style="margin:0">블로그 대기열</h2><div style="display:flex;gap:6px;align-items:center"><span class="muted small" id="ytqProg"></span><button class="btn o sm" id="ytqDoneBtn" onclick="toggleYtqDone()">완료 보기</button></div></div>
     <div class="small muted" style="margin:0 2px 8px">유튜브 링크를 올려 두면 클로드가 요약·도식·이미지를 만들어 지식채우기(jisikfill.com)에 발행하고 완료 표시를 해요.</div>
@@ -415,13 +437,13 @@ function bLine(e){return e.ad?("· (종일) "+e.ti):("· "+e.t+" "+e.ti)}
 function genBriefing(baseISO){var d=baseISO?new Date(baseISO+"T00:00"):new Date();var L=["["+(d.getMonth()+1)+"/"+d.getDate()+"("+KWD[d.getDay()]+") 일정 브리핑]"];var ev=evForBrief(d);if(!ev.length)L.push("오늘 등록된 일정 없음");else ev.forEach(function(e){L.push(bLine(e))});if(d.getDay()===1){var end=new Date(d);end.setDate(d.getDate()+6);L.push("");L.push("[주간 일정 브리핑 "+(d.getMonth()+1)+"/"+d.getDate()+"~"+(end.getMonth()+1)+"/"+end.getDate()+"]");for(var i=0;i<7;i++){var dd=new Date(d);dd.setDate(d.getDate()+i);L.push("■ "+(dd.getMonth()+1)+"/"+dd.getDate()+"("+KWD[dd.getDay()]+")");var de=evForBrief(dd);if(!de.length)L.push("· 일정 없음");else de.forEach(function(e){L.push(bLine(e))})}}return L.join("\n")}
 function jobsFor(dt){var w=dt.getDay();return JOBS.filter(function(j){return j.sc==='d'||(j.sc==='wd'&&w>=1&&w<=5)||(Array.isArray(j.sc)&&j.sc.indexOf(w)>=0)}).map(function(j){return {s:j.s,t:j.t}})}
 var todayD=new Date(),todayISO=iso(todayD);
-var TABS=[['talk','💬','소통'],['debate','🗣','세션 오더'],['amemo','📝','관리메모'],['today','◎','오늘'],['cal','▦','캘린더'],['dreport','📊','일일보고'],['sales','▤','매출'],['misu','💰','협력사미수'],['misuext','💳','외부거래처미수'],['partner','🤝','협력사매출'],['biz','🔗','통합보드'],['proj','★','장기업무'],['people','◍','인원관리'],['memo','🔑','기억사항'],['blog','📝','블로그']];
+var TABS=[['talk','💬','소통'],['debate','🗣','세션 오더'],['amemo','📝','관리메모'],['today','◎','오늘'],['cal','▦','캘린더'],['dreport','📊','일일보고'],['sales','▤','매출'],['misu','💰','협력사미수'],['misuext','💳','외부거래처미수'],['partner','🤝','협력사매출'],['biz','🔗','통합보드'],['proj','★','장기업무'],['people','◍','인원관리'],['memo','🔑','기억사항'],['blog','📝','블로그'],['chung','🏠','청약']];
 /* 오더사항 탭 숨김(2026-08-21, 요청). 복구하려면 위 배열 '인원관리' 다음에 ['order','◆','오더사항'] 를 다시 넣으면 됨 — 데이터(orders 컬렉션)와 렌더 코드는 그대로 남아 있음. */
 function ic(p){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>'}
-var ICONS={blog:ic('<path d="M4.5 3.5h10l5 5v11a1.5 1.5 0 0 1-1.5 1.5h-13.5A1.5 1.5 0 0 1 3 19.5v-14.5a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M14.5 3.5v5h5M7.5 12h9M7.5 16h6"/>'),talk:ic('<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.7 8.7 0 0 1-3.9-.9L3 21l1.9-5.1a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>'),debate:ic('<path d="M3.5 5.5h9a1.8 1.8 0 0 1 1.8 1.8v4.2a1.8 1.8 0 0 1-1.8 1.8H8.2l-3.4 2.9v-2.9h-1.3a1.8 1.8 0 0 1-1.8-1.8"/><path d="M16.5 8.8h3.6a1.6 1.6 0 0 1 1.6 1.6v3.8a1.6 1.6 0 0 1-1.6 1.6h-.6v2.7l-3.1-2.7h-3.6"/>'),today:ic('<circle cx="12" cy="12" r="9"/><path d="M8.4 12.4l2.4 2.4 4.8-5.4"/>'),cal:ic('<rect x="3" y="4.5" width="18" height="16" rx="2.2"/><path d="M3 9.2h18M8 2.6v3.6M16 2.6v3.6"/>'),people:ic('<circle cx="9" cy="8.4" r="3.2"/><path d="M3.4 19.6c0-3.1 2.6-5.2 5.6-5.2s5.6 2.1 5.6 5.2"/><path d="M16.2 6.1a2.9 2.9 0 0 1 0 5.7M17.6 14.5c2.3.4 4 2.3 4 5.1"/>'),order:ic('<rect x="5" y="4" width="14" height="17" rx="2.2"/><rect x="9" y="2.4" width="6" height="3.6" rx="1.1"/><path d="M8.5 11h7M8.5 15h5"/>'),proj:ic('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.7 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/>'),sales:ic('<path d="M3 20.5h18"/><path d="M6.5 20.5v-5.5M11.5 20.5v-10M16.5 20.5v-7"/>'),misu:ic('<rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>'),misuext:ic('<rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3 9.5h18M7 14.5h4"/>'),memo:ic('<circle cx="8.5" cy="8.5" r="4.5"/><path d="M11.8 11.8L20 20M16 18l2-2M18.5 15.5l2-2"/>'),partner:ic('<path d="M3 20.5h18"/><path d="M4 16l4.5-4.5 3.5 3 5-6"/><circle cx="20" cy="8.5" r="1.4"/>'),biz:ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),dreport:ic('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>'),amemo:ic('<path d="M5 3.5h14a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5h-9l-4.5 4v-4H5A1.5 1.5 0 0 1 3.5 15V5A1.5 1.5 0 0 1 5 3.5z"/><path d="M8 8.5h8M8 12h5"/>')};
+var ICONS={chung:ic('<path d="M3 11.2L12 4l9 7.2"/><path d="M5.6 9.8v9.7h12.8V9.8"/><path d="M9.8 19.5v-5.2h4.4v5.2"/>'),blog:ic('<path d="M4.5 3.5h10l5 5v11a1.5 1.5 0 0 1-1.5 1.5h-13.5A1.5 1.5 0 0 1 3 19.5v-14.5a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M14.5 3.5v5h5M7.5 12h9M7.5 16h6"/>'),talk:ic('<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.7 8.7 0 0 1-3.9-.9L3 21l1.9-5.1a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>'),debate:ic('<path d="M3.5 5.5h9a1.8 1.8 0 0 1 1.8 1.8v4.2a1.8 1.8 0 0 1-1.8 1.8H8.2l-3.4 2.9v-2.9h-1.3a1.8 1.8 0 0 1-1.8-1.8"/><path d="M16.5 8.8h3.6a1.6 1.6 0 0 1 1.6 1.6v3.8a1.6 1.6 0 0 1-1.6 1.6h-.6v2.7l-3.1-2.7h-3.6"/>'),today:ic('<circle cx="12" cy="12" r="9"/><path d="M8.4 12.4l2.4 2.4 4.8-5.4"/>'),cal:ic('<rect x="3" y="4.5" width="18" height="16" rx="2.2"/><path d="M3 9.2h18M8 2.6v3.6M16 2.6v3.6"/>'),people:ic('<circle cx="9" cy="8.4" r="3.2"/><path d="M3.4 19.6c0-3.1 2.6-5.2 5.6-5.2s5.6 2.1 5.6 5.2"/><path d="M16.2 6.1a2.9 2.9 0 0 1 0 5.7M17.6 14.5c2.3.4 4 2.3 4 5.1"/>'),order:ic('<rect x="5" y="4" width="14" height="17" rx="2.2"/><rect x="9" y="2.4" width="6" height="3.6" rx="1.1"/><path d="M8.5 11h7M8.5 15h5"/>'),proj:ic('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.7 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/>'),sales:ic('<path d="M3 20.5h18"/><path d="M6.5 20.5v-5.5M11.5 20.5v-10M16.5 20.5v-7"/>'),misu:ic('<rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>'),misuext:ic('<rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3 9.5h18M7 14.5h4"/>'),memo:ic('<circle cx="8.5" cy="8.5" r="4.5"/><path d="M11.8 11.8L20 20M16 18l2-2M18.5 15.5l2-2"/>'),partner:ic('<path d="M3 20.5h18"/><path d="M4 16l4.5-4.5 3.5 3 5-6"/><circle cx="20" cy="8.5" r="1.4"/>'),biz:ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),dreport:ic('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>'),amemo:ic('<path d="M5 3.5h14a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5h-9l-4.5 4v-4H5A1.5 1.5 0 0 1 3.5 15V5A1.5 1.5 0 0 1 5 3.5z"/><path d="M8 8.5h8M8 12h5"/>')};
 var nav=document.getElementById('nav');
 TABS.forEach(function(t){var b=document.createElement('button');b.dataset.id=t[0];b.innerHTML='<span class="ic">'+ICONS[t[0]]+'</span>'+t[2];b.onclick=function(){go(t[0])};nav.appendChild(b)});
-function go(id){document.querySelectorAll('.page').forEach(function(p){p.classList.toggle('on',p.id==='p-'+id)});nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===id)});var nm=TABS.filter(function(t){return t[0]===id})[0][2];document.getElementById('ttl').textContent=nm;document.getElementById('dttl').textContent=nm;if(id==='cal')renderCal();if(id==='sales')renderSales();if(id==='partner'){partnerSel=null;renderPartner()}if(id==='dreport'){renderDreport()}if(id==='biz')renderBiz();if(id==='blog'){renderYtq();renderYtStats()}if(id==='debate'){renderDChat();dScrollBot()}if(id==='amemo')amOn()}
+function go(id){document.querySelectorAll('.page').forEach(function(p){p.classList.toggle('on',p.id==='p-'+id)});nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.id===id)});var nm=TABS.filter(function(t){return t[0]===id})[0][2];document.getElementById('ttl').textContent=nm;document.getElementById('dttl').textContent=nm;if(id==='cal')renderCal();if(id==='sales')renderSales();if(id==='partner'){partnerSel=null;renderPartner()}if(id==='dreport'){renderDreport()}if(id==='biz')renderBiz();if(id==='blog'){renderYtq();renderYtStats()}if(id==='debate'){renderDChat();dScrollBot()}if(id==='amemo')amOn();if(id==='chung'){renderChung()}}
 var PEOPLE=[],ORDERS=[],PROJ=[],TODOS=[],DAYSTAT={},CHAT=[];
 var MEMOS=[],MEMOSHOW={};
 var MISU=[],CUSTOM=null,PREPORT=null,PCUR=null,PSUPD=0,PDAILY=null,CASHFLOW=null,MISUDET={},MISUOPEN=null,SALESMETA=null,MISUMETA=null,DCHAT=[],DSTATE=[],MISUX=[],MISUXMETA=null,MISUXDET={},MISUXOPEN=null,MISUXTEAM='';
@@ -1002,6 +1024,53 @@ function partnerRepHTML(nm){
  h+='<div class="seclbl">강점</div>';good.forEach(function(t){h+='<span class="ptag good">👍 '+esc(t)+'</span>';});
  h+='<div class="seclbl">개선·우려</div>';if(warn.length)warn.forEach(function(t){h+='<span class="ptag warn">⚠ '+esc(t)+'</span>';});else h+='<span class="ptag good">특이 우려사항 없음</span>';
  return h;
+}
+
+/* ===== 청약 ===== */
+var CHUNGCFG={cash:36265,loanRate:4.5,stockRate:10,holdYears:2},CHUNGCFGOPEN=false;
+function chW(m){if(m===''||m===null||m===undefined||isNaN(m))return '—';var neg=m<0;m=Math.abs(Math.round(m));var e=Math.floor(m/10000),n=m%10000;var s=e?(e+'억'+(n?' '+n.toLocaleString()+'만':'')):(n.toLocaleString()+'만');return (neg?'-':'')+s}
+function chungTax(p){var t;if(p<=60000)t=p*0.011;else if(p<=90000)t=p*(((p/10000)*2/3-3)/100+0.002);else t=p*0.033;if(p<=120000)t=Math.max(0,t-200);return Math.round(t)}
+function chungLoan(p){return Math.min(Math.round(p*0.7),60000)}
+function chungCalc(it){var price=+it.price||0,market=+it.market||0;var loan=chungLoan(price),tax=chungTax(price);var need=price-loan+tax;var cash=+CHUNGCFG.cash||0;var y=+it.liveYears||+CHUNGCFG.holdYears||2;var sr=(+CHUNGCFG.stockRate||10)/100,lr=(+CHUNGCFG.loanRate||4.5)/100;var opp=need*(Math.pow(1+sr,y)-1)*0.78;var itr=loan*lr*y;var bar=Math.round(opp+itr);var gain=market?market-price:null;return {loan:loan,tax:tax,need:need,ok:need<=cash,short:Math.max(0,need-cash),y:y,bar:bar,gain:gain,pass:gain!==null&&gain>=bar}}
+function chungMax(cash){var lo=0,hi=300000;for(var i=0;i<45;i++){var mid=(lo+hi)/2;if(mid-chungLoan(mid)+chungTax(mid)<=cash)lo=mid;else hi=mid}return Math.round(lo)}
+function chungDday(d){if(!d)return '';var t=new Date(d+'T00:00:00'),n=new Date();n.setHours(0,0,0,0);var g=Math.round((t-n)/86400000);if(g>0)return 'D-'+g;if(g===0)return 'D-DAY';return '종료'}
+function chungToggleCfg(){CHUNGCFGOPEN=!CHUNGCFGOPEN;var b=document.getElementById('chungCfgBox');b.style.display=CHUNGCFGOPEN?'':'none';if(CHUNGCFGOPEN)b.innerHTML='<div class="card"><label class="fl">동원 가능 현금(만원)</label><input id="ccCash" inputmode="numeric" value="'+(CHUNGCFG.cash||'')+'"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><div><label class="fl">대출금리(%)</label><input id="ccLoan" inputmode="decimal" value="'+(CHUNGCFG.loanRate||4.5)+'"></div><div><label class="fl">주식수익률(%)</label><input id="ccStock" inputmode="decimal" value="'+(CHUNGCFG.stockRate||10)+'"></div><div><label class="fl">기본보유(년)</label><input id="ccHold" inputmode="numeric" value="'+(CHUNGCFG.holdYears||2)+'"></div></div><button class="btn p" style="margin-top:10px;width:100%" onclick="saveChungCfg()">저장</button></div>'}
+function saveChungCfg(){var c={cash:+document.getElementById('ccCash').value||0,loanRate:+document.getElementById('ccLoan').value||4.5,stockRate:+document.getElementById('ccStock').value||10,holdYears:+document.getElementById('ccHold').value||2};db.collection('chungyak_cfg').doc('main').set(c,{merge:true}).then(function(){CHUNGCFG=c;CHUNGCFGOPEN=false;document.getElementById('chungCfgBox').style.display='none';renderChung()})}
+function addChung(){var o={name:(document.getElementById('cgName').value||'').trim(),area:(document.getElementById('cgArea').value||'').trim(),kind:document.getElementById('cgKind').value,price:+document.getElementById('cgPrice').value||0,market:+document.getElementById('cgMarket').value||0,applyStart:document.getElementById('cgStart').value||'',winDate:document.getElementById('cgWin').value||'',liveYears:+document.getElementById('cgLive').value||0,url:(document.getElementById('cgUrl').value||'').trim(),src:'manual',ts:Date.now()};if(!o.name||!o.price){alert('단지명과 분양가는 필수예요');return}db.collection('chungyak').add(o).then(function(){['cgName','cgArea','cgPrice','cgMarket','cgStart','cgWin','cgLive','cgUrl'].forEach(function(id){document.getElementById(id).value=''});renderChung()})}
+function delChung(id){if(!confirm('삭제할까요?'))return;db.collection('chungyak').doc(id).delete().then(renderChung)}
+function renderChung(){
+ var box=document.getElementById('chungList');box.innerHTML='<div class="empty">불러오는 중…</div>';
+ db.collection('chungyak_cfg').doc('main').get().then(function(d){if(d.exists)CHUNGCFG=Object.assign({cash:36265,loanRate:4.5,stockRate:10,holdYears:2},d.data());return db.collection('chungyak').get()}).then(function(qs){
+  var arr=[];qs.forEach(function(d){var o=d.data()||{};o._id=d.id;arr.push(o)});
+  arr.sort(function(a,b){return String(b.applyStart||'').localeCompare(String(a.applyStart||''))});
+  var mx=chungMax(+CHUNGCFG.cash||0);
+  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">내 현금 '+chW(CHUNGCFG.cash)+' · 대출 최대 6억(수도권 칤)</div><div style="font-size:19px;font-weight:700;margin-top:2px">분양가 '+chW(mx)+' 까지 가능</div></div><div class="muted small" style="text-align:right">생애최초 LTV 70%<br>취득세 포함</div></div></div>';
+  if(!arr.length){box.innerHTML='<div class="empty">등록된 공고가 없어요. 아래에서 직접 추가하거나 수집기가 채워줍니다.</div>';return}
+  var h='';
+  arr.forEach(function(it){
+   var c=chungCalc(it);
+   var hot=(it.kind||'').indexOf('불법행위')>=0;
+   var dd=chungDday(it.applyStart);
+   h+='<div class="card" style="margin-bottom:10px'+(c.ok?'':';opacity:.62')+'">';
+   h+='<div class="rowsb"><div><span class="ptag '+(hot?'warn':'good')+'">'+esc(it.kind||'')+'</span> <span class="muted small">'+esc(it.area||'')+'</span></div><div class="small '+(dd==='종료'?'muted':'')+'">'+(it.applyStart?esc(it.applyStart)+' '+dd:'')+'</div></div>';
+   h+='<div style="font-size:16px;font-weight:700;margin:6px 0 8px">'+esc(it.name||'')+'</div>';
+   h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center">';
+   h+='<div><div class="muted small">분양가</div><div style="font-weight:600">'+chW(it.price)+'</div></div>';
+   h+='<div><div class="muted small">시세</div><div style="font-weight:600">'+chW(it.market)+'</div></div>';
+   h+='<div><div class="muted small">차익</div><div style="font-weight:700;color:'+(c.gain>0?'#0a8a4a':'#888')+'">'+chW(c.gain)+'</div></div>';
+   h+='</div>';
+   h+='<div class="small" style="margin-top:10px;line-height:1.7">';
+   h+='필요현금 <b>'+chW(c.need)+'</b> (대출 '+chW(c.loan)+' · 취득세 '+chW(c.tax)+')<br>';
+   h+=c.ok?'<span class="ptag good">✔ 자금 가능</span>':'<span class="ptag warn">✖ 현금 '+chW(c.short)+' 부족</span>';
+   if(c.gain!==null){h+=' <span class="ptag '+(c.pass?'good':'warn')+'">'+(c.pass?'✔ 주식보다 유리':'✖ 주식이 나음')+'</span>';
+    h+='<br><span class="muted">'+c.y+'년 보유 기준 합격선 '+chW(c.bar)+' (주식 '+CHUNGCFG.stockRate+'% 세후 + 대출이자)</span>'}
+   h+='</div>';
+   if(it.url)h+='<div style="margin-top:8px"><a class="btn o sm" href="'+esc(it.url)+'" target="_blank">공고 보기</a> <button class="btn o sm" onclick="delChung(\''+it._id+'\')">삭제</button></div>';
+   else h+='<div style="margin-top:8px"><button class="btn o sm" onclick="delChung(\''+it._id+'\')">삭제</button></div>';
+   h+='</div>';
+  });
+  box.innerHTML=h;
+ }).catch(function(e){box.innerHTML='<div class="empty">불러오기 실패: '+esc(String(e&&e.message||e))+'</div>'});
 }
 </script>
 </body>
