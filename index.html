@@ -225,6 +225,27 @@ nav button .ic svg{width:24px;height:24px;display:block}
 .ptag.good{background:#eaf6ef;border:1px solid #cfe6d6;color:#166b45}
 .ptag.warn{background:#fdf3df;border:1px solid #f0d79b;color:#8a5a13}
 .pnote{font-size:11px;color:var(--mut);margin:0 2px 10px}
+
+.ctbl{width:100%;border-collapse:collapse;font-size:13px;min-width:720px;background:#fff;border-radius:12px;overflow:hidden}
+.ctbl th{background:#f5f7fa;color:#667;font-weight:600;font-size:12px;padding:9px 8px;text-align:center;border-bottom:1px solid #e6e9ef;white-space:nowrap}
+.ctbl td{padding:11px 8px;border-bottom:1px solid #eef1f5;vertical-align:middle}
+.ctbl tr.cdone{opacity:.45}
+.ctbl .cdate{text-align:center;white-space:nowrap;width:86px}
+.ctbl .cdate .d1{font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
+.ctbl .cdate .d2{font-size:13px;font-weight:700;margin-top:1px}
+.ctbl .cdate .d2.hot{color:#e8590c}
+.ctbl .cdate .d3{font-size:11px;color:#99a;margin-top:2px}
+.ctbl .cname .n1{font-size:14px;font-weight:700;line-height:1.3}
+.ctbl .cname .n2{font-size:11px;color:#8a92a6;margin-top:2px}
+.ctbl .hotdot{color:#e8590c}
+.ctbl .num{text-align:right;white-space:nowrap;font-weight:600}
+.ctbl .num.gpos{color:#0a8a4a}
+.ctbl .num.gneg{color:#c92a2a}
+.ctbl .sub{font-size:11px;font-weight:500;margin-top:2px}
+.ctbl .sub.bad{color:#c92a2a}
+.ctbl .judge{text-align:center;white-space:nowrap}
+.ctbl .act{text-align:center;white-space:nowrap;width:76px}
+.ctbl .act .btn{display:block;width:100%;margin:0 0 4px}
 </style>
 </head>
 <body>
@@ -1039,42 +1060,61 @@ function saveChungCfg(){var c={cash:+document.getElementById('ccCash').value||0,
 function addChung(){var o={name:(document.getElementById('cgName').value||'').trim(),area:(document.getElementById('cgArea').value||'').trim(),kind:document.getElementById('cgKind').value,price:+document.getElementById('cgPrice').value||0,market:+document.getElementById('cgMarket').value||0,applyStart:document.getElementById('cgStart').value||'',winDate:document.getElementById('cgWin').value||'',liveYears:+document.getElementById('cgLive').value||0,url:(document.getElementById('cgUrl').value||'').trim(),src:'manual',ts:Date.now()};if(!o.name||!o.price){alert('단지명과 분양가는 필수예요');return}db.collection('chungyak').add(o).then(function(){['cgName','cgArea','cgPrice','cgMarket','cgStart','cgWin','cgLive','cgUrl'].forEach(function(id){document.getElementById(id).value=''});renderChung()})}
 function editChungPrice(id){var p=prompt('\uBD84\uC591\uAC00(\uB9CC\uC6D0)');if(p===null)return;var m=prompt('\uC8FC\uBCC0 \uC2DC\uC138(\uB9CC\uC6D0, \uBAA8\uB974\uBA74 \uBE44\uC6CC\uB450\uC138\uC694)');var y=prompt('\uAC70\uC8FC\uC758\uBB34(\uB144, \uBAA8\uB974\uBA74 \uBE44\uC6C0=2\uB144)');var o={price:+p||0};if(m!==null&&m!=='')o.market=+m||0;if(y!==null&&y!=='')o.liveYears=+y||0;db.collection('chungyak').doc(id).set(o,{merge:true}).then(renderChung)}
 function delChung(id){if(!confirm('삭제할까요?'))return;db.collection('chungyak').doc(id).delete().then(renderChung)}
+function openChungNotice(it){
+ var hm=it.hmno,pb=it.pbno;
+ if(!hm||!pb){ if(it.url) window.open(it.url,'_blank'); else alert('\uACF5\uACE0 \uC815\uBCF4\uAC00 \uC5C6\uC5B4\uC694. \uB2E4\uC74C \uC218\uC9D1 \uB4A4\uC5D0 \uB2E4\uC2DC \uB20C\uB7EC\uBCF4\uC138\uC694.'); return; }
+ var base=(it.group==='\uC77C\uBC18\uBD84\uC591')?'https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetailView.do':'https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do';
+ var f=document.createElement('form');f.method='POST';f.action=base;f.target='_blank';
+ [['houseManageNo',hm],['pblancNo',pb]].forEach(function(kv){var n=document.createElement('input');n.type='hidden';n.name=kv[0];n.value=kv[1];f.appendChild(n)});
+ document.body.appendChild(f);f.submit();setTimeout(function(){f.parentNode&&f.parentNode.removeChild(f)},2000);
+}
 function renderChung(){
- var box=document.getElementById('chungList');box.innerHTML='<div class="empty">불러오는 중…</div>';
+ var box=document.getElementById('chungList');box.innerHTML='<div class="empty">\uBD88\uB7EC\uC624\uB294 \uC911\u2026</div>';
  db.collection('chungyak_cfg').doc('main').get().then(function(d){if(d.exists)CHUNGCFG=Object.assign({cash:36265,loanRate:4.5,stockRate:10,holdYears:2},d.data());return db.collection('chungyak').get()}).then(function(qs){
   var arr=[];qs.forEach(function(d){var o=d.data()||{};o._id=d.id;arr.push(o)});
-  arr.sort(function(a,b){return String(b.applyStart||'').localeCompare(String(a.applyStart||''))});
+  var today=new Date().toISOString().slice(0,10);
+  // 접수 안 끝난 것 먼저(접수일 빠른 순) → 끝난 것 나중(최근 순)
+  arr.sort(function(a,b){
+   var al=(a.applyEnd||a.applyStart||'')>=today, bl=(b.applyEnd||b.applyStart||'')>=today;
+   if(al!==bl)return al?-1:1;
+   return al? String(a.applyStart||'').localeCompare(String(b.applyStart||'')) : String(b.applyStart||'').localeCompare(String(a.applyStart||''));
+  });
   var mx=chungMax(+CHUNGCFG.cash||0);
-  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">내 현금 '+chW(CHUNGCFG.cash)+' · 대출 최대 6억(수도권 캡)</div><div style="font-size:19px;font-weight:700;margin-top:2px">분양가 '+chW(mx)+' 까지 가능</div></div><div class="muted small" style="text-align:right">생애최초 LTV 70%<br>취득세 포함</div></div></div>';
-  if(!arr.length){box.innerHTML='<div class="empty">등록된 공고가 없어요. 아래에서 직접 추가하거나 수집기가 채워줍니다.</div>';return}
-  var h='';
+  document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">\uB0B4 \uD604\uAE08 '+chW(CHUNGCFG.cash)+' \u00B7 \uB300\uCD9C \uCD5C\uB300 6\uC5B5(\uC218\uB3C4\uAD8C \uCE61)</div><div style="font-size:19px;font-weight:700;margin-top:2px">\uBD84\uC591\uAC00 '+chW(mx)+' \uAE4C\uC9C0 \uAC00\uB2A5</div></div><div class="muted small" style="text-align:right">\uC0DD\uC560\uCD5C\uCD08 LTV 70%<br>\uCDE8\uB4DD\uC138 \uD3EC\uD568</div></div></div>';
+  if(!arr.length){box.innerHTML='<div class="empty">\uB4F1\uB85D\uB41C \uACF5\uACE0\uAC00 \uC5C6\uC5B4\uC694.</div>';return}
+  var h='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="ctbl"><thead><tr>'
+   +'<th>\uC811\uC218\uC77C</th><th>\uB2E8\uC9C0</th><th>\uBD84\uC591\uAC00</th><th>\uC2DC\uC138</th><th>\uCC28\uC775</th><th>\uD544\uC694\uD604\uAE08</th><th>\uD310\uC815</th><th></th></tr></thead><tbody>';
   arr.forEach(function(it){
    var c=chungCalc(it);
-   var hot=(it.kind||'').indexOf('불법행위')>=0;
+   var hot=(it.kind||'').indexOf('\uBD88\uBC95\uD589\uC704')>=0;
+   var closed=(it.applyEnd||it.applyStart||'')<today;
    var dd=chungDday(it.applyStart);
-   h+='<div class="card" style="margin-bottom:10px'+(c.ok?'':';opacity:.62')+'">';
-   h+='<div class="rowsb"><div><span class="ptag '+(hot?'warn':'good')+'">'+esc(it.kind||'')+'</span> <span class="muted small">'+esc(it.area||'')+'</span></div><div class="small '+(dd==='종료'?'muted':'')+'">'+(it.applyStart?esc(it.applyStart)+' '+dd:'')+'</div></div>';
-   h+='<div style="font-size:16px;font-weight:700;margin:6px 0 8px">'+esc(it.name||'')+'</div>';
-   if(!(+it.price>0)){h+='<div class="small muted" style="padding:8px 0">\uBD84\uC591\uAC00\u00B7\uC2DC\uC138 \uBBF8\uD655\uC778 \u2014 \uACF5\uACE0\uB97C \uC5F4\uC5B4 \uD655\uC778\uD55C \uB4A4 \uCC44\uC6B0\uBA74 \uC790\uB3D9\uC73C\uB85C \uD310\uC815\uB3FC\uC694.</div>';if(it.url)h+='<div style="margin-top:4px"><a class="btn o sm" href="'+esc(it.url)+'" target="_blank">\uACF5\uACE0 \uBCF4\uAE30</a> <button class="btn o sm" onclick="editChungPrice(\''+it._id+'\')">\uAE08\uC561 \uC785\uB825</button> <button class="btn o sm" onclick="delChung(\''+it._id+'\')">\uC0AD\uC81C</button></div>';else h+='<div style="margin-top:4px"><button class="btn o sm" onclick="editChungPrice(\''+it._id+'\')">\uAE08\uC561 \uC785\uB825</button> <button class="btn o sm" onclick="delChung(\''+it._id+'\')">\uC0AD\uC81C</button></div>';h+='</div>';return}
-
-   h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center">';
-   h+='<div><div class="muted small">분양가</div><div style="font-weight:600">'+chW(it.price)+'</div></div>';
-   h+='<div><div class="muted small">시세</div><div style="font-weight:600">'+chW(it.market)+'</div></div>';
-   h+='<div><div class="muted small">차익</div><div style="font-weight:700;color:'+(c.gain>0?'#0a8a4a':'#888')+'">'+chW(c.gain)+'</div></div>';
-   h+='</div>';
-   h+='<div class="small" style="margin-top:10px;line-height:1.7">';
-   h+='필요현금 <b>'+chW(c.need)+'</b> (대출 '+chW(c.loan)+' · 취득세 '+chW(c.tax)+')<br>';
-   h+=c.ok?'<span class="ptag good">✔ 자금 가능</span>':'<span class="ptag warn">✖ 현금 '+chW(c.short)+' 부족</span>';
-   if(c.gain!==null){h+=' <span class="ptag '+(c.pass?'good':'warn')+'">'+(c.pass?'✔ 주식보다 유리':'✖ 주식이 나음')+'</span>';
-    h+='<br><span class="muted">'+c.y+'년 보유 기준 합격선 '+chW(c.bar)+' (주식 '+CHUNGCFG.stockRate+'% 세후 + 대출이자)</span>'}
-   h+='</div>';
-   if(it.url)h+='<div style="margin-top:8px"><a class="btn o sm" href="'+esc(it.url)+'" target="_blank">공고 보기</a> <button class="btn o sm" onclick="delChung(\''+it._id+'\')">삭제</button></div>';
-   else h+='<div style="margin-top:8px"><button class="btn o sm" onclick="delChung(\''+it._id+'\')">삭제</button></div>';
-   h+='</div>';
+   var noP=!(+it.price>0);
+   h+='<tr class="'+(closed?'cdone':'')+'">';
+   // 접수일 — 크게
+   h+='<td class="cdate"><div class="d1">'+esc((it.applyStart||'').slice(5).replace('-','/')||'\u2014')+'</div><div class="d2 '+(dd==='\uC885\uB8CC'?'muted':'hot')+'">'+esc(dd)+'</div>'+(it.winDate?'<div class="d3">\uBC1C\uD45C '+esc(it.winDate.slice(5).replace('-','/'))+'</div>':'')+'</td>';
+   // 단지
+   h+='<td class="cname"><div class="n1">'+(hot?'<span class="hotdot">\u2605</span> ':'')+esc(it.name||'')+'</div><div class="n2">'+esc(it.area||'')+' \u00B7 '+esc(it.kind||'')+'</div></td>';
+   if(noP){
+    h+='<td colspan="5" class="muted small" style="text-align:center">\uBD84\uC591\uAC00 \uBBF8\uD655\uC778 \u2014 <button class="btn o sm" onclick="editChungPrice(\''+it._id+'\')">\uAE08\uC561 \uC785\uB825</button></td>';
+   }else{
+    h+='<td class="num">'+chW(it.price)+'</td>';
+    h+='<td class="num">'+(+it.market>0?chW(it.market):'<span class="muted">\u2014</span>')+'</td>';
+    h+='<td class="num '+(c.gain>0?'gpos':(c.gain<0?'gneg':''))+'">'+(c.gain===null?'<span class="muted">\u2014</span>':chW(c.gain))+'</td>';
+    h+='<td class="num">'+chW(c.need)+(c.ok?'':'<div class="sub bad">'+chW(c.short)+' \uBD80\uC871</div>')+'</td>';
+    h+='<td class="judge">'+(c.ok?'<span class="ptag good">\uC790\uAE08 OK</span>':'<span class="ptag warn">\uC790\uAE08 \uBD80\uC871</span>')
+      +(c.gain===null?'':'<br><span class="ptag '+(c.pass?'good':'warn')+'">'+(c.pass?'\uC8FC\uC2DD\uBCF4\uB2E4 \uC720\uB9AC':'\uC8FC\uC2DD\uC774 \uB098\uC74C')+'</span><div class="sub muted">'+c.y+'\uB144 \uD569\uACA9\uC120 '+chW(c.bar)+'</div>')+'</td>';
+   }
+   h+='<td class="act"><button class="btn o sm" onclick=\'openChungNotice('+JSON.stringify({hmno:it.hmno||'',pbno:it.pbno||'',group:it.group||'',url:it.url||''}).replace(/'/g,"&#39;")+')\'>\uACF5\uACE0</button>'
+    +(noP?'':'<button class="btn o sm" style="margin-top:4px" onclick="editChungPrice(\''+it._id+'\')">\uC218\uC815</button>')
+    +'<button class="btn o sm" style="margin-top:4px" onclick="delChung(\''+it._id+'\')">\uC0AD\uC81C</button></td>';
+   h+='</tr>';
   });
+  h+='</tbody></table></div>';
   box.innerHTML=h;
- }).catch(function(e){box.innerHTML='<div class="empty">불러오기 실패: '+esc(String(e&&e.message||e))+'</div>'});
+ }).catch(function(e){box.innerHTML='<div class="empty">\uBD88\uB7EC\uC624\uAE30 \uC2E4\uD328: '+esc(String(e&&e.message||e))+'</div>'});
 }
+
 </script>
 </body>
 </html>
