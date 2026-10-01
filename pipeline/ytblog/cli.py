@@ -279,7 +279,8 @@ def _recent_counts(settings: Settings, state: State, wp) -> tuple[int, int]:
     day0 = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week0 = day0 - timedelta(days=day0.weekday())
     if wp is not None:
-        return wp.count_recent_posts(since=week0), wp.count_recent_posts(since=day0)
+        down = {int(v["wp_post_id"]) for v in state.data["videos"].values() if v.get("taken_down") and v.get("wp_post_id")}
+        return wp.count_recent_posts(since=week0, exclude_ids=down), wp.count_recent_posts(since=day0, exclude_ids=down)
     return state.count_recent_posts(since_ts=week0.timestamp()), state.count_recent_posts(since_ts=day0.timestamp())
 
 

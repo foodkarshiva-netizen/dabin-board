@@ -46,7 +46,8 @@ class WordPressClient:
     def update_post(self, post_id: int, **fields) -> dict:
         return self._post(f"posts/{post_id}", **fields)
 
-    def count_recent_posts(self, days: float = 0, category_id: int = 0, marker: str = "ytblog", since: datetime | None = None) -> int:
+    def count_recent_posts(self, days: float = 0, category_id: int = 0, marker: str = "ytblog", since: datetime | None = None,
+                           exclude_ids: set[int] | None = None) -> int:
         """기준 시각 이후 만들어진 글(초안·공개 등) 수. 발행 상한 판단용.
 
         since(시각대 포함 datetime)를 주면 그 시각 이후, 아니면 최근 days 일. marker 가 본문에 든 글만 세므로 손으로 쓴 글은 제외된다.
@@ -61,7 +62,7 @@ class WordPressClient:
         n = 0
         for p in self._get("posts", **params):
             raw = p.get("content", {}).get("raw", "") or p.get("content", {}).get("rendered", "")
-            if marker not in raw:
+            if marker not in raw or p.get("id") in (exclude_ids or ()):   # exclude_ids: 내린 글은 상한에서 뺀다
                 continue
             try:
                 made = datetime.fromisoformat(p.get("date_gmt", "")).replace(tzinfo=timezone.utc)
