@@ -133,6 +133,8 @@ def post_to_threads(settings, summary, link: str, wp, state, out_dir: Path, dry_
     vid = summary.video_id
     v = state.video(vid)
     if v.get("threads_id") and not dry_run:
+        if not v.get("threads_reply_id") and v.get("threads_at", 0) > 1790780000:   # 링크 답글만 빠진 글(답글 방식 도입 뒤 게시분)
+            return f"이미 게시됨 ({v['threads_id']}) · {_link_reply(th, v, state, link, wait=0)}"
         return f"이미 게시됨 ({v['threads_id']})"
     card = threads_card(summary, out_dir / "images" / "threads.png")
     text = threads_text(summary)
@@ -148,13 +150,21 @@ def post_to_threads(settings, summary, link: str, wp, state, out_dir: Path, dry_
     tid = th.post(text, _cdn(url), topic=topic)
     v["threads_id"] = tid; v["threads_at"] = time.time()
     state.save()
-    try:
-        time.sleep(5)
-        v["threads_reply_id"] = th.post(threads_reply(link), reply_to=tid)
-        state.save()
-        return f"스레드 게시 완료 (id {tid}, 링크 답글 달림, 주제 {topic})"
-    except Exception as e:  # noqa: BLE001
-        return f"스레드 게시 완료 (id {tid}) · 링크 답글 실패: {str(e)[:100]}"
+    return f"스레드 게시 완료 (id {tid}, 주제 {topic}) · {_link_reply(th, v, state, link)}"
+
+
+def _link_reply(th, v: dict, state, link: str, wait: int = 8) -> str:
+    """내 글에 블로그 링크 답글. 게시 직후에는 원글이 아직 준비 안 돼 400 이 날 수 있어 간격을 두고 다시 시도한다."""
+    err = ""
+    for attempt in range(4):
+        time.sleep(wait if attempt == 0 else 15 * attempt)
+        try:
+            v["threads_reply_id"] = th.post(threads_reply(link), reply_to=v["threads_id"])
+            state.save()
+            return "링크 답글 달림"
+        except Exception as e:  # noqa: BLE001
+            err = str(e)[:100]
+    return f"링크 답글 실패: {err}"
 
 
 # ---------------------------------------------------------------- 인스타그램 캐러셀

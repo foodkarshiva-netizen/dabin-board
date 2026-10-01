@@ -484,11 +484,22 @@ def cmd_note(args, settings: Settings) -> int:
 def cmd_queue(args, settings: Settings) -> int:
     from . import queue as q
     if args.action == "list":
-        items = q.pending()
+        try:
+            items = q.pending()
+        except q.QueueUnavailable:
+            log("대기열 읽기 불가: 다빈보드 읽기 한도 초과이고 저장해 둔 목록도 없습니다. 자동 선정(pick)으로 넘어가지 말고 발행을 보류하세요.")
+            return 3
+        state = State(settings.data_dir / "state.json")
+        items = [it for it in items if state.data["videos"].get(it.get("vid"), {}).get("status") != "published"]
+        cached = next((it["_cached"] for it in items if it.get("_cached")), 0)
+        if cached:
+            import time as _t
+            log(f"(실시간 읽기 불가 → {_t.strftime('%m/%d %H:%M', _t.localtime(cached))} 에 저장해 둔 목록입니다. 그 뒤에 올린 링크는 안 보일 수 있어요.)")
         if not items:
-            log("대기 중인 영상이 없습니다."); return 0
+            log("대기 중인 영상이 없습니다." + (" (저장본 기준)" if cached else "")); return 0
         for it in items:
-            log(f"{it.get('_id') or it.get('id')}  {it.get('vid')}  {it.get('url')}  {('· ' + it['note']) if it.get('note') else ''}")
+            who = "자동선정" if it.get("by") == "auto" else "사용자"
+            log(f"{it.get('_id') or it.get('id')}  {it.get('vid')}  {it.get('url')}  [{who}] {('· ' + it['note']) if it.get('note') else ''}")
         return 0
     if args.action == "add":
         import time as _t
@@ -646,12 +657,14 @@ def cmd_pick(args, settings: Settings) -> int:
         log("auto_pick 채널이 없습니다. channels.json 에 채널을 추가하고 auto_pick=true 로 두세요."); return 0
     state = State(settings.data_dir / "state.json")
     _resolve_all(settings, channels, state)
-    queued = set()
+    from . import queue as q
     try:
-        from . import queue as q
-        queued = {it.get("vid") for it in q._run and json.loads(q._run("list", q.COL, "200") or "[]")}
-    except Exception:  # noqa: BLE001
-        pass
+        waiting = [it for it in q.pending() if state.data["videos"].get(it.get("vid"), {}).get("status") != "published"]
+    except q.QueueUnavailable:
+        log("대기열을 읽을 수 없어 자동 선정을 하지 않습니다(사용자가 올린 링크가 있을 수 있음). 발행을 보류하세요."); return 3
+    if waiting and not getattr(args, "force", False):
+        log(f"대기열에 {len(waiting)}편이 있습니다. 사용자가 올린 링크가 먼저입니다 → `python -m ytblog queue` 로 처리하세요."); return 0
+    queued = {it.get("vid") for it in waiting}
     from statistics import median
     from .discover import list_videos_from_page
     max_age = getattr(args, "days", 21)
@@ -758,7 +771,7 @@ def main(argv=None) -> int:
     tp = sub.add_parser("threads-post", help="공개된 글을 스레드에 올리기"); tp.add_argument("video_id"); tp.add_argument("--dry-run", action="store_true")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "add", "start", "done", "fail"])
-    pk = sub.add_parser("pick", help="대기열이 비었을 때 auto_pick 채널에서 후보 영상 보기"); pk.add_argument("--days", type=int, default=21, help="게시 후 며칠 안의 영상만")
+    pk = sub.add_parser("pick", help="대기열이 비었을 때 auto_pick 채널에서 후보 영상 보기"); pk.add_argument("--days", type=int, default=21, help="게시 후 며칠 안의 영상만"); pk.add_argument("--force", action="store_true", help="대기열에 글이 있어도 후보 보기")
     ix = sub.add_parser("indexnow", help="네이버·IndexNow 에 URL 알림"); ix.add_argument("urls", nargs="*")
     dm = sub.add_parser("demand", help="자동완성 기반 검색 수요"); dm.add_argument("keywords", nargs="+")
     qu.add_argument("doc_id", nargs="?", default=""); qu.add_argument("value", nargs="?", default=""); qu.add_argument("rest", nargs="*")
