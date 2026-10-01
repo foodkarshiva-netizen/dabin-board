@@ -161,7 +161,7 @@ def test_state_notes_and_quota():
             def __init__(self):
                 self.n = 0
 
-            def count_recent_posts(self, days=0, category_id=0, marker="ytblog", since=None):
+            def count_recent_posts(self, days=0, category_id=0, marker="ytblog", since=None, exclude_ids=None):
                 self.n += 1                      # 첫 호출 = 이번 주, 둘째 호출 = 오늘
                 return 5 if self.n % 2 == 1 else 0
         assert quota_left(settings, st, FakeWP())[0] == 0  # 주간 상한 초과면 일간 여유가 있어도 0
