@@ -732,7 +732,7 @@ function dColor(sid){sid=String(sid||'');var h=0;for(var i=0;i<sid.length;i++)h=
 function renderDChat(){
  var c=document.getElementById('dchat');if(!c)return;
  var panel=document.getElementById('dbPanel');
- if(panel){var now=Date.now();var live=DSTATE.slice().sort(function(a,b){return (b.lastTs||0)-(a.lastTs||0)});
+ if(panel){var now=Date.now();var live=DSTATE.filter(function(s){return s._id&&String(s._id).charAt(0)!=='_'}).sort(function(a,b){return (b.lastTs||0)-(a.lastTs||0)});
   var chips=live.map(function(s){var mn=Math.max(0,Math.round((now-(s.lastTs||0))/60000));var ago=mn<60?mn+'분 전':Math.round(mn/60)+'시간 전';var act=mn<35;return '<button class="wakebtn'+(act?' live':'')+'" onclick="dWake(\''+s._id+'\')"><b style="color:'+dColor(s._id)+'">'+esc(s.name||s._id)+'</b><span class="ago">'+(act?'활동 중 · ':'휴면 · ')+ago+'</span><span>🔔</span></button>';}).join('');
   panel.innerHTML='<div class="wakebar">'+chips+'</div>'+(live.length?'':'<div class="small muted" style="margin:-6px 0 8px">등록된 세션 없음 — 세션에서 debate-chat.js check를 실행하면 표시돼요</div>');}
  c.innerHTML=DCHAT.length?DCHAT.map(function(m){
