@@ -40,7 +40,7 @@ def _first_line(text: str, n: int = 38) -> str:
 
 
 # ---------------------------------------------------------------- 스레드
-def _threads_posts(token: str, limit: int = 40) -> list[dict]:
+def _threads_posts(token: str, limit: int = 100) -> list[dict]:
     """내가 올린 원글만(답글 제외)."""
     rows = _get(f"{TH}/me/threads", token, fields="id,permalink,timestamp,text,is_reply,media_type", limit=limit).get("data", [])
     return [r for r in rows if not r.get("is_reply") and r.get("media_type") != "REPOST_FACADE"]
@@ -98,13 +98,13 @@ def instagram_stats() -> dict:
     if not token:
         return {}
     out = {"followers": int(_get(f"{IG}/me", token, fields="followers_count").get("followers_count") or 0), "posts": []}
-    for p in _get(f"{IG}/me/media", token, fields="id,permalink,timestamp,caption,like_count,comments_count", limit=40).get("data", []):
+    for p in _get(f"{IG}/me/media", token, fields="id,permalink,timestamp,caption,like_count,comments_count", limit=100).get("data", []):
         row = {"id": p["id"], "url": p.get("permalink", ""), "title": _first_line(p.get("caption", "")), "date": _kst(p.get("timestamp", "")),
                "views": 0, "likes": int(p.get("like_count") or 0), "replies": int(p.get("comments_count") or 0), "saved": 0}
         try:
-            for m in _get(f"{IG}/{p['id']}/insights", token, metric="reach,saved").get("data", []):
+            for m in _get(f"{IG}/{p['id']}/insights", token, metric="views,reach,saved").get("data", []):
                 val = int(((m.get("values") or [{}])[0]).get("value") or 0)
-                row["views" if m["name"] == "reach" else "saved"] = val      # 인스타는 '도달한 계정 수'를 조회로 본다
+                row[m["name"]] = val                  # views=조회수, reach=본 계정 수
         except Exception:  # noqa: BLE001
             pass
         out["posts"].append(row)

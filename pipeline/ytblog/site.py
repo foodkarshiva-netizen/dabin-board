@@ -151,6 +151,50 @@ def update_banner(settings: Settings, head: str = "", sub: str = "") -> str:
     return sub
 
 
+STATS_SINCE = "2026-09-01"     # 블로그 누적 조회수 기준일(사이트 개설 무렵)
+
+
+def _merge_platforms(settings: Settings, out: dict, wp: WordPressClient, today) -> None:
+    """글마다 블로그·스레드·인스타 조회수를 한 줄로 합치고(out.posts[*].th / .ig), 플랫폼별 합계(out.totals)와
+    날짜별 누적 기록(out.hist, data/stats_history.json)을 만든다. 다빈보드 블로그 탭이 이걸로 그린다."""
+    state = json.loads((settings.data_dir / "state.json").read_text(encoding="utf-8"))
+    by_post = {int(v["wp_post_id"]): v for v in state.get("videos", {}).values() if v.get("wp_post_id")}
+    sns = out.get("sns") or {}
+    th = {x["id"]: x for x in (sns.get("threads") or {}).get("posts", [])}
+    ig = {x["id"]: x for x in (sns.get("instagram") or {}).get("posts", [])}
+    for row in out["posts"]:
+        v = by_post.get(int(row["id"]), {})
+        t, i = th.get(v.get("threads_id", "")), ig.get(v.get("ig_id", ""))
+        row["th"] = {"views": t["views"], "likes": t["likes"], "replies": t["replies"], "url": t["url"]} if t else None
+        row["ig"] = {"views": i["views"], "likes": i["likes"], "replies": i["replies"], "url": i["url"]} if i else None
+
+    r = wp.s.get(settings.wp_url + "/wp-json/koko-analytics/v1/totals",
+                 params={"start_date": STATS_SINCE, "end_date": today.isoformat()}, timeout=60)
+    blog_all = int((r.json() if r.ok else {}).get("pageviews") or 0)
+    tsn, isn = sns.get("threads") or {}, sns.get("instagram") or {}
+    out["totals"] = {
+        "blog": {"views": blog_all, "d7": out["d7"]["pageviews"], "d30": out["d30"]["pageviews"], "posts": len(out["posts"])},
+        "threads": {"views": int(tsn.get("views") or 0), "likes": int(tsn.get("likes") or 0), "followers": int(tsn.get("followers") or 0),
+                    "posts": len(tsn.get("posts") or []), "error": tsn.get("error", "")},
+        "ig": {"views": int(isn.get("views") or 0), "likes": int(isn.get("likes") or 0), "followers": int(isn.get("followers") or 0),
+               "posts": len(isn.get("posts") or []), "error": isn.get("error", "")},
+    }
+    hp = settings.data_dir / "stats_history.json"
+    try:
+        hist = json.loads(hp.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        hist = {}
+    day = today.isoformat()
+    prev = hist.get(day, {})
+    hist[day] = {"blog": blog_all,
+                 # 스레드·인스타는 API 오류로 0이 나온 날이 기록을 깎지 않도록, 오류면 그날 이전 값을 유지
+                 "threads": prev.get("threads", 0) if tsn.get("error") else out["totals"]["threads"]["views"],
+                 "ig": prev.get("ig", 0) if isn.get("error") else out["totals"]["ig"]["views"]}
+    hist = dict(sorted(hist.items())[-90:])
+    hp.write_text(json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
+    out["hist"] = [{"d": d, **v} for d, v in list(hist.items())[-15:]]
+
+
 def site_stats(settings: Settings, board_js: Path | None = None) -> dict:
     """Koko Analytics 에서 오늘·7일·30일 방문자/조회수와 7일 인기 글을 읽는다. board_js 가 있으면 Firestore yt_stats/latest 에 기록."""
     wp = WordPressClient(settings.wp_url, settings.wp_user, settings.wp_app_password)
@@ -174,7 +218,7 @@ def site_stats(settings: Settings, board_js: Path | None = None) -> dict:
     for pid, it in sorted(p7.items(), key=lambda kv: -int(kv[1].get("pageviews") or 0))[:5]:
         out["top"].append({"title": html.unescape(str(it.get("post_title") or it.get("label") or ""))[:60],
                            "url": it.get("post_permalink") or "", "pageviews": int(it.get("pageviews") or 0), "visitors": int(it.get("visitors") or 0)})
-    for p in wp._get("posts", per_page=50, status="publish", orderby="date", order="desc"):
+    for p in wp._get("posts", per_page=100, status="publish", orderby="date", order="desc"):
         st = p30.get(p["id"], {})
         out["posts"].append({"id": p["id"], "title": html.unescape(p["title"]["rendered"])[:60], "url": p["link"],
                              "date": (p.get("date") or "")[:10], "pv30": int(st.get("pageviews") or 0)})
@@ -183,6 +227,10 @@ def site_stats(settings: Settings, board_js: Path | None = None) -> dict:
         out["sns"] = sns_stats()
     except Exception:  # noqa: BLE001
         out["sns"] = {}
+    try:
+        _merge_platforms(settings, out, wp, today)
+    except Exception as e:  # noqa: BLE001
+        out["merge_error"] = str(e)[:120]
     if board_js and board_js.exists():
         subprocess.run(["node", str(board_js), "set", "yt_stats", "latest", json.dumps(out, ensure_ascii=False)], check=True,
                        capture_output=True, text=True, encoding="utf-8", timeout=120)
