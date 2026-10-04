@@ -104,3 +104,77 @@ def post_carousel(image_urls: list[str], caption: str) -> str:
 def permalink(media_id: str) -> str:
     r = requests.get(f"{API}/{media_id}", params={"fields": "permalink", "access_token": _env("IG_ACCESS_TOKEN")}, timeout=60)
     return r.json().get("permalink", "") if r.ok else ""
+
+
+REEL_REPO = "https://github.com/foodkarshiva-netizen/dabin-board.git"   # 공개 저장소(GitHub Pages 용). 릴스 영상은 임시 브랜치로만 잠깐 올린다
+
+
+def _host_video(video_path) -> tuple[str, callable]:
+    """영상을 공개 URL 로. 카페24(jisikfill.com)는 Meta 의 영상 다운로드를 막아서(같은 파일이 다른 호스트에서는 됨, 10/5 확인)
+    공개 GitHub 저장소의 임시 브랜치에 올리고 jsDelivr CDN 주소를 쓴다. 게시가 끝나면 cleanup() 으로 브랜치를 지운다."""
+    import shutil
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    repo = _env("REEL_HOST_REPO", REEL_REPO)
+    owner_repo = repo.split("github.com/")[1].removesuffix(".git")
+    branch = f"reel-{int(time.time())}"
+    tmp = Path(tempfile.mkdtemp())
+    git = lambda *a: subprocess.run(["git", *a], cwd=tmp, check=True, capture_output=True, text=True, timeout=300)  # noqa: E731
+    git("init", "-q"); git("checkout", "-q", "-b", branch)
+    shutil.copy(video_path, tmp / "reel.mp4")
+    git("add", "reel.mp4"); git("-c", "user.name=ytblog", "-c", "user.email=ytblog@local", "commit", "-qm", "reel")
+    git("push", "-q", repo, branch)
+    sha = git("rev-parse", "HEAD").stdout.strip()
+
+    def cleanup() -> None:
+        try:
+            git("push", "-q", repo, "--delete", branch)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    url = f"https://cdn.jsdelivr.net/gh/{owner_repo}@{sha}/reel.mp4"
+    for _ in range(12):    # CDN 이 처음 가져오는 데 몇 초 걸릴 수 있다
+        try:
+            if requests.head(url, timeout=30).status_code == 200:
+                break
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(5)
+    return url, cleanup
+
+
+def post_reel(video_path, caption: str) -> str:
+    """릴스 게시. 인스타 로그인 방식 API 는 직접 업로드(resumable)를 지원하지 않아 video_url 이 필요하다."""
+    token, uid = _env("IG_ACCESS_TOKEN"), _env("IG_USER_ID")
+    if not (token and uid):
+        raise RuntimeError("IG_ACCESS_TOKEN / IG_USER_ID 가 없습니다 (ig-auth 먼저)")
+    url, cleanup = _host_video(video_path)
+    try:
+        cid, last = "", ""
+        for attempt in range(3):
+            r = requests.post(f"{API}/{uid}/media", data={"media_type": "REELS", "video_url": url, "caption": caption[:2200],
+                                                          "share_to_feed": "true", "access_token": token}, timeout=90)
+            if r.status_code >= 400:
+                raise RuntimeError(f"릴스 컨테이너 실패 {r.status_code}: {r.text[:300]}")
+            cid = r.json()["id"]
+            for _ in range(60):   # 영상 처리: 보통 30초~2분
+                st = requests.get(f"{API}/{cid}", params={"fields": "status_code,status", "access_token": token}, timeout=60).json()
+                last = st.get("status_code") or ""
+                if last in ("FINISHED", "ERROR", "EXPIRED"):
+                    break
+                time.sleep(5)
+            if last == "FINISHED":
+                break
+            time.sleep(20)
+        if last != "FINISHED":
+            raise RuntimeError(f"영상 처리 실패({last})")
+        r = requests.post(f"{API}/{uid}/media_publish", data={"creation_id": cid, "access_token": token}, timeout=90)
+        if r.status_code >= 400:
+            raise RuntimeError(f"릴스 게시 실패 {r.status_code}: {r.text[:300]}")
+        return r.json()["id"]
+    finally:
+        try:
+            cleanup()
+        except Exception:  # noqa: BLE001
+            pass

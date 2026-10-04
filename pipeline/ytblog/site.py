@@ -164,9 +164,11 @@ def _merge_platforms(settings: Settings, out: dict, wp: WordPressClient, today) 
     ig = {x["id"]: x for x in (sns.get("instagram") or {}).get("posts", [])}
     for row in out["posts"]:
         v = by_post.get(int(row["id"]), {})
-        t, i = th.get(v.get("threads_id", "")), ig.get(v.get("ig_id", ""))
+        t = th.get(v.get("threads_id", ""))
+        igs = [ig[k] for k in (v.get("ig_reel_id", ""), v.get("ig_id", "")) if k in ig]   # 릴스 + 캐러셀 합산, 링크는 릴스 우선
         row["th"] = {"views": t["views"], "likes": t["likes"], "replies": t["replies"], "url": t["url"]} if t else None
-        row["ig"] = {"views": i["views"], "likes": i["likes"], "replies": i["replies"], "url": i["url"]} if i else None
+        row["ig"] = ({"views": sum(x["views"] for x in igs), "likes": sum(x["likes"] for x in igs),
+                      "replies": sum(x["replies"] for x in igs), "url": igs[0]["url"]} if igs else None)
 
     r = wp.s.get(settings.wp_url + "/wp-json/koko-analytics/v1/totals",
                  params={"start_date": STATS_SINCE, "end_date": today.isoformat()}, timeout=60)

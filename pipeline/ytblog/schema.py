@@ -81,6 +81,8 @@ class Synthesis(BaseModel):
     thumb_layout: str = ""           # (선택) split | bignum | band. 비면 자동
     threads_points: list[str] = []   # 스레드 카드의 핵심 3줄, 음슴체("~임", "~함"), 각 34자 안팎
     threads_text: str = ""           # 스레드 본문(링크 제외), 음슴체 300자 이내: 후킹 한두 줄 + "· " 3줄 + 짧은 감상 한 줄
+    threads_poll: list[str] = []     # (선택) 본문 끝 질문에 맞춘 투표 선택지 2~4개, 각 25자 이내. 예: ["지금 산다", "기다린다"]
+    threads_more: str = ""           # (선택) 이어지는 답글(2/2) 본문, 음슴체 150자 이내. 비면 핵심 3줄로 만든다. 블로그 링크는 코드가 붙인다
     seo: SEO
 
 

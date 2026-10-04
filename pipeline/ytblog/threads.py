@@ -106,7 +106,7 @@ def refresh_if_needed(force: bool = False) -> str:
     return f"갱신 완료 (만료까지 {round((new_exp - time.time()) / 86400)}일)"
 
 
-def post(text: str, image_url: str = "", reply_to: str = "", topic: str = "") -> str:
+def post(text: str, image_url: str = "", reply_to: str = "", topic: str = "", poll: list[str] | None = None) -> str:
     """이미지(+글) 또는 글만 게시. reply_to 를 주면 그 글의 답글로, topic 은 주제 태그. 게시된 스레드 id 반환."""
     token, uid = _env("THREADS_ACCESS_TOKEN"), _env("THREADS_USER_ID")
     if not (token and uid):
@@ -116,6 +116,10 @@ def post(text: str, image_url: str = "", reply_to: str = "", topic: str = "") ->
         data["reply_to_id"] = reply_to
     if topic:
         data["topic_tag"] = re.sub(r"[.&]", "", topic)[:50]   # 주제 태그에는 마침표·& 불가
+    opts = [o.strip()[:25] for o in (poll or []) if o and o.strip()][:4]
+    if len(opts) >= 2 and not image_url:   # 투표는 글(TEXT) 게시물에만
+        import json as _json
+        data["poll_attachment"] = _json.dumps(dict(zip(["option_a", "option_b", "option_c", "option_d"], opts)), ensure_ascii=False)
     if image_url:
         data.update({"media_type": "IMAGE", "image_url": image_url})
     else:
@@ -139,3 +143,20 @@ def post(text: str, image_url: str = "", reply_to: str = "", topic: str = "") ->
     if r2.status_code >= 400:
         raise RuntimeError(f"게시 실패 {r2.status_code}: {r2.text[:300]}")
     return r2.json()["id"]
+
+
+def hours_since_last_post() -> float:
+    """내 원글(답글 제외) 중 가장 최근 것이 몇 시간 전인지. 모르면 큰 값."""
+    from datetime import datetime, timezone
+    token = _env("THREADS_ACCESS_TOKEN")
+    try:
+        rows = requests.get(f"{API}/v1.0/me/threads", params={"fields": "timestamp,is_reply", "limit": 10, "access_token": token},
+                            timeout=60).json().get("data", [])
+        ts = [r["timestamp"] for r in rows if not r.get("is_reply")]
+        if not ts:
+            return 999.0
+        last = datetime.strptime(ts[0][:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - last).total_seconds() / 3600
+    except Exception:  # noqa: BLE001
+        return 999.0
+

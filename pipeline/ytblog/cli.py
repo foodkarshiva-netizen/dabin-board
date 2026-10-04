@@ -137,8 +137,8 @@ def _after_publish(settings: Settings, summary: Summary, link: str, wp, state: S
         log(f"  추천 글 갱신 실패(무시): {str(_e)[:100]}")
     if not sns:   # 수정 재발행은 SNS 에 다시 올리지 않는다
         return
-    from .social import post_to_instagram, post_to_threads
-    for name, fn, retry in (("Threads", post_to_threads, "threads-post"), ("Instagram", post_to_instagram, "ig-post")):
+    from .social import post_instagram_auto, post_to_threads
+    for name, fn, retry in (("Threads", post_to_threads, "threads-post"), ("Instagram", post_instagram_auto, "ig-post")):
         try:
             log(f"  {name}: {fn(settings, summary, link, wp, state, out_dir)}")
         except Exception as _e:  # noqa: BLE001
@@ -586,6 +586,19 @@ def cmd_sns(args, settings: Settings) -> int:
     return 0
 
 
+def cmd_nugget(args, settings: Settings) -> int:
+    from .social import nugget_candidates, post_nugget
+    state = State(settings.data_dir / "state.json")
+    if args.cmd == "nugget-candidates":
+        rows = nugget_candidates(settings, state, args.n)
+        log(json.dumps(rows, ensure_ascii=False, indent=1) if rows else "남은 포인트 없음")
+        return 0
+    text = Path(args.file).read_text(encoding="utf-8") if args.file else args.text
+    poll = [o for o in (args.poll or "").split("|") if o.strip()]
+    log(post_nugget(settings, state, args.vid, args.idx, text, poll, dry_run=args.dry_run))
+    return 0
+
+
 def cmd_related(args, settings: Settings) -> int:
     from .related import refresh
     log(refresh(settings, dry_run=args.dry_run))
@@ -595,11 +608,13 @@ def cmd_related(args, settings: Settings) -> int:
 def cmd_threads_backlog(args, settings: Settings) -> int:
     """SNS(스레드·인스타)에 아직 안 올린 공개 글을 플랫폼마다 오래된 순으로 --max 편씩 올린다(기존 글 나눠 소개용)."""
     import os
-    from .social import post_to_instagram, post_to_threads
+    from .social import post_instagram_auto, post_to_threads
     state = State(settings.data_dir / "state.json")
-    platforms = [("스레드", "threads_id", post_to_threads)]
+    from functools import partial
+    platforms = [("스레드", "threads_id", partial(post_to_threads, min_gap_h=3))]
     if os.environ.get("IG_ACCESS_TOKEN"):
-        platforms.append(("인스타", "ig_id", post_to_instagram))
+        ig_key = "ig_id" if os.environ.get("IG_FORMAT", "reels").lower().startswith("car") else "ig_reel_id"
+        platforms.append(("인스타", ig_key, post_instagram_auto))
     wp = None if args.dry_run else _wp_client(settings, True)
     left = 0
     for name, key, fn in platforms:
@@ -626,13 +641,13 @@ def cmd_ig(args, settings: Settings) -> int:
     elif args.cmd == "ig-refresh":
         log(ig.refresh_if_needed(force=True))
     else:
-        from .social import post_to_instagram
+        from .social import post_instagram_auto
         vid = args.video_id
         summary = Summary.model_validate_json((settings.out_dir / vid / "summary.json").read_text(encoding="utf-8"))
         state = State(settings.data_dir / "state.json")
         link = state.video(vid).get("wp_link", "")
         wp = None if args.dry_run else _wp_client(settings, True)
-        log(post_to_instagram(settings, summary, link, wp, state, settings.out_dir / vid, dry_run=args.dry_run))
+        log(post_instagram_auto(settings, summary, link, wp, state, settings.out_dir / vid, dry_run=args.dry_run))
     return 0
 
 
@@ -769,6 +784,10 @@ def main(argv=None) -> int:
     sc = sub.add_parser("sns-comments", help="새 댓글 확인"); sc.add_argument("--peek", action="store_true", help="알림 완료로 기록하지 않음")
     sr = sub.add_parser("sns-reply", help="댓글에 답글"); sr.add_argument("platform", choices=["threads", "ig"]); sr.add_argument("comment_id"); sr.add_argument("text")
     nf = sub.add_parser("notify", help="다빈보드 소통에 메시지"); nf.add_argument("text", nargs="?", default=""); nf.add_argument("--file", default="")
+    nc = sub.add_parser("nugget-candidates", help="스레드 '지식 한 조각' 후보"); nc.add_argument("-n", type=int, default=8)
+    ng = sub.add_parser("nugget", help="스레드 '지식 한 조각' 게시"); ng.add_argument("vid"); ng.add_argument("idx", type=int)
+    ng.add_argument("text", nargs="?", default=""); ng.add_argument("--file", default=""); ng.add_argument("--poll", default="", help="선택지1|선택지2|…")
+    ng.add_argument("--dry-run", action="store_true")
     tp = sub.add_parser("threads-post", help="공개된 글을 스레드에 올리기"); tp.add_argument("video_id"); tp.add_argument("--dry-run", action="store_true")
     qu = sub.add_parser("queue", help="다빈보드 블로그 대기열")
     qu.add_argument("action", nargs="?", default="list", choices=["list", "add", "start", "done", "fail"])
@@ -783,7 +802,7 @@ def main(argv=None) -> int:
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
             "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick, "indexnow": cmd_indexnow, "demand": cmd_demand,
-            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog, "ig-auth": cmd_ig, "ig-refresh": cmd_ig, "ig-post": cmd_ig, "related": cmd_related, "sns-stats": cmd_sns, "sns-comments": cmd_sns, "sns-reply": cmd_sns, "notify": cmd_sns}[args.cmd](args, settings)
+            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog, "ig-auth": cmd_ig, "ig-refresh": cmd_ig, "ig-post": cmd_ig, "related": cmd_related, "nugget-candidates": cmd_nugget, "nugget": cmd_nugget, "sns-stats": cmd_sns, "sns-comments": cmd_sns, "sns-reply": cmd_sns, "notify": cmd_sns}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":
