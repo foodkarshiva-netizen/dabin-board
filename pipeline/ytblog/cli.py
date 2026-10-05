@@ -586,6 +586,14 @@ def cmd_sns(args, settings: Settings) -> int:
     return 0
 
 
+def cmd_reel(args, settings: Settings) -> int:
+    """릴스 영상만 만들어 본다(게시 안 함)."""
+    from .reel import make_reel_video
+    summary = Summary.model_validate_json((settings.out_dir / args.video_id / "summary.json").read_text(encoding="utf-8"))
+    log(str(make_reel_video(summary, settings.out_dir / args.video_id / "images" / "reel")))
+    return 0
+
+
 def cmd_nugget(args, settings: Settings) -> int:
     from .social import nugget_candidates, post_nugget
     state = State(settings.data_dir / "state.json")
@@ -784,6 +792,7 @@ def main(argv=None) -> int:
     sc = sub.add_parser("sns-comments", help="새 댓글 확인"); sc.add_argument("--peek", action="store_true", help="알림 완료로 기록하지 않음")
     sr = sub.add_parser("sns-reply", help="댓글에 답글"); sr.add_argument("platform", choices=["threads", "ig"]); sr.add_argument("comment_id"); sr.add_argument("text")
     nf = sub.add_parser("notify", help="다빈보드 소통에 메시지"); nf.add_argument("text", nargs="?", default=""); nf.add_argument("--file", default="")
+    rv = sub.add_parser("reel", help="릴스 영상만 만들기(게시 안 함)"); rv.add_argument("video_id")
     nc = sub.add_parser("nugget-candidates", help="스레드 '지식 한 조각' 후보"); nc.add_argument("-n", type=int, default=8)
     ng = sub.add_parser("nugget", help="스레드 '지식 한 조각' 게시"); ng.add_argument("vid"); ng.add_argument("idx", type=int)
     ng.add_argument("text", nargs="?", default=""); ng.add_argument("--file", default=""); ng.add_argument("--poll", default="", help="선택지1|선택지2|…")
@@ -802,7 +811,7 @@ def main(argv=None) -> int:
             "note": cmd_note, "quota": cmd_quota,
             "prepare": cmd_prepare, "finish": cmd_finish, "queue": cmd_queue,
             "banner": cmd_banner, "report": cmd_report, "stats": cmd_stats, "pick": cmd_pick, "indexnow": cmd_indexnow, "demand": cmd_demand,
-            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog, "ig-auth": cmd_ig, "ig-refresh": cmd_ig, "ig-post": cmd_ig, "related": cmd_related, "nugget-candidates": cmd_nugget, "nugget": cmd_nugget, "sns-stats": cmd_sns, "sns-comments": cmd_sns, "sns-reply": cmd_sns, "notify": cmd_sns}[args.cmd](args, settings)
+            "threads-auth": cmd_threads, "threads-refresh": cmd_threads, "threads-test": cmd_threads, "threads-post": cmd_threads_post, "threads-backlog": cmd_threads_backlog, "ig-auth": cmd_ig, "ig-refresh": cmd_ig, "ig-post": cmd_ig, "related": cmd_related, "nugget-candidates": cmd_nugget, "reel": cmd_reel, "nugget": cmd_nugget, "sns-stats": cmd_sns, "sns-comments": cmd_sns, "sns-reply": cmd_sns, "notify": cmd_sns}[args.cmd](args, settings)
 
 
 if __name__ == "__main__":

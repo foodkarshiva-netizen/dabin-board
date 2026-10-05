@@ -58,8 +58,17 @@ def _eum(s: str) -> str:
         return word
     s = re.sub(r"(\S+니다)(?=[.!?]?(\s|$))", ending, s)
     s = re.sub(r"(았|었|였|했|됐|왔|웠)어요(?=[.!?]?(\s|$))", r"\1음", s)
-    for a, b in (("이에요", "임"), ("예요", "임"), ("해요", "함"), ("돼요", "됨"), ("있어요", "있음"), ("없어요", "없음")):
+    for a, b in (("이에요", "임"), ("예요", "임"), ("해요", "함"), ("돼요", "됨"), ("있어요", "있음"), ("없어요", "없음"),
+                 ("하세요", "하기"), ("세요", "기"),
+                 ("려요", "림"), ("겨요", "김"), ("와요", "옴"), ("줘요", "줌"), ("봐요", "봄"), ("워요", "움"),
+                 ("져요", "짐"), ("쳐요", "침"), ("여요", "임"), ("녀요", "님"), ("펴요", "핌")):
         s = re.sub(a + r"(?=[.!?]?(\s|$))", b, s)
+
+    def _yo(m: re.Match) -> str:      # 받침 있는 말 + 아요/어요 → 음 (갔어요→갔음, 살아남아요→살아남음)
+        syl = m.group(1)
+        c = ord(syl) - 0xAC00
+        return syl + "음" if 0 <= c < 11172 and c % 28 else m.group(0)
+    s = re.sub(r"([가-힣])[아어]요(?=[.!?]?(\s|$))", _yo, s)
     return s
 
 
@@ -335,7 +344,12 @@ def post_reel_to_instagram(settings, summary, link: str, wp, state, out_dir: Pat
     v = state.video(vid)
     if v.get("ig_reel_id") and not dry_run:
         return f"이미 게시됨 ({v['ig_reel_id']})"
-    video = make_reel(summary, out_dir / "images" / "reel")
+    try:   # 모션그래픽 영상 + 배경음악(reel.py). 실패하면 예전 슬라이드 영상으로
+        from .reel import make_reel_video
+        video = make_reel_video(summary, out_dir / "images" / "reel")
+    except Exception as e:  # noqa: BLE001
+        print(f"  모션 영상 실패 → 슬라이드 영상으로 대체: {str(e)[:160]}")
+        video = make_reel(summary, out_dir / "images" / "reel")
     cap = ig_caption(summary)
     if dry_run:
         return f"[dry-run] 릴스 {video} ({video.stat().st_size // 1024}KB)\n{cap}"
