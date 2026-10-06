@@ -78,6 +78,11 @@ def refresh(settings, wp: WordPressClient | None = None, dry_run: bool = False) 
     wp = wp or WordPressClient(settings.wp_url, settings.wp_user, settings.wp_app_password)
     posts = wp._get("posts", per_page=100, status="publish", context="edit",
                     _fields="id,date,link,title,categories,tags,featured_media,content")
+    try:      # 청약 분석 글은 자동 공고 페이지라 '같이 읽으면 좋은 글' 대상에서 뺀다
+        cy = {c["id"] for c in wp._get("categories", search="청약 분석") if c["name"] == "청약 분석"}
+        posts = [p for p in posts if not (set(p.get("categories", [])) & cy)]
+    except Exception:  # noqa: BLE001
+        pass
     if len(posts) < 2:
         return "글이 2편 미만이라 건너뜀"
     if not dry_run:

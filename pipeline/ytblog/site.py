@@ -220,7 +220,13 @@ def site_stats(settings: Settings, board_js: Path | None = None) -> dict:
     for pid, it in sorted(p7.items(), key=lambda kv: -int(kv[1].get("pageviews") or 0))[:5]:
         out["top"].append({"title": html.unescape(str(it.get("post_title") or it.get("label") or ""))[:60],
                            "url": it.get("post_permalink") or "", "pageviews": int(it.get("pageviews") or 0), "visitors": int(it.get("visitors") or 0)})
+    try:
+        cy = {c["id"] for c in wp._get("categories", search="청약 분석") if c["name"] == "청약 분석"}
+    except Exception:  # noqa: BLE001
+        cy = set()
     for p in wp._get("posts", per_page=100, status="publish", orderby="date", order="desc"):
+        if set(p.get("categories", [])) & cy:   # 청약 공고 페이지는 글별 조회수 목록에서 뺀다
+            continue
         st = p30.get(p["id"], {})
         out["posts"].append({"id": p["id"], "title": html.unescape(p["title"]["rendered"])[:60], "url": p["link"],
                              "date": (p.get("date") or "")[:10], "pv30": int(st.get("pageviews") or 0)})
