@@ -24,21 +24,24 @@ OSM_UA = {"User-Agent": "jisikfill-chungyak/1.0 (+https://jisikfill.com/chungyak
 
 
 # ---------------------------------------------------------------- 총 세대수
-def total_units(pdf_url: str) -> tuple[int, str]:
-    if not pdf_url:
-        return 0, "모집공고문 첨부 없음"
-    if not PDFTOTEXT:
-        return 0, "pdftotext 없음"
+def pdf_text(pdf_url: str) -> str:
+    if not (pdf_url and PDFTOTEXT):
+        return ""
     r = requests.get(pdf_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=90)
     if r.content[:4] != b"%PDF":
-        return 0, "첨부가 PDF 아님"
+        return ""
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         f.write(r.content); tmp = f.name
     try:
         txt = subprocess.run([PDFTOTEXT, "-enc", "UTF-8", "-l", "14", tmp, "-"], capture_output=True, timeout=120).stdout.decode("utf-8", "ignore")
     finally:
         Path(tmp).unlink(missing_ok=True)
-    flat = re.sub(r"\s+", " ", txt)
+    return re.sub(r"\s+", " ", txt)
+
+
+def units_from(flat: str) -> tuple[int, str]:
+    if not flat:
+        return 0, "모집공고문을 못 읽음"
     for p in [r"공급\s*규모[^■]{0,240}?총\s*([\d,]+)\s*세대", r"건립\s*세대\s*수?\s*[:：]?\s*(?:총\s*)?([\d,]+)\s*세대",
               r"총\s*([\d,]+)\s*세대\s*\(", r"총\s*([\d,]+)\s*세대"]:
         m = re.search(p, flat)
@@ -47,6 +50,52 @@ def total_units(pdf_url: str) -> tuple[int, str]:
             if 0 < n < 100000:
                 return n, ""
     return 0, ("모집공고문이 이미지라 글자를 못 읽음" if len(flat) < 200 else "모집공고문에서 총 세대수 못 찾음")
+
+
+_STOP = r"(?=\s(?:분양가상한제|재당첨제한|전매제한|거주의무기간|규제지역여부|택지유형|구분|당첨자발표일|입주자모집공고일|특별공급|일반공급|서류접수|계약체결|기타지역|구글플레이스토어|\(분양문의\)|1 공통)|$)"
+
+
+def rules_from(flat: str) -> dict:
+    """모집공고문 첫머리 '단지 주요정보' 표에서 거주요건·거주의무·전매·재당첨·규제지역을 읽는다(표가 글자로 흩어져 있어 패턴 여러 개)."""
+    i = flat.find("단지 주요정보")
+    seg = flat[i:i + 1500] if i >= 0 else flat[:1500]
+    out = {}
+    m = re.search(r"거주요건\s*(.+?)" + _STOP, seg)
+    if m:
+        out["live"] = m.group(1).strip()
+    else:
+        h = re.search(r"해당지역\s*(?:민영|국민)?\s*(.+?거주자(?:\s*\([^)]*\))?)", seg)
+        o = re.search(r"기타지역\s*(.+?거주자)", seg)
+        if h:
+            out["live"] = "해당지역: " + h.group(1).strip() + (f" / 기타지역: {o.group(1).strip()}" if o else "")
+    m = re.search(r"재당첨제한\s*전매제한\s*(없음|\d+\s*년)\s*(없음|\d+\s*년|\d+\s*개월)", seg)
+    if m:
+        out["rewin"], out["resale"] = m.group(1), m.group(2)
+    else:
+        m = re.search(r"재당첨제한\s*(없음|\d+\s*년)", seg)
+        if m:
+            out["rewin"] = m.group(1)
+        m = re.search(r"전매제한\s*(없음(?:\s*\([^)]{0,60}\))?|최초[^■]{0,40}?로부터\s*\d+\s*(?:년|개월)간?(?:\s*적용)?|\d+\s*(?:년|개월))", seg)
+        if m:
+            out["resale"] = m.group(1).strip()
+    m = re.search(r"거주의무기간\s*분양가상한제\s*(없음|\d+\s*년(?:\s*\d+\s*개월)?)\s*(적용|미적용)", seg)
+    if m:
+        out["liveDuty"], out["cap"] = m.group(1), m.group(2)
+    else:
+        m = re.search(r"거주의무기간\s*(없음|\d+\s*년(?:\s*\d+\s*개월)?|\d+\s*개월)", seg)
+        if m:
+            out["liveDuty"] = m.group(1)
+        m = re.search(r"분양가상한제\s*(적용|미적용)", seg)
+        if m:
+            out["cap"] = m.group(1)
+    m = re.search(r"규제지역여부\s*(비규제지역|투기과열지구(?:\s*[및/]\s*청약과열지역)?|청약과열지역|조정대상지역)", seg)
+    if m:
+        out["zone"] = m.group(1)
+    return out
+
+
+def total_units(pdf_url: str) -> tuple[int, str]:
+    return units_from(pdf_text(pdf_url))
 
 
 # ---------------------------------------------------------------- 거리
@@ -80,13 +129,14 @@ def _kakao(addr: str, name: str, key: str) -> dict | None:
         return None
 
     def near(params):
+        radius = params.pop("_r", 2000)
         r = requests.get("https://dapi.kakao.com/v2/local/search/" + params.pop("_path"), params={**params, "x": xy[1], "y": xy[0],
-                         "radius": 2000, "sort": "distance"}, headers=H, timeout=30)
+                         "radius": radius, "sort": "distance"}, headers=H, timeout=30)
         return r.json().get("documents", []) if r.ok else []
-    st = [{"name": d["place_name"], "m": int(d["distance"])} for d in near({"_path": "category.json", "category_group_code": "SW8"})]
+    st = [{"name": d["place_name"], "m": int(d["distance"])} for d in near({"_path": "category.json", "category_group_code": "SW8", "_r": 3000})]
     sc = [{"name": d["place_name"], "m": int(d["distance"])} for d in near({"_path": "keyword.json", "query": "초등학교", "category_group_code": "SC4"})
           if d["place_name"].endswith("초등학교")]
-    return {"lat": xy[0], "lon": xy[1], "stations": st[:3], "schools": sc[:2], "approx": False, "src": "카카오맵"}
+    return {"lat": xy[0], "lon": xy[1], "stations": st[:3], "schools": sc[:2], "approx": False, "src": "카카오맵", "radius": {"st": 3000, "sc": 2000}}
 
 
 # ---------------------------------------------------------------- 오픈스트리트맵(대략)
@@ -111,13 +161,16 @@ def _osm(addr: str) -> dict | None:
     q = (f"[out:json][timeout:30];(node(around:2500,{lat},{lon})[railway=station];"
          f"nwr(around:2500,{lat},{lon})[amenity=school][name~\"초등학교$\"];);out center tags;")
     els = []
-    for url in ("https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"):
+    for attempt in range(4):         # 공용 서버라 자주 '잠시 후 다시' 를 준다 → 간격을 늘려 가며 재시도
+        url = ("https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter")[attempt % 2]
         try:
-            r = requests.post(url, data={"data": q}, headers=OSM_UA, timeout=90)
-            if r.ok:
+            r = requests.post(url, data={"data": q}, headers=OSM_UA, timeout=60)
+            if r.ok and r.text.lstrip().startswith("{"):
                 els = r.json().get("elements", []); break
         except Exception:  # noqa: BLE001
-            continue
+            pass
+        time.sleep(8 * (attempt + 1))
+    time.sleep(2)
     if not els:
         return None          # 지도 서버 오류일 수 있으니 '없음'으로 저장하지 않고 다음에 다시
     st, sc, seen = [], [], set()
@@ -142,12 +195,14 @@ def site_info(pbno: str, addr: str, name: str, pdf: str, cache_dir: Path) -> dic
     cache_dir.mkdir(parents=True, exist_ok=True)
     cp = cache_dir / f"{pbno}.json"
     info = json.loads(cp.read_text(encoding="utf-8")) if cp.exists() else {}
-    if not info.get("unitsChecked"):
+    if not info.get("rulesChecked"):
         try:
-            info["units"], info["unitsWhy"] = total_units(pdf)
+            flat = pdf_text(pdf)
+            info["units"], info["unitsWhy"] = units_from(flat)
+            info["rules"] = rules_from(flat) if flat else {}
         except Exception as e:  # noqa: BLE001
-            info["units"], info["unitsWhy"] = 0, f"모집공고문을 못 받음({str(e)[:40]})"
-        info["unitsChecked"] = True
+            info["units"], info["unitsWhy"], info["rules"] = 0, f"모집공고문을 못 받음({str(e)[:40]})", {}
+        info["unitsChecked"] = info["rulesChecked"] = True
     key = os.environ.get("KAKAO_REST_KEY", "").strip()
     stale = time.time() - info.get("geoAt", 0) > 7 * 86400
     need_upgrade = key and (info.get("geo") or {}).get("approx", True)

@@ -386,6 +386,12 @@ def build_post(row: dict, d: dict, info: dict | None = None) -> dict:
         loc.append(f"가장 가까운 초등학교는 {sc[0]['name']}(약 {fmt_m(sc[0]['m'])})")
     if loc:
         intro += " " + ", ".join(loc) + "예요." if len(loc) > 1 else " " + loc[0] + "예요."
+    live = (site.get("rules") or {}).get("live", "")
+    if live and "해당지역" not in live:
+        intro += f" 청약은 <strong>{_e(live)}</strong>만 할 수 있어요."
+    duty = (site.get("rules") or {}).get("liveDuty", "")
+    if duty and duty != "없음":
+        intro += f" 당첨되면 {_e(duty)} 동안 직접 살아야 하는 거주 의무가 있어요."
     parts.append(P(intro))
     # 한눈에
     parts.append(H2("한눈에 보기"))
@@ -399,12 +405,20 @@ def build_post(row: dict, d: dict, info: dict | None = None) -> dict:
     units_txt = (f"총 {site.get('units'):,}세대" + (f" (이번 공급 {_e(d['scale'])})" if d["scale"] else "")) if site.get("units")         else f"모집공고문 확인 필요 (이번 공급 {_e(d['scale'])})"
     def near(lst, n):
         if not lst:
-            return "반경 2.5km 안에서 찾지 못함" if geo else "위치를 찾지 못해 확인 못 함"
+            if not geo:
+                return "지도에서 확인 필요"
+            r = (geo.get("radius") or {}).get("st" if lst is st else "sc", 2500)
+            return f"반경 {r / 1000:g}km 안에 없음"
         if geo.get("approx"):
             return "<br>".join(f"{_e(x['name'])} 약 {fmt_m(x['m'])}" for x in lst[:n]) + "<br><small>(동 중심 기준 대략 거리)</small>"
         return "<br>".join(f"{_e(x['name'])} {fmt_m(x['m'])} · {walk(x['m'])}" for x in lst[:n])
     k = 3 if d["special"] else 2
     info[k + 1:k + 1] = [("단지 규모", units_txt), ("가까운 역", near(st, 2)), ("초등학교", near(sc, 1))]
+    R = site.get("rules") or {}
+    rule_rows = [(lab, _e(R[key])) for key, lab in (("live", "청약 자격(거주)"), ("liveDuty", "거주 의무"), ("resale", "전매 제한"),
+                                                     ("rewin", "재당첨 제한"), ("cap", "분양가 상한제")) if R.get(key)]
+    pos = next((n for n, (lab, _) in enumerate(info) if lab == "청약 접수"), 3)
+    info[pos:pos] = rule_rows
     parts.append(TABLE(["항목", "내용"], [[f"<strong>{k}</strong>", v] for k, v in info]))
     # 주택형별
     if all_types:
