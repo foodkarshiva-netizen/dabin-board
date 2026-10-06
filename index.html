@@ -1169,8 +1169,8 @@ var CHUNGMINUNITS=300;
 /* 주택형 고르기(2026-10-06 다빈 지시): 55㎡ 미만(39형 등)은 시세차익 의미 없어 제외 — 59·84형 위주.
    분양가 나온 형 중 자금 상한 안에서 가장 큰 평형, 없으면 가장 작은 평형(자금 부족으로 판정). 시세 = chungyak-enrich.js 실거래 자동 추정(types[].market). */
 function chungPick(it){if(!(it.types&&it.types.length))return;var T=it.types.filter(function(t){return t.area>=55});if(!T.length){it._small=true;return}
- var P=T.filter(function(t){return +t.price>0}),base=+it.price||0;
- if(!P.length){if(base>0)P=T.map(function(t){return Object.assign({},t,{price:base})});else{var m0=T.slice().sort(function(a,b){return b.area-a.area})[0];it._pick=m0;if(+m0.market>0)it.market=m0.market;return}}
+ var P=T.filter(function(t){return +t.price>0}),base=+it.price||0,fromBase=false;
+ if(!P.length){if(base>0){fromBase=true;P=T.slice().sort(function(a,b){return b.area-a.area}).slice(0,1).map(function(t){return Object.assign({},t,{price:base})})}else{var m0=T.slice().sort(function(a,b){return b.area-a.area})[0];it._pick=m0;if(+m0.market>0)it.market=m0.market;return}}
  var mx=chungMax(+CHUNGCFG.cash||0),ok=P.filter(function(t){return t.price<=mx}).sort(function(a,b){return b.area-a.area});
  var pk=ok[0]||P.slice().sort(function(a,b){return a.area-b.area})[0];
  it.price=pk.price;if(+pk.market>0)it.market=pk.market;it._pick=pk;it._others=P.filter(function(t){return t!==pk})}
