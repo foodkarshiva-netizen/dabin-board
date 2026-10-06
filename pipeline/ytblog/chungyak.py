@@ -500,13 +500,14 @@ def run(settings, dry_run: bool = False, pages: int = 1, only: str = "", draft: 
                 (settings.out_dir / "chungyak").mkdir(parents=True, exist_ok=True)
                 (settings.out_dir / "chungyak" / f"{r['pbno']}.json").write_text(json.dumps({"row": r, "detail": d, "post": post}, ensure_ascii=False, indent=1), encoding="utf-8")
                 continue
-            if st.get("hash") == h:
+            status = "draft" if draft else "publish"
+            if st.get("hash") == h and st.get("status") == status:
                 skipped.append(r["name"]); continue
             cats = wp.category_ids([CATEGORY])
             tags = wp.tag_ids(post["tags"])
-            status = "draft" if draft else "publish"
             if st.get("id"):
-                p = wp.update_post(st["id"], title=post["title"], content=post["content"], excerpt=post["excerpt"], tags=tags)
+                p = wp.update_post(st["id"], title=post["title"], content=post["content"], excerpt=post["excerpt"], tags=tags,
+                                   status=status, categories=cats, slug=post["slug"])
                 updated.append(p.get("link", ""))
             else:
                 p = wp.create_post(title=post["title"], content=post["content"], status=status, slug=post["slug"],
