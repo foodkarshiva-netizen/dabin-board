@@ -624,19 +624,14 @@ function editGoal(id){var p=PEOPLE.filter(function(x){return x.id===id})[0];if(!
 function delPerson(id){var p=PEOPLE.filter(function(x){return x.id===id})[0];var nm=p?pField(p,['name','nm']):'';if(confirm((nm||'이 인원')+' 삭제할까요?'))db.collection('people').doc(id).delete();}
 /* 통합보드(biz) */
 var BIZ=[
-{id:'cash',e:'💰',t:'자금일보',d:'일자별 입·출금과 자금 흐름 일일 보고',u:'https://service.masterc.co.kr/mastercco-cash-daily/admin/login.php'},
 {id:'ch',e:'📣',t:'자체채널 마케팅 보드',d:'자체 판매 채널의 마케팅 진행 현황과 성과',u:'https://service.masterc.co.kr/mastercco-ch/'},
 {id:'ext',e:'🚚',t:'외부유통 현황 보드',d:'외부 유통 채널별 판매·유통 현황을 한눈에',u:'https://service.masterc.co.kr/mastercco-ext/'},
-{id:'monthly',e:'📅',t:'월간공유서 종합보드',d:'월간 공유서를 종합해 실적과 지표를 정리',u:'https://service.masterc.co.kr/mastercco-monthly/admin/login.php'},
 {id:'order',e:'🧾',t:'발주정산 보드',d:'발주 내역과 정산을 매칭·집계하는 관리 보드',u:'https://service.masterc.co.kr/masterc-order/'},
 {id:'access',e:'🛡️',t:'관리보드',d:'리모컨·매크로 접속 감시 등 운영을 총괄',u:'https://service.masterc.co.kr/mastercco-access/login.php'}
 ];
 var SHARE=[
-{e:'🌊',t:'바다베개 공유서',d:'바다베개 공유서 게시판',u:'https://masterc.co.kr/board_lSSD76'},
 {e:'📋',t:'마스터 공유서',d:'마스터 공유서 게시판',u:'https://masterc.co.kr/board_mJof66'},
 {e:'🏢',t:'사업자 공유서',d:'사업자 공유서 게시판',u:'https://masterc.co.kr/board_TJdO36'},
-{e:'🧑‍💼',t:'임수진 공유서',d:'마스터 공유서 · 나는야/임수진 글만 모아보기',u:'https://masterc.co.kr/?_filter=search&act=&vid=&mid=board_mJof66&category=&search_target=nick_name&search_keyword=%EB%82%98%EB%8A%94%EC%95%BC%2F%EC%9E%84%EC%88%98%EC%A7%84'},
-{e:'🧑‍💼',t:'김덕재 공유서',d:'마스터 공유서 · 동해/김덕재 글만 모아보기',u:'https://masterc.co.kr/index.php?mid=board_mJof66&search_target=nick_name&search_keyword=%EB%8F%99%ED%95%B4%2F%EA%B9%80%EB%8D%95%EC%9E%AC'}
 ];
 function renderBiz(){
  var box=document.getElementById('bizBody');if(!box)return;
@@ -1171,8 +1166,18 @@ function delChung(id){if(!confirm('삭제할까요?'))return;db.collection('chun
 var CHUNGSHOWALL=false;
 function chungToggleAll(){CHUNGSHOWALL=!CHUNGSHOWALL;renderChung()}
 var CHUNGMINUNITS=300;
+/* 주택형 고르기(2026-10-06 다빈 지시): 55㎡ 미만(39형 등)은 시세차익 의미 없어 제외 — 59·84형 위주.
+   분양가 나온 형 중 자금 상한 안에서 가장 큰 평형, 없으면 가장 작은 평형(자금 부족으로 판정). 시세 = chungyak-enrich.js 실거래 자동 추정(types[].market). */
+function chungPick(it){if(!(it.types&&it.types.length))return;var T=it.types.filter(function(t){return t.area>=55});if(!T.length){it._small=true;return}
+ var P=T.filter(function(t){return +t.price>0}),base=+it.price||0;
+ if(!P.length){if(base>0)P=T.map(function(t){return Object.assign({},t,{price:base})});else{var m0=T.slice().sort(function(a,b){return b.area-a.area})[0];it._pick=m0;if(+m0.market>0)it.market=m0.market;return}}
+ var mx=chungMax(+CHUNGCFG.cash||0),ok=P.filter(function(t){return t.price<=mx}).sort(function(a,b){return b.area-a.area});
+ var pk=ok[0]||P.slice().sort(function(a,b){return a.area-b.area})[0];
+ it.price=pk.price;if(+pk.market>0)it.market=pk.market;it._pick=pk;it._others=P.filter(function(t){return t!==pk})}
+function chungTypeNote(it){if(it._small)return '<div class="n3">55㎡ 미만 주택형만 공급 — 시세차익 의미 없어 제외</div>';if(!it._pick)return '';var o=(it._others||[]).map(function(t){return Math.round(t.area)+'㎡ '+chW(t.price)}).join(', ');return '<div class="n3">'+Math.round(it._pick.area)+'㎡형 기준'+(o?' · 다른 형 '+o:'')+'</div>'}
 function chungCat(it,today){
  if((it.applyEnd||it.applyStart||"")<today)return "out";
+ if(it._small)return "out";
  if(+it.units>0 && +it.units<CHUNGMINUNITS)return "out";
  if(!(+it.price>0))return "need";
  var c=chungCalc(it);
@@ -1200,7 +1205,7 @@ function renderChung(){
    return al? String(a.applyStart||'').localeCompare(String(b.applyStart||'')) : String(b.applyStart||'').localeCompare(String(a.applyStart||''));
   });
   var cnt={ok:0,need:0,out:0};
-  arr.forEach(function(it){it._cat=chungCat(it,today);cnt[it._cat]++});
+  arr.forEach(function(it){chungPick(it);it._cat=chungCat(it,today);cnt[it._cat]++});
   var shown=CHUNGSHOWALL?arr:arr.filter(function(it){return it._cat!=='out'});
   var mx=chungMax(+CHUNGCFG.cash||0);
   document.getElementById('chungSum').innerHTML='<div class="card" style="margin-bottom:10px"><div class="rowsb"><div><div class="muted small">\uB0B4 \uD604\uAE08 '+chW(CHUNGCFG.cash)+' \u00B7 \uB300\uCD9C \uCD5C\uB300 6\uC5B5(\uC218\uB3C4\uAD8C \uCEA1)</div><div style="font-size:19px;font-weight:700;margin-top:2px">\uBD84\uC591\uAC00 '+chW(mx)+' \uAE4C\uC9C0 \uAC00\uB2A5</div></div><div class="muted small" style="text-align:right">\uC0DD\uC560\uCD5C\uCD08 LTV 70%<br>\uCDE8\uB4DD\uC138 \uD3EC\uD568<br>300\uC138\uB300 \uBBF8\uB9CC \uC81C\uC678</div></div><div style="margin-top:10px;padding-top:10px;border-top:1px solid #eef1f5;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="ptag good">\uD6C4\uBCF4 '+cnt.ok+'\uAC74</span><span class="ptag warn">\uC2DC\uC138 \uD655\uC778\uD544\uC694 '+cnt.need+'\uAC74</span><span class="muted small">\uD0C8\uB77D\u00B7\uC885\uB8CC '+cnt.out+'\uAC74</span><button class="btn o sm" style="margin-left:auto" onclick="chungToggleAll()">'+(CHUNGSHOWALL?'\uD0C8\uB77D \uC228\uAE30\uAE30':'\uD0C8\uB77D\uB3C4 \uBCF4\uAE30')+'</button></div></div>';
@@ -1217,12 +1222,12 @@ function renderChung(){
    // 접수일 — 크게
    h+='<td class="cdate"><div class="d1">'+esc(chungPeriod(it))+'</div><div class="d2 '+(dd==='\uC885\uB8CC'?'muted':'hot')+'">'+esc(dd)+'</div>'+(it.winDate?'<div class="d3">\uBC1C\uD45C '+esc(it.winDate.slice(5).replace('-','/'))+'</div>':'')+'</td>';
    // 단지
-   h+='<td class="cname"><div class="n1">'+(hot?'<span class="hotdot">\u2605</span> ':'')+esc(it.name||'')+'</div><div class="n2">'+esc(it.area||'')+' \u00B7 '+esc(it.kind||'')+(+it.units>0?' \u00B7 '+Number(it.units).toLocaleString()+'\uC138\uB300':'')+'</div>'+(it.note?'<div class="n3">'+esc(it.note)+'</div>':'')+'</td>';
+   h+='<td class="cname"><div class="n1">'+(hot?'<span class="hotdot">\u2605</span> ':'')+esc(it.name||'')+'</div><div class="n2">'+esc(it.area||'')+' \u00B7 '+esc(it.kind||'')+(+it.units>0?' \u00B7 '+Number(it.units).toLocaleString()+'\uC138\uB300':'')+'</div>'+chungTypeNote(it)+(it.note?'<div class="n3">'+esc(it.note)+'</div>':'')+'</td>';
    if(noP){
     h+='<td colspan="5" class="muted small" style="text-align:center">\uBD84\uC591\uAC00 \uBBF8\uD655\uC778 \u2014 <button class="btn o sm" onclick="editChungPrice(\''+it._id+'\')">\uAE08\uC561 \uC785\uB825</button></td>';
    }else{
     h+='<td class="num">'+chW(it.price)+'</td>';
-    h+='<td class="num">'+(+it.market>0?chW(it.market):'<span class="muted">\u2014</span>')+'</td>';
+    h+='<td class="num">'+(+it.market>0?chW(it.market)+(it._pick&&it._pick.mkt&&it._pick.mkt.n?'<div class="sub muted">실거래 '+it._pick.mkt.n+'건 기준</div><div class="sub muted" style="font-size:10.5px">'+esc(it._pick.mkt.basis)+'</div>':''):'<span class="muted">\u2014</span>')+'</td>';
     h+='<td class="num '+(c.gain>0?'gpos':(c.gain<0?'gneg':''))+'">'+(c.gain===null?'<span class="muted">\u2014</span>':chW(c.gain))+'</td>';
     if(c.pre){
      h+='<td class="num"><div>\uACC4\uC57D\uAE08 '+chW(c.down)+'</div>'
