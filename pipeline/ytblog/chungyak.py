@@ -345,7 +345,7 @@ def _region(addr: str, area: str) -> str:
     return f"{short} {A['sgg'].split(' ')[0]}" if A["sgg"] != A["sido"] else short
 
 
-def build_post(row: dict, d: dict) -> dict:
+def build_post(row: dict, d: dict, info: dict | None = None) -> dict:
     name, kind, region = row["name"], row["kind"], _region(d["addr"], row["area"])
     all_types = d["types"]
     types = [t for t in all_types if t.get("price")]
@@ -373,6 +373,19 @@ def build_post(row: dict, d: dict) -> dict:
         intro += f" 가장 물량이 많은 전용 {round(big['area'])}㎡ 분양가는 최고 {won(big['price'])}이에요."
     if lotto:
         intro += " 불법행위로 계약이 취소된 집을 다시 내놓는 물량이라 최초 분양 당시 가격 그대로 공급돼요."
+    from .chungyak_site import fmt_m, walk
+    site = info or {}
+    geo = site.get("geo") or {}
+    st, sc = geo.get("stations") or [], geo.get("schools") or []
+    loc = []
+    if site.get("units"):
+        loc.append(f"단지 전체는 총 {site['units']:,}세대")
+    if st:
+        loc.append(f"가장 가까운 역은 {st[0]['name']}(약 {fmt_m(st[0]['m'])})")
+    if sc:
+        loc.append(f"가장 가까운 초등학교는 {sc[0]['name']}(약 {fmt_m(sc[0]['m'])})")
+    if loc:
+        intro += " " + ", ".join(loc) + "예요." if len(loc) > 1 else " " + loc[0] + "예요."
     parts.append(P(intro))
     # 한눈에
     parts.append(H2("한눈에 보기"))
@@ -383,6 +396,15 @@ def build_post(row: dict, d: dict) -> dict:
             ("시행 / 시공", _e(f"{d['developer']} / {d['builder']}")), ("문의", _e(d["phone"]))]
     if d["special"]:
         info.insert(3, ("규제", _e(d["special"])))
+    units_txt = (f"총 {site.get('units'):,}세대" + (f" (이번 공급 {_e(d['scale'])})" if d["scale"] else "")) if site.get("units")         else f"모집공고문 확인 필요 (이번 공급 {_e(d['scale'])})"
+    def near(lst, n):
+        if not lst:
+            return "반경 2.5km 안에서 찾지 못함" if geo else "위치를 찾지 못해 확인 못 함"
+        if geo.get("approx"):
+            return "<br>".join(f"{_e(x['name'])} 약 {fmt_m(x['m'])}" for x in lst[:n]) + "<br><small>(동 중심 기준 대략 거리)</small>"
+        return "<br>".join(f"{_e(x['name'])} {fmt_m(x['m'])} · {walk(x['m'])}" for x in lst[:n])
+    k = 3 if d["special"] else 2
+    info[k + 1:k + 1] = [("단지 규모", units_txt), ("가까운 역", near(st, 2)), ("초등학교", near(sc, 1))]
     parts.append(TABLE(["항목", "내용"], [[f"<strong>{k}</strong>", v] for k, v in info]))
     # 주택형별
     if all_types:
@@ -437,10 +459,14 @@ def build_post(row: dict, d: dict) -> dict:
                 tips.append(f"입주까지 약 {months // 12}년 {months % 12}개월 남았어요. 그동안 중도금 대출 이자(또는 후불제 여부)를 확인하세요.")
         except ValueError:
             pass
+    if geo.get("approx"):
+        tips.append("가까운 역·학교 거리는 정확한 단지 위치 대신 동 중심에서 잰 대략적인 직선거리예요. 실제 거리는 지도에서 확인하세요.")
+    elif geo:
+        tips.append("역·학교 거리는 단지 주소에서 잰 직선거리이고, 걷는 시간은 길 굴곡을 감안한 추정이에요.")
     tips.append("최종 자격·분양가·납부 일정은 반드시 모집공고문에서 확인하세요.")
     parts.append(H2("체크포인트"))
     parts.append(f'<!-- wp:list -->\n<ul class="wp-block-list">{"".join(f"<li>{t}</li>" for t in tips)}</ul>\n<!-- /wp:list -->')
-    src = '청약홈 입주자모집공고' + (f' (<a href="{_e(d["pdf"])}" rel="nofollow noopener" target="_blank">모집공고문 PDF</a>)' if d["pdf"] else "") + ", 국토교통부 실거래가 공개시스템"
+    src = '청약홈 입주자모집공고' + (f' (<a href="{_e(d["pdf"])}" rel="nofollow noopener" target="_blank">모집공고문 PDF</a>)' if d["pdf"] else "") + ", 국토교통부 실거래가 공개시스템" + (f", 위치 {geo.get('src')}" if geo else "")
     parts.append('<!-- wp:separator -->\n<hr class="wp-block-separator has-alpha-channel-opacity"/>\n<!-- /wp:separator -->')
     parts.append(P(f"<strong>출처</strong> {src} · 자동 정리 {date.today().isoformat()}", "yt-source"))
     content = "\n\n".join(parts)
@@ -492,7 +518,9 @@ def run(settings, dry_run: bool = False, pages: int = 1, only: str = "", draft: 
                             t["market"] = est["market"]; t["mkt"] = {k: est[k] for k in ("n", "basis", "ex")}
                 except Exception as e:  # noqa: BLE001
                     log(f"  시세 실패({r['name']}): {str(e)[:80]}")
-            post = build_post(r, d)
+            from .chungyak_site import site_info
+            site = site_info(r["pbno"], d["addr"], r["name"], d["pdf"], settings.data_dir / "chungyak_site")
+            post = build_post(r, d, site)
             h = hashlib.md5(post["content"].split("자동 정리")[0].encode()).hexdigest()
             st = state["posts"].get(r["pbno"], {})
             if dry_run:
