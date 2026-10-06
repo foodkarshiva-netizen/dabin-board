@@ -345,6 +345,24 @@ def _region(addr: str, area: str) -> str:
     return f"{short} {A['sgg'].split(' ')[0]}" if A["sgg"] != A["sido"] else short
 
 
+def make_facts(row: dict, d: dict, site: dict | None) -> dict:
+    """SNS·주간 정리용 핵심 숫자: 55㎡ 이상 중 시세 차이가 가장 큰 주택형, 자격, 세대수, 역."""
+    site = site or {}
+    ts = [t for t in d["types"] if t.get("price") and t.get("area", 0) >= 55] or [t for t in d["types"] if t.get("price")]
+    best = max(ts, key=lambda t: (t.get("market") or 0) - t["price"] if t.get("market") else -10**9, default=None)
+    geo = site.get("geo") or {}
+    st = (geo.get("stations") or [None])[0]
+    R = site.get("rules") or {}
+    out = {"units": site.get("units") or 0, "supply": d.get("scale", ""), "live": R.get("live", ""), "liveDuty": R.get("liveDuty", ""),
+           "resale": R.get("resale", ""), "station": (f"{st['name']} {st['m']}m" if st and not geo.get("approx") else ""),
+           "moveIn": d.get("moveIn", ""), "special": d.get("special", ""), "addr": d.get("addr", "")}
+    if best:
+        out.update({"area": round(best["area"]), "price": best["price"], "market": best.get("market") or 0,
+                    "gap": (best["market"] - best["price"]) if best.get("market") else None,
+                    "basisNew": "신축" in ((best.get("mkt") or {}).get("basis", ""))})
+    return out
+
+
 def build_post(row: dict, d: dict, info: dict | None = None) -> dict:
     name, kind, region = row["name"], row["kind"], _region(d["addr"], row["area"])
     all_types = d["types"]
@@ -543,7 +561,10 @@ def run(settings, dry_run: bool = False, pages: int = 1, only: str = "", draft: 
                 (settings.out_dir / "chungyak" / f"{r['pbno']}.json").write_text(json.dumps({"row": r, "detail": d, "post": post}, ensure_ascii=False, indent=1), encoding="utf-8")
                 continue
             status = "draft" if draft else "publish"
+            facts = make_facts(r, d, site)
             if st.get("hash") == h and st.get("status") == status:
+                st["facts"] = facts
+                sp.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
                 skipped.append(r["name"]); continue
             cats = wp.category_ids([CATEGORY])
             tags = wp.tag_ids(post["tags"])
@@ -558,7 +579,8 @@ def run(settings, dry_run: bool = False, pages: int = 1, only: str = "", draft: 
                 made.append(p.get("link", ""))
             state["posts"][r["pbno"]] = {"id": p["id"], "hash": h, "link": p.get("link", ""), "name": r["name"], "region": _region(d["addr"], r["area"]),
                                          "kind": r["kind"], "applyStart": r["applyStart"], "applyEnd": r["applyEnd"], "winDate": d["winDate"] or r["winDate"],
-                                         "status": status, "at": time.time()}
+                                         "status": status, "at": time.time(), "facts": facts,
+                                         "sns": st.get("sns", {})}
             if status == "publish":
                 urls.append(p.get("link", ""))
             sp.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
