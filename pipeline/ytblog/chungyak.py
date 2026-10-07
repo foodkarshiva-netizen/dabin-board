@@ -602,21 +602,82 @@ def run(settings, dry_run: bool = False, pages: int = 1, only: str = "", draft: 
     return {"new": made, "updated": updated, "same": len(skipped), "rt_downloads": rt.downloads}
 
 
+HUBS = [  # (slug, 제목, 거르는 조건, 소개 문장)
+    ("chungyak", "청약 일정·분양가 정리", lambda v: True, "청약홈에 올라온 아파트 청약 공고를 매일 정리해요."),
+    ("chungyak-seoul", "서울 아파트 청약 일정·분양가 (매일 갱신)", lambda v: v.get("region", "").startswith("서울"), "서울에서 접수하는 아파트 청약 공고만 모았어요."),
+    ("chungyak-gyeonggi", "경기 아파트 청약 일정·분양가 (매일 갱신)", lambda v: v.get("region", "").startswith("경기"), "경기도에서 접수하는 아파트 청약 공고만 모았어요."),
+    ("chungyak-incheon", "인천 아파트 청약 일정·분양가 (매일 갱신)", lambda v: v.get("region", "").startswith("인천"), "인천에서 접수하는 아파트 청약 공고만 모았어요."),
+    ("chungyak-mususun", "무순위 청약(줍줍) 일정·분양가 (매일 갱신)",
+     lambda v: any(k in v.get("kind", "") for k in ("무순위", "임의공급", "불법행위", "계약취소", "잔여")),
+     "청약통장이 없어도 넣을 수 있는 경우가 많은 무순위·임의공급·불법행위 재공급(줍줍) 공고만 모았어요."),
+]
+
+
+def _hub_li(v: dict) -> str:
+    f = v.get("facts") or {}
+    gap = f.get("gap")
+    extra = (f" · 시세보다 약 {abs(gap) / 10000:.1f}억 {'낮음' if gap > 0 else '높음'}" if gap else "")
+    rng = _e(v.get("applyStart", "")) + ("~" + _e(v["applyEnd"][5:]) if v.get("applyEnd") and v["applyEnd"] != v.get("applyStart") else "")
+    return (f'<li><a href="{_e(v["link"])}">{_e(v["name"])}</a> <small>· {_e(v.get("region",""))} · {_e(v["kind"])} · 접수 {rng}{extra}</small></li>')
+
+
 def update_hub(settings, wp, state: dict) -> str:
-    """/chungyak/ 허브: 접수 예정·진행 중 공고와 최근 마감 공고 목록."""
+    """허브 페이지들(전체·서울·경기·인천·무순위) + 홈 '이번 주 청약' 블록을 갱신. 전체 허브 주소를 돌려준다."""
     today = date.today().isoformat()
     items = [v for v in state["posts"].values() if v.get("status") == "publish"]
-    up = sorted([v for v in items if (v.get("applyEnd") or v.get("applyStart") or "") >= today], key=lambda v: v.get("applyStart") or "")
-    past = sorted([v for v in items if (v.get("applyEnd") or v.get("applyStart") or "") < today], key=lambda v: v.get("applyStart") or "", reverse=True)[:30]
-    li = lambda v: f'<li><a href="{_e(v["link"])}">{_e(v["name"])}</a> <small>· {_e(v.get("region",""))} · {_e(v["kind"])} · 접수 {_e(v.get("applyStart",""))}{"~" + _e(v["applyEnd"][5:]) if v.get("applyEnd") and v["applyEnd"] != v.get("applyStart") else ""}</small></li>'  # noqa: E731
-    content = (f'<!-- wp:paragraph -->\n<p>청약홈에 올라온 아파트 청약 공고를 매일 정리해요. 공고마다 분양가와 주변 실거래 시세, 계약금·취득세를 한 페이지에 모았어요. (갱신 {datetime.now().strftime("%Y-%m-%d %H:%M")})</p>\n<!-- /wp:paragraph -->\n\n'
-               f'<!-- wp:heading -->\n<h2 class="wp-block-heading">접수 예정·진행 중 ({len(up)})</h2>\n<!-- /wp:heading -->\n\n'
-               f'<!-- wp:list -->\n<ul class="wp-block-list">{"".join(li(v) for v in up) or "<li>지금은 접수 예정인 공고가 없어요.</li>"}</ul>\n<!-- /wp:list -->\n\n'
-               f'<!-- wp:heading -->\n<h2 class="wp-block-heading">최근 마감</h2>\n<!-- /wp:heading -->\n\n'
-               f'<!-- wp:list -->\n<ul class="wp-block-list">{"".join(li(v) for v in past) or "<li>-</li>"}</ul>\n<!-- /wp:list -->')
-    pages = wp._get("pages", slug="chungyak", status="publish,draft")
-    if pages:
-        p = wp.s.post(f"{settings.wp_url}/wp-json/wp/v2/pages/{pages[0]['id']}", json={"content": content}, timeout=60).json()
-    else:
-        p = wp.s.post(f"{settings.wp_url}/wp-json/wp/v2/pages", json={"title": "청약 일정·분양가 정리", "slug": "chungyak", "status": "publish", "content": content}, timeout=60).json()
-    return p.get("link", "")
+    others = " · ".join(f'<a href="{settings.wp_url}/{slug}/">{_e(t.split(" (")[0])}</a>' for slug, t, _, _ in HUBS)
+    week = (state.get("week") or {}).get("link")
+    main_link = ""
+    for slug, title, flt, lead in HUBS:
+        mine = [v for v in items if flt(v)]
+        up = sorted([v for v in mine if (v.get("applyEnd") or v.get("applyStart") or "") >= today], key=lambda v: v.get("applyStart") or "")
+        past = sorted([v for v in mine if (v.get("applyEnd") or v.get("applyStart") or "") < today], key=lambda v: v.get("applyStart") or "", reverse=True)[:30]
+        content = (f'<!-- wp:paragraph -->\n<p>{lead} 공고마다 분양가와 주변 실거래 시세, 단지 규모·가까운 역·초등학교, 청약 자격과 계약금·취득세를 한 페이지에 모았어요. '
+                   f'(갱신 {datetime.now().strftime("%Y-%m-%d %H:%M")})</p>\n<!-- /wp:paragraph -->\n\n'
+                   + (f'<!-- wp:paragraph -->\n<p><strong>이번 주 한눈에</strong>: <a href="{_e(week)}">이번 주 청약 일정 총정리</a></p>\n<!-- /wp:paragraph -->\n\n' if week else "")
+                   + f'<!-- wp:paragraph -->\n<p><small>지역별 보기: {others}</small></p>\n<!-- /wp:paragraph -->\n\n'
+                   f'<!-- wp:heading -->\n<h2 class="wp-block-heading">접수 예정·진행 중 ({len(up)})</h2>\n<!-- /wp:heading -->\n\n'
+                   f'<!-- wp:list -->\n<ul class="wp-block-list">{"".join(_hub_li(v) for v in up) or "<li>지금은 접수 예정인 공고가 없어요.</li>"}</ul>\n<!-- /wp:list -->\n\n'
+                   f'<!-- wp:heading -->\n<h2 class="wp-block-heading">최근 마감</h2>\n<!-- /wp:heading -->\n\n'
+                   f'<!-- wp:list -->\n<ul class="wp-block-list">{"".join(_hub_li(v) for v in past) or "<li>-</li>"}</ul>\n<!-- /wp:list -->')
+        pages = wp._get("pages", slug=slug, status="publish,draft")
+        if pages:
+            p = wp.s.post(f"{settings.wp_url}/wp-json/wp/v2/pages/{pages[0]['id']}", json={"content": content, "title": title}, timeout=60).json()
+        else:
+            p = wp.s.post(f"{settings.wp_url}/wp-json/wp/v2/pages", json={"title": title, "slug": slug, "status": "publish", "content": content}, timeout=60).json()
+        if slug == "chungyak":
+            main_link = p.get("link", "")
+    try:
+        update_home_block(settings, wp, items)
+    except Exception as e:  # noqa: BLE001
+        print(f"[warn] 홈 청약 블록: {str(e)[:100]}")
+    return main_link
+
+
+HOME_START, HOME_END = "<!-- yt-cy-home:start -->", "<!-- yt-cy-home:end -->"
+
+
+def update_home_block(settings, wp, items: list[dict]) -> None:
+    """홈 배너 아래 '이번 주 청약' 목록(접수 예정 순, 최대 6곳)을 매일 바꿔 끼운다."""
+    today = date.today().isoformat()
+    up = sorted([v for v in items if (v.get("applyEnd") or v.get("applyStart") or "") >= today],
+                key=lambda v: (v.get("applyStart") or "", -((v.get("facts") or {}).get("gap") or 0)))[:6]
+    if not up:
+        return
+    block = (f"{HOME_START}\n"
+             '<!-- wp:heading {"level":2,"style":{"spacing":{"margin":{"top":"var:preset|spacing|60"}}}} -->\n'
+             '<h2 class="wp-block-heading" style="margin-top:var(--wp--preset--spacing--60)">이번 주 청약</h2>\n<!-- /wp:heading -->\n'
+             f'<!-- wp:list -->\n<ul class="wp-block-list">{"".join(_hub_li(v) for v in up)}</ul>\n<!-- /wp:list -->\n'
+             f'<!-- wp:paragraph -->\n<p><a href="{settings.wp_url}/chungyak/">청약 일정 전체 보기 →</a></p>\n<!-- /wp:paragraph -->\n{HOME_END}')
+    t = wp._get("templates/twentytwentyfive//home", context="edit")
+    raw = t["content"]["raw"]
+    if HOME_START in raw:
+        new = re.sub(re.escape(HOME_START) + r".*?" + re.escape(HOME_END), lambda m: block, raw, flags=re.S)
+    else:   # 배너 그룹이 끝난 직후
+        k = raw.find("<!-- /wp:group -->", raw.find("yt-banner"))
+        if k < 0:
+            return
+        k += len("<!-- /wp:group -->")
+        new = raw[:k] + "\n" + block + raw[k:]
+    if new != raw:
+        wp._post("templates/twentytwentyfive//home", content=new)

@@ -126,7 +126,7 @@ def post_threads(settings, dry_run: bool = False, log=print) -> str:
     from . import threads as th
     state, sp = _load(settings)
     rows = upcoming(state, 7)
-    monday = _today().weekday() == 0
+    monday = _today().weekday() == 0 and f"week-{_today().isoformat()}" not in state.get("snsDone", [])   # 월요일 첫 회만 주간 모음
     if monday:
         week = [v for v in rows if (v.get("applyStart") or "") <= (_today() + timedelta(days=6)).isoformat()]
         if not week:
@@ -151,7 +151,7 @@ def post_threads(settings, dry_run: bool = False, log=print) -> str:
         return "이미 올림"
     th.refresh_if_needed()
     gap = th.hours_since_last_post()
-    if gap < 3:
+    if gap < 2.5:
         return f"보류: 직전 게시가 {gap:.1f}시간 전"
     tid = th.post(text, topic="청약", poll=poll)
     state["snsDone"].append(key)

@@ -394,7 +394,7 @@ def nugget_candidates(settings, state, n: int = 8) -> list[dict]:
     return rows[:n]
 
 
-def post_nugget(settings, state, vid: str, idx: int, text: str, poll: list[str] | None = None, min_gap_h: float = 3,
+def post_nugget(settings, state, vid: str, idx: int, text: str, poll: list[str] | None = None, min_gap_h: float = 2.5,
                 dry_run: bool = False) -> str:
     """조각 글 게시(글만 + 선택 투표) → 이어지는 답글에 블로그 링크. 같은 포인트 중복 방지."""
     from . import threads as th

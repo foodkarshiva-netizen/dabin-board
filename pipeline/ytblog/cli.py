@@ -634,7 +634,7 @@ def cmd_threads_backlog(args, settings: Settings) -> int:
     from .social import post_instagram_auto, post_to_threads
     state = State(settings.data_dir / "state.json")
     from functools import partial
-    platforms = [("스레드", "threads_id", partial(post_to_threads, min_gap_h=3))]
+    platforms = [("스레드", "threads_id", partial(post_to_threads, min_gap_h=2.5))]
     if os.environ.get("IG_ACCESS_TOKEN"):
         ig_key = "ig_id" if os.environ.get("IG_FORMAT", "reels").lower().startswith("car") else "ig_reel_id"
         platforms.append(("인스타", ig_key, post_instagram_auto))
