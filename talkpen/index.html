@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Talkpen 영어회화</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-screen app. Scenario bar on top, chat in the middle, mic + composer pinned at the bottom.
+   Meaning check first, native phrasing highlighted, only meaning-breaking errors struck in red. */
+:root {
+  --bg: #f3f5f9; --surface: #ffffff; --fg: #172036; --muted: #5c6782; --line: #dde2ec;
+  --accent: #2747d6; --accent-soft: #e6eafc; --on-accent: #ffffff;
+  --pen: #c7372a; --pen-soft: #fbe9e6; --ink: #17794f; --ink-soft: #e2f4eb; --hl: #fff2a8;
+  --f-display: "Bricolage Grotesque", "IBM Plex Sans KR", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #0f1424; --surface: #182036; --fg: #e7ebf5; --muted: #9aa5c0; --line: #2a3450;
+  --accent: #7d95ff; --accent-soft: #232f5a; --on-accent: #0f1424;
+  --pen: #ff8a7a; --pen-soft: #3a2124; --ink: #5fd39c; --ink-soft: #17352a; --hl: #4a4220;
+  color-scheme: dark } }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+  padding-top: env(safe-area-inset-top, 0px); }
+button, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.app { height: 100%; display: flex; flex-direction: column; max-width: 760px; margin: 0 auto; padding-inline: 16px; }
+header { display: flex; flex-direction: column; gap: 10px; padding-block: 14px 10px; border-bottom: 1px solid var(--line); }
+.top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.brand { font-family: var(--f-display); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; margin: 0; flex: 1; min-width: 0; }
+.brand span { color: var(--pen); }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.ghost:hover { border-color: var(--accent); }
+.count { background: var(--pen); color: var(--on-accent); border-radius: 999px; font-size: 11px; padding: 0 7px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.scen { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
+.scen::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 11px; font-size: 13px; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+select { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 13px; }
+
+main { flex: 1; overflow-y: auto; padding-block: 16px; display: flex; flex-direction: column; gap: 14px; }
+.msg { display: flex; flex-direction: column; gap: 6px; max-width: 88%; min-width: 0; }
+.msg.me { align-self: flex-end; align-items: flex-end; }
+.bubble { padding: 10px 14px; border-radius: 14px; overflow-wrap: anywhere; }
+.ai .bubble { background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.me .bubble { background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 4px; }
+.ko { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.tools { display: flex; gap: 4px; }
+.tiny { background: none; border: none; color: var(--muted); font-size: 12px; padding: 2px 6px; border-radius: 6px; }
+.tiny:hover { background: var(--accent-soft); color: var(--fg); }
+.wait { font-size: 12px; color: var(--muted); }
+
+.fix { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.fix .label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.fix del { color: var(--pen); text-decoration-thickness: 2px; background: var(--pen-soft); border-radius: 3px; padding: 0 2px; }
+.fix ins { color: var(--ink); text-decoration: none; background: var(--ink-soft); border-radius: 3px; padding: 0 2px; font-weight: 600; }
+.fix ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.fix mark { background: var(--hl); color: inherit; padding: 0 2px; border-radius: 3px; font-size: 15px; }
+.verdict { align-self: flex-start; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 10px; }
+.verdict.ok { color: var(--ink); background: var(--ink-soft); }
+.verdict.mid { color: var(--fg); background: var(--hl); }
+.verdict.bad { color: var(--pen); background: var(--pen-soft); }
+.heard { font-size: 13px; color: var(--muted); }
+.ok { font-size: 12px; color: var(--ink); background: var(--ink-soft); border-radius: 999px; padding: 2px 10px; font-weight: 600; }
+
+footer { padding-block: 10px; border-top: 1px solid var(--line); padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+form { display: flex; gap: 8px; align-items: flex-end; }
+textarea { flex: 1; min-width: 0; resize: none; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; max-height: 140px; line-height: 1.45; }
+textarea:focus { border-color: var(--accent); outline: none; }
+.send { background: var(--accent); color: var(--on-accent); border: none; border-radius: 12px; padding: 10px 16px; font-weight: 600; }
+.send:disabled { opacity: 0.5; cursor: default; }
+.mic { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; font-size: 17px; line-height: 1.2; }
+.mic.on { background: var(--pen-soft); border-color: var(--pen); animation: pulse 1s infinite alternate; }
+@keyframes pulse { to { box-shadow: 0 0 0 6px var(--pen-soft); } }
+.hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.status { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.live { background: var(--ink); }
+
+.gate { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px; }
+.gate h1 { font-family: var(--f-display); font-size: 34px; margin: 0; }
+.gate p { color: var(--muted); max-width: 32ch; margin: 0; }
+.big { background: var(--accent); color: var(--on-accent); border: none; border-radius: 12px; padding: 12px 22px; font-weight: 600; font-size: 16px; }
+
+.drawer { position: fixed; inset: 0; background: rgb(0 0 0 / 0.35); display: flex; justify-content: flex-end; z-index: 10; }
+.panel { background: var(--bg); width: min(420px, 100%); height: 100%; overflow-y: auto; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { font-family: var(--f-display); font-size: 20px; margin: 0; flex: 1; }
+.panel .row { display: flex; align-items: center; gap: 8px; }
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.note .said { font-size: 12px; color: var(--muted); }
+.note .why { font-size: 13px; color: var(--muted); }
+.note ins { color: var(--ink); text-decoration: none; font-weight: 600; }
+.note .meta { font-size: 12px; color: var(--muted); }
+.empty { color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .mic.on { animation: none; } }
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <h1>Talk<span style="color:var(--pen)">pen</span></h1>
+  <p>말하면 내 클로드 세션이 뜻이 통했는지, 원어민은 어떻게 말하는지 알려줘요.</p>
+  <button class="big" id="loginBtn" type="button">Google로 로그인</button>
+  <p id="gateMsg"></p>
+</div>
+
+<div class="app" id="app" hidden>
+  <header>
+    <div class="top">
+      <h1 class="brand">Talk<span>pen</span></h1>
+      <button class="ghost" id="notesBtn" type="button">표현 노트 <span class="count" id="noteCount">0</span></button>
+      <button class="ghost" id="logoutBtn" type="button">로그아웃</button>
+    </div>
+    <div class="controls">
+      <div class="scen" id="scen" role="group" aria-label="대화 상황"></div>
+      <select id="level" aria-label="레벨">
+        <option value="beginner">초급</option>
+        <option value="intermediate" selected>중급</option>
+        <option value="advanced">고급</option>
+      </select>
+    </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">연결 중…</span></div>
+  </header>
+
+  <main id="chat" aria-live="polite"></main>
+
+  <footer>
+    <form id="form">
+      <button class="mic" id="micBtn" type="button" aria-label="말로 입력">🎤</button>
+      <textarea id="input" rows="1" placeholder="🎤를 누르고 영어로 말하세요 (타이핑도 돼요)"></textarea>
+      <button class="send" id="sendBtn" type="submit">보내기</button>
+    </form>
+    <div class="hint" id="hint">보내면 세션을 호출해요. 답은 보통 1분 안에 와요.</div>
+  </footer>
+</div>
+
+<div class="drawer" id="drawer" hidden>
+  <div class="panel" role="dialog" aria-label="표현 노트">
+    <div class="row"><h2>표현 노트</h2><button class="ghost" id="closeNotes" type="button">닫기</button></div>
+    <div id="noteList" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ===== Firebase: same project as dabin-board. The web key is public; security is the Firestore rules. ===== */
+var firebaseConfig={apiKey:"AIzaSyDV_8R2w2YjINtcmTsxpG0AsLEpaTMRVkg",authDomain:"dabin-board.firebaseapp.com",projectId:"dabin-board",storageBucket:"dabin-board.firebasestorage.app",messagingSenderId:"161372753030",appId:"1:161372753030:web:30c4c881a5fb360bfc5507"};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.firestore();
+const ALLOWED = "foodkarshiva@gmail.com";
+const COL = "english_turns";          // user turns + AI replies, one doc each
+const WAKE_SID = "english";           // sid the dabin-board relay/daemon maps to the English session
+
+const SCENARIOS = [
+  { id: "free", name: "자유 대화", opener: "Hey! How's your day going so far? Did you do anything fun today?", ko: "안녕! 오늘 하루 어때? 재밌는 거 했어?" },
+  { id: "cafe", name: "카페 주문", opener: "Hi there, welcome in! What can I get started for you today?", ko: "어서 오세요! 뭐 준비해 드릴까요?" },
+  { id: "travel", name: "여행·공항", opener: "Good morning! May I see your passport, please? Where are you flying to today?", ko: "여권 좀 보여주시겠어요? 오늘 어디로 가세요?" },
+  { id: "interview", name: "영어 면접", opener: "Thanks for coming in today. To start, could you tell me a little about yourself?", ko: "와주셔서 감사해요. 먼저 자기소개 부탁드려요." },
+  { id: "work", name: "직장 스몰톡", opener: "Morning! How was your weekend? Get up to anything good?", ko: "좋은 아침! 주말 어땠어요?" },
+  { id: "doctor", name: "병원·약국", opener: "Hello, have a seat. So, what brings you in today?", ko: "앉으세요. 오늘 어디가 불편해서 오셨어요?" },
+];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+
+let me = null, turns = [], unsub = null;
+let pref = store.get("talkpen.pref", { scenario: "free", level: "intermediate" });
+const scenario = () => SCENARIOS.find((s) => s.id === pref.scenario) || SCENARIOS[0];
+
+/* ===== login ===== */
+$("loginBtn").onclick = () => {
+  $("gateMsg").textContent = "";
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch((e) => { $("gateMsg").textContent = "로그인 실패: " + e.message; });
+};
+$("logoutBtn").onclick = () => auth.signOut();
+auth.onAuthStateChanged((u) => {
+  if (u && u.email !== ALLOWED) { $("gateMsg").textContent = u.email + " 계정은 쓸 수 없어요."; auth.signOut(); return; }
+  me = u;
+  $("gate").hidden = !!u; $("app").hidden = !u;
+  if (unsub) { unsub(); unsub = null; }
+  if (u) listen();
+});
+
+/* ===== live feed ===== */
+function listen() {
+  setStatus(false, "연결 중…");
+  unsub = db.collection(COL).orderBy("ts", "desc").limit(300).onSnapshot((snap) => {
+    turns = snap.docs.map((d) => ({ id: d.id, ...d.data() })).reverse();
+    setStatus(true, "연결됨");
+    render();
+  }, (e) => setStatus(false, "읽기 실패: " + e.message + " (Firestore 규칙 확인)"));
+}
+function setStatus(live, text) { $("dot").classList.toggle("live", live); $("statusText").textContent = text; }
+
+/* ===== rendering ===== */
+const VERDICT = { yes: ["통했어요", "ok"], partly: ["대충 통했어요", "mid"], no: ["안 통했어요", "bad"] };
+function fixCard(r) {
+  const corr = Array.isArray(r.corrections) ? r.corrections.filter((c) => c && c.right) : [];
+  const natural = (r.natural || "").trim();
+  const [vText, vCls] = VERDICT[r.understood] || VERDICT.yes;
+  if (!corr.length && !natural && vCls === "ok") return `<span class="ok">✓ 통했어요 · 원어민도 이렇게 말해요</span>`;
+  let h = `<div class="fix"><div class="verdict ${vCls}">${vText}</div>`;
+  if (vCls !== "ok" && r.meaning_ko) h += `<div class="heard">외국인은 이렇게 알아들어요: ${esc(r.meaning_ko)}</div>`;
+  if (natural) h += `<div><div class="label">원어민은 이렇게 말해요</div><mark>${esc(natural)}</mark></div>`;
+  if (corr.length) {
+    h += `<div class="label">꼭 고칠 부분</div><ul>`;
+    for (const c of corr) h += `<li><del>${esc(c.wrong || "—")}</del> → <ins>${esc(c.right)}</ins> · ${esc(c.why || "")}</li>`;
+    h += `</ul>`;
+  }
+  return h + `</div>`;
+}
+function aiMsg(text, ko) {
+  return `<div class="msg ai"><div class="bubble">${esc(text)}<div class="ko" hidden>${esc(ko)}</div></div>
+    <div class="tools">${ko ? `<button class="tiny" type="button" data-ko>해석</button>` : ""}</div></div>`;
+}
+function sessionTurns() {
+  // Show only the current scenario's conversation; a scenario switch starts fresh on screen (history stays in Firestore).
+  const start = pref.startedAt || 0;
+  return turns.filter((t) => (t.ts || 0) >= start);
+}
+function render() {
+  const s = scenario();
+  $("scen").innerHTML = SCENARIOS.map((x) => `<button class="chip" type="button" data-scen="${x.id}" aria-pressed="${x.id === s.id}">${x.name}</button>`).join("");
+  $("level").value = pref.level;
+  const list = sessionTurns();
+  const replies = {};
+  for (const t of list) if (t.role === "ai" && t.re) replies[t.re] = t;
+  let h = aiMsg(s.opener, s.ko);
+  for (const t of list) {
+    if (t.role === "user") {
+      const r = replies[t.id];
+      h += `<div class="msg me"><div class="bubble">${esc(t.text)}</div>${r ? fixCard(r) : `<span class="wait">세션 호출함 · 답 기다리는 중…</span>`}</div>`;
+      if (r && r.text) h += aiMsg(r.text, r.ko);
+    }
+  }
+  $("chat").innerHTML = h;
+  $("chat").scrollTop = $("chat").scrollHeight;
+  $("noteCount").textContent = notes().length;
+}
+function notes() {
+  return turns.filter((t) => t.role === "ai" && (t.natural || (t.corrections && t.corrections.length))).reverse();
+}
+$("chat").addEventListener("click", (e) => {
+  const ko = e.target.closest("[data-ko]");
+  if (ko) { const el = ko.closest(".msg").querySelector(".ko"); el.hidden = !el.hidden; ko.textContent = el.hidden ? "해석" : "해석 숨기기"; }
+});
+$("scen").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-scen]");
+  if (!b || b.dataset.scen === pref.scenario) return;
+  pref = { ...pref, scenario: b.dataset.scen, startedAt: Date.now() };
+  store.set("talkpen.pref", pref); render();
+});
+$("level").onchange = (e) => { pref.level = e.target.value; store.set("talkpen.pref", pref); };
+
+/* ===== send: write the turn, then ring the same _wake doc dabin-board uses ===== */
+function wakeMerge(sid) {
+  const ref = db.collection("debate_state").doc("_wake");
+  return ref.get().then((d) => {
+    const w = d.exists ? d.data() : {};
+    const cur = ((w.ts || 0) > (w.done || 0)) ? String(w.sids || "").split(",").filter(Boolean) : [];
+    if (cur.indexOf(sid) < 0) cur.push(sid);
+    return ref.set({ sids: cur.join(","), ts: Date.now() }, { merge: true });
+  });
+}
+async function send(text) {
+  if (!me) return;
+  $("sendBtn").disabled = true;
+  try {
+    const s = scenario();
+    const ts = Date.now();
+    if (!pref.startedAt) { pref.startedAt = ts; store.set("talkpen.pref", pref); }
+    await db.collection(COL).add({
+      role: "user", uid: me.uid, email: me.email, text, ts,
+      day: new Date(ts).toISOString().slice(0, 10),
+      scenario: s.id, scenario_name: s.name, opener: s.opener, level: pref.level,
+    });
+    await wakeMerge(WAKE_SID);
+    $("hint").textContent = "호출했어요. 답은 보통 1분 안에 와요.";
+  } catch (e) {
+    $("hint").textContent = "보내기 실패: " + e.message;
+  } finally { $("sendBtn").disabled = false; }
+}
+$("form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = $("input").value.trim();
+  if (!text) return;
+  $("input").value = ""; autosize();
+  send(text);
+});
+$("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("form").requestSubmit(); } });
+function autosize() { const t = $("input"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 140) + "px"; }
+$("input").addEventListener("input", autosize);
+
+/* ===== mic: browser speech recognition (Chrome, Android, iOS Safari). Falls back to typing. ===== */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+if (!SR) { $("micBtn").hidden = true; $("hint").textContent = "이 브라우저는 음성 입력이 안 돼요. 크롬이나 사파리로 열어주세요."; }
+$("micBtn").onclick = () => {
+  if (rec) { try { rec.stop(); } catch {} return; }
+  rec = new SR();
+  rec.lang = "en-US"; rec.interimResults = true; rec.continuous = false;
+  const before = $("input").value.trim();
+  let finalText = "";
+  rec.onresult = (e) => {
+    let interim = "", fin = "";
+    for (const r of e.results) (r.isFinal ? (fin += r[0].transcript) : (interim += r[0].transcript));
+    finalText = fin;
+    $("input").value = (before ? before + " " : "") + fin + interim; autosize();
+  };
+  rec.onerror = (e) => { $("hint").textContent = e.error === "not-allowed" ? "마이크 권한을 허용해 주세요." : "음성 인식 실패: " + e.error; };
+  rec.onend = () => {
+    $("micBtn").classList.remove("on"); rec = null;
+    // Hands-free: what you said goes straight out. Edit first by tapping the box before it ends.
+    if (finalText.trim() && $("input").value.trim() && document.activeElement !== $("input")) $("form").requestSubmit();
+  };
+  rec.start();
+  $("micBtn").classList.add("on");
+  $("hint").textContent = "듣고 있어요… 영어로 말하세요. 말이 끝나면 자동으로 보내요.";
+};
+
+/* ===== notes drawer ===== */
+function renderNotes() {
+  const n = notes();
+  $("noteList").innerHTML = n.length ? n.map((t) => {
+    const said = (turns.find((u) => u.id === t.re) || {}).text || "";
+    const why = (t.corrections || []).map((c) => `${c.wrong} → ${c.right}: ${c.why || ""}`).join(" · ");
+    return `<div class="note"><div class="said">내가 한 말: ${esc(said)}</div>
+      <div><ins>${esc(t.natural || (t.corrections || []).map((c) => c.right).join(" / "))}</ins></div>
+      ${why ? `<div class="why">${esc(why)}</div>` : ""}
+      <div class="meta">${esc(new Date(t.ts || 0).toISOString().slice(0, 10))}</div></div>`;
+  }).join("") : `<p class="empty">아직 저장된 표현이 없어요. 대화하면서 "원어민은 이렇게 말해요" 표현이 여기에 쌓여요.</p>`;
+}
+$("notesBtn").onclick = () => { renderNotes(); $("drawer").hidden = false; };
+$("closeNotes").onclick = () => { $("drawer").hidden = true; };
+$("drawer").addEventListener("click", (e) => { if (e.target === $("drawer")) $("drawer").hidden = true; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("drawer").hidden = true; });
+</script>
+</body>
+</html>
