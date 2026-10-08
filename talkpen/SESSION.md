@@ -12,12 +12,12 @@
 ## 호출을 받으면 할 일
 
 1. 미응답 사용자 턴 찾기: `english_turns`에서 `role == "user"`인 문서 중, 같은 컬렉션에 `role == "ai"`이고 `re == <그 문서 id>`인 문서가 없는 것. 보통 1건, 가끔 여러 건.
-   - 읽기는 `C:\Users\karsh\.claude\board-tools\board.js`로 한다 (사용법은 파일 상단 참고. 예: `node board.js list english_turns` 류). 처음이면 board.js를 열어 명령 형식을 확인할 것.
+   - 읽기는 다빈보드 `board-tools` 폴더의 `board.js`로 한다 (사용법은 파일 상단 참고. 예: `node board.js list english_turns` 류). 처음이면 board.js를 열어 명령 형식을 확인할 것.
 2. 맥락: 그 턴의 `scenario_name`, `opener`(AI가 먼저 한 첫 마디), `level`(beginner/intermediate/advanced)과, 같은 scenario의 최근 턴 10여 개(사용자 말 + 이전 ai 답 `text`)를 읽어 대화를 이어간다.
 3. 각 미응답 턴마다 답 문서를 **하나** 추가한다:
 
 ```
-node "C:/Users/karsh/.claude/board-tools/board.js" add english_turns '{
+node <board-tools>/board.js add english_turns '{
   "role": "ai",
   "re": "<사용자 턴 문서 id>",
   "ts": <지금 ms>,
