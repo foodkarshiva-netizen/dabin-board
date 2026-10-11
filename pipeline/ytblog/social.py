@@ -18,14 +18,15 @@ from .images import _wrap, render_jobs
 from .thumbs import PALETTES, PATTERNS, _e, _hl, _pick
 
 TW, TH = 1080, 1350
-# SNS 에 다시 꺼내지 않을 카테고리: 과학 개념 해설은 비유가 틀리기 쉬워 '그거 아님' 댓글이 몰렸다(2026-10-11)
-SNS_SKIP_CATS = {"과학·기술"}
+# SNS(스레드·인스타)에 올리는 블로그 글은 경제·자산관리만(2026-10-11 사용자 지시: 경제 비중↑ 나머지↓).
+# 과학 해설은 틀린 비유에 정정 댓글이 몰렸고, 경제·청약 글이 조회수도 훨씬 높았다. 청약 소식은 별도 경로(chungyak_sns).
+SNS_ALLOW_CATS = {"경제·투자"}
 
 
 def sns_skip(settings, vid: str) -> bool:
     try:
         sp = settings.out_dir / vid / "summary.json"
-        return json.loads(sp.read_text(encoding="utf-8"))["synthesis"].get("category", "") in SNS_SKIP_CATS
+        return json.loads(sp.read_text(encoding="utf-8"))["synthesis"].get("category", "") not in SNS_ALLOW_CATS
     except Exception:  # noqa: BLE001
         return False
 

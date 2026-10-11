@@ -137,6 +137,10 @@ def _after_publish(settings: Settings, summary: Summary, link: str, wp, state: S
         log(f"  추천 글 갱신 실패(무시): {str(_e)[:100]}")
     if not sns:   # 수정 재발행은 SNS 에 다시 올리지 않는다
         return
+    from .social import sns_skip
+    if sns_skip(settings, summary.video_id):
+        log("  SNS 생략: 경제·자산관리 외 주제(블로그에만 올림)")
+        return
     from .social import post_instagram_auto, post_to_threads
     for name, fn, retry in (("Threads", post_to_threads, "threads-post"), ("Instagram", post_instagram_auto, "ig-post")):
         try:
