@@ -37,7 +37,8 @@ def fix(raw: str, force_no_inherit: bool) -> tuple[str, int]:
     return re.sub(r"<!-- wp:query (\{.*?\}) -->", rep, raw), n
 
 
-for kind, slug, force in (("templates", "twentytwentyfive//home", True), ("templates", "twentytwentyfive//single", False),
+# 홈 '최근 정리한 재테크·경제 노트'는 재테크·경제(15)만 보이게 따로 설정해 두었으므로 여기서 건드리지 않는다(2026-10-11)
+for kind, slug, force in (("templates", "twentytwentyfive//single", False),
                           ("templates", "twentytwentyfive//search", False), ("template-parts", "twentytwentyfive//sidebar", False)):
     t = wp._get(f"{kind}/{slug}", context="edit")
     raw = t["content"]["raw"]
