@@ -359,7 +359,8 @@ def make_facts(row: dict, d: dict, site: dict | None) -> dict:
     if best:
         out.update({"area": round(best["area"]), "price": best["price"], "market": best.get("market") or 0,
                     "gap": (best["market"] - best["price"]) if best.get("market") else None,
-                    "basisNew": "신축" in ((best.get("mkt") or {}).get("basis", ""))})
+                    "basisNew": "신축" in ((best.get("mkt") or {}).get("basis", "")),
+                    "comps": list(dict.fromkeys(x["name"] for x in (best.get("mkt") or {}).get("ex", [])))[:2]})
     return out
 
 

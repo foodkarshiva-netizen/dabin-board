@@ -631,7 +631,7 @@ def cmd_related(args, settings: Settings) -> int:
 def cmd_threads_backlog(args, settings: Settings) -> int:
     """SNS(스레드·인스타)에 아직 안 올린 공개 글을 플랫폼마다 오래된 순으로 --max 편씩 올린다(기존 글 나눠 소개용)."""
     import os
-    from .social import post_instagram_auto, post_to_threads
+    from .social import post_instagram_auto, post_to_threads, sns_skip
     state = State(settings.data_dir / "state.json")
     from functools import partial
     platforms = [("스레드", "threads_id", partial(post_to_threads, min_gap_h=2.5))]
@@ -643,7 +643,7 @@ def cmd_threads_backlog(args, settings: Settings) -> int:
     for name, key, fn in platforms:
         todo = sorted(((v.get("post_created", 0), vid) for vid, v in state.data["videos"].items()
                        if v.get("status") == "published" and v.get("wp_link") and not v.get(key)
-                       and (settings.out_dir / vid / "summary.json").exists()))
+                       and (settings.out_dir / vid / "summary.json").exists() and not sns_skip(settings, vid)))
         for _, vid in todo[: args.max]:
             summary = Summary.model_validate_json((settings.out_dir / vid / "summary.json").read_text(encoding="utf-8"))
             try:

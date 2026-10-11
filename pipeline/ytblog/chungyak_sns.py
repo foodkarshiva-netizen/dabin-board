@@ -85,7 +85,11 @@ def pick_text(v: dict) -> tuple[str, list[str]]:
     if f.get("price"):
         lines.append(f"전용 {f['area']}㎡ 분양가 {eok(f['price'])}")
         if f.get("market"):
-            lines.append(f"근처 실거래로 본 시세 {eok(f['market'])}" + ("" if f.get("basisNew") else " (구축 기준이라 더 높을 수도)"))
+            comps = "·".join(f.get("comps") or [])
+            lines.append(f"근처 실거래로 본 시세 {eok(f['market'])}" + (f" ({comps} 등 기준)" if comps else "")
+                         + ("" if f.get("basisNew") else " — 구축 기준이라 더 높을 수도"))
+            if comps:
+                lines.append("비교 단지랑 입지가 다를 수 있으니 차액은 참고만")
         lines.append("")
     lines.append(f"접수 {md(v.get('applyStart'))}" + (f"~{md(v['applyEnd'])}" if v.get("applyEnd") and v["applyEnd"] != v.get("applyStart") else "")
                  + (f" · 발표 {md(v['winDate'])}" if v.get("winDate") else ""))

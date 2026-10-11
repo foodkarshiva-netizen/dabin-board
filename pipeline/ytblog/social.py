@@ -18,6 +18,16 @@ from .images import _wrap, render_jobs
 from .thumbs import PALETTES, PATTERNS, _e, _hl, _pick
 
 TW, TH = 1080, 1350
+# SNS 에 다시 꺼내지 않을 카테고리: 과학 개념 해설은 비유가 틀리기 쉬워 '그거 아님' 댓글이 몰렸다(2026-10-11)
+SNS_SKIP_CATS = {"과학·기술"}
+
+
+def sns_skip(settings, vid: str) -> bool:
+    try:
+        sp = settings.out_dir / vid / "summary.json"
+        return json.loads(sp.read_text(encoding="utf-8"))["synthesis"].get("category", "") in SNS_SKIP_CATS
+    except Exception:  # noqa: BLE001
+        return False
 
 V_CSS = """
 .tb.v{padding:84px 80px 72px}
@@ -378,7 +388,7 @@ def nugget_candidates(settings, state, n: int = 8) -> list[dict]:
     recent = [u["vid"] for u in sorted(used, key=lambda u: u.get("at", 0))[-4:]]
     rows = []
     for vid, v in state.data["videos"].items():
-        if v.get("status") != "published" or not v.get("wp_link"):
+        if v.get("status") != "published" or not v.get("wp_link") or sns_skip(settings, vid):
             continue
         sp = settings.out_dir / vid / "summary.json"
         if not sp.exists():
