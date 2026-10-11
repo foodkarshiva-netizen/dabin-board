@@ -48,7 +48,7 @@ ICONS = {
     "robot": f"<rect x='55' y='90' width='190' height='150' rx='30' {_S}/><circle cx='110' cy='160' r='14' fill='currentColor'/><circle cx='190' cy='160' r='14' fill='currentColor'/><line x1='115' y1='205' x2='185' y2='205' {_S}/><line x1='150' y1='90' x2='150' y2='45' {_S}/><circle cx='150' cy='35' r='12' fill='currentColor'/>",
     "scale": f"<line x1='150' y1='40' x2='150' y2='260' {_S}/><line x1='60' y1='85' x2='240' y2='85' {_S}/><path d='M60 85l-40 95h80z' {_S}/><path d='M240 85l-40 95h80z' {_S}/><line x1='95' y1='260' x2='205' y2='260' {_S}/>",
 }
-CATEGORY_ICONS = {"경제·투자": ["chart", "coin", "scale", "target"], "건강·의학": ["pulse", "clock", "target"],
+CATEGORY_ICONS = {"재테크·경제": ["chart", "coin", "scale", "target"], "교양": ["book", "bulb", "globe", "chat"], "경제·투자": ["chart", "coin", "scale", "target"], "건강·의학": ["pulse", "clock", "target"],
                   "역사·인문": ["book", "globe", "mountain"], "과학·기술": ["atom", "robot", "gear", "bulb"],
                   "심리·자기계발": ["bulb", "mountain", "target", "chat"], "사회·문화": ["chat", "globe", "scale"]}
 

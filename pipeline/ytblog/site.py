@@ -221,7 +221,7 @@ def site_stats(settings: Settings, board_js: Path | None = None) -> dict:
         out["top"].append({"title": html.unescape(str(it.get("post_title") or it.get("label") or ""))[:60],
                            "url": it.get("post_permalink") or "", "pageviews": int(it.get("pageviews") or 0), "visitors": int(it.get("visitors") or 0)})
     try:
-        cy = {c["id"] for c in wp._get("categories", search="청약 분석") if c["name"] == "청약 분석"}
+        cy = {c["id"] for c in wp._get("categories", search="청약 공고") if c["name"] == "청약 공고"}
     except Exception:  # noqa: BLE001
         cy = set()
     for p in wp._get("posts", per_page=100, status="publish", orderby="date", order="desc"):

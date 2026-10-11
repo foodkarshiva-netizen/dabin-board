@@ -168,7 +168,7 @@ def _first_sentence(s: str, n: int) -> str:
     return _clip(m.group(1) if m else s, n)
 
 
-THEMES = {"경제·투자": "t-ink", "건강·의학": "t-green", "역사·인문": "t-brown", "과학·기술": "t-plum",
+THEMES = {"재테크·경제": "t-ink", "교양": "t-brown", "경제·투자": "t-ink", "건강·의학": "t-green", "역사·인문": "t-brown", "과학·기술": "t-plum",
           "심리·자기계발": "t-terra", "사회·문화": "t-olive"}
 
 

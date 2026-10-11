@@ -16,7 +16,7 @@ from ytblog.wordpress import WordPressClient  # noqa: E402
 
 s = Settings.load(); wp = WordPressClient(s.wp_url, s.wp_user, s.wp_app_password)
 cats = wp._get("categories", per_page=100)
-keep = sorted(c["id"] for c in cats if c["name"] != "청약 분석")
+keep = sorted(c["id"] for c in cats if c["name"] != "청약 공고")
 print("포함 카테고리:", keep)
 
 

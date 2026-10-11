@@ -20,7 +20,7 @@ from .thumbs import PALETTES, PATTERNS, _e, _hl, _pick
 TW, TH = 1080, 1350
 # SNS(스레드·인스타)에 올리는 블로그 글은 경제·자산관리만(2026-10-11 사용자 지시: 경제 비중↑ 나머지↓).
 # 과학 해설은 틀린 비유에 정정 댓글이 몰렸고, 경제·청약 글이 조회수도 훨씬 높았다. 청약 소식은 별도 경로(chungyak_sns).
-SNS_ALLOW_CATS = {"경제·투자"}
+SNS_ALLOW_CATS = {"재테크·경제", "경제·투자"}
 
 
 def sns_skip(settings, vid: str) -> bool:
@@ -127,7 +127,7 @@ def threads_card(summary, out_path: Path, h: int = TH) -> Path:
     return out_path
 
 
-TOPICS = {"경제·투자": "재테크", "건강·의학": "건강", "역사·인문": "역사", "과학·기술": "과학",
+TOPICS = {"재테크·경제": "재테크", "교양": "공부", "경제·투자": "재테크", "건강·의학": "건강", "역사·인문": "역사", "과학·기술": "과학",
           "심리·자기계발": "자기계발", "사회·문화": "사회"}
 
 

@@ -4,7 +4,7 @@
 - 시세 추정: 국토부 실거래가 공개시스템(rt.molit.go.kr) 시군구 최근 12개월 아파트 매매 CSV(키·로그인 불필요).
   같은 동 10년 내 신축 중앙값 → 같은 동 상위 25% → 같은 시군구 10년 내 신축 중앙값. 직거래·해제 거래 제외, 3건 미만이면 추정 안 함.
   (다빈보드 board-tools/chungyak-enrich.js 와 같은 방식. 시군구 CSV 는 data/rt_cache 에 3일 보관해 하루 다운로드 한도를 아낀다)
-- 글: 카테고리 '청약 분석', 주소 /chungyak-<공고번호>/. 내용이 바뀐 공고만 다시 쓴다. 허브 페이지 /chungyak/ 에 최근 공고 목록.
+- 글: 카테고리 '청약 공고', 주소 /chungyak-<공고번호>/. 내용이 바뀐 공고만 다시 쓴다. 허브 페이지 /chungyak/ 에 최근 공고 목록.
 
   python -m ytblog chungyak [--dry-run] [--pages N] [--only 공고번호] [--draft]
 """
@@ -25,7 +25,7 @@ LISTS = [("무순위", "https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotP
           "https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do"),
          ("일반분양", "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancListView.do",
           "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do")]
-CATEGORY = "청약 분석"
+CATEGORY = "청약 공고"
 TYPE_RE = re.compile(r"^\d{3}\.\d{1,4}[A-Z]?$")
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
