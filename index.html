@@ -1214,10 +1214,14 @@ function chungCat(it,today){
 function chungWhy(it){var r=[];if(it.drop)r.push('직접 탈락'+(it.dropWhy?' — '+it.dropWhy:''));if(it._small)r.push('55㎡ 미만 주택형만 공급');if(+it.units>0&&+it.units<CHUNGMINUNITS)r.push('단지 '+Number(it.units).toLocaleString()+'세대 — '+CHUNGMINUNITS+'세대 미만(환금성)');if(+it.price>0&&!it._small){var c=chungCalc(it);if(!c.ok)r.push('자금 '+chW(Math.max(c.short,c.downShort))+' 부족');if(c.gain!==null&&!c.pass)r.push('차익 '+chW(c.gain)+' < 합격선 '+chW(c.bar)+' (주식이 나음)')}return r}
 function chungDrop(id){var w=prompt('탈락 이유를 적어주세요 (예: 입지 별로, 거주의무 부담)');if(w===null)return;db.collection('chungyak').doc(id).set({drop:true,dropWhy:w.trim(),dropAt:Date.now()},{merge:true}).then(renderChung)}
 function chungUndrop(id){if(!confirm('직접 탈락을 취소하고 다시 자동 판정할까요?'))return;db.collection('chungyak').doc(id).set({drop:false,dropWhy:''},{merge:true}).then(renderChung)}
+/* 시세 근거 보강(2026-10-19 다빈: 아크메르 동탄 — 공란·구축 기준 추정은 의미 없음): 같은 구 10년 내 신축 대장 단지 실거래(chungyak-enrich.js mkt.top)와 대장 대비 차익, 시세 공란이면 사유 */
+function chungTop(it){var p=it._pick;if(!p||!p.mkt||!p.mkt.top||!p.mkt.top.length)return '';return '<div class="sub muted" style="font-size:10.5px;margin-top:3px">같은 구 신축 대장: '+p.mkt.top.map(function(x){return esc(x.name)+' '+chW(x.med)+'('+x.n+'건)'}).join(' · ')+'</div>'}
+function chungTopGain(it){var p=it._pick;if(!p||!p.mkt||!p.mkt.top||!p.mkt.top.length||!(+it.price>0))return '';var g=p.mkt.top[0].med-it.price;return '<div class="sub '+(g>0?'gpos':'gneg')+'" style="font-size:11px">대장 대비 '+chW(g)+'</div>'}
+function chungMktWhy(it){var p=it._pick,w=(p&&p.mkt&&p.mkt.basis)||it.enrichNote||'시세 자료 없음';return '<div class="sub muted" style="font-size:10.5px">'+esc(w)+'</div>'}
 function openChungNotice(it){
  var hm=it.hmno,pb=it.pbno;
  if(!hm||!pb){ if(it.url) window.open(it.url,'_blank'); else alert('\uACF5\uACE0 \uC815\uBCF4\uAC00 \uC5C6\uC5B4\uC694. \uB2E4\uC74C \uC218\uC9D1 \uB4A4\uC5D0 \uB2E4\uC2DC \uB20C\uB7EC\uBCF4\uC138\uC694.'); return; }
- var base=(it.group==='\uC77C\uBC18\uBD84\uC591')?'https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetailView.do':'https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do';
+ var base=(it.group==='\uC77C\uBC18\uBD84\uC591')?'https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do':'https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do';
  var f=document.createElement('form');f.method='POST';f.action=base;f.target='_blank';
  [['houseManageNo',hm],['pblancNo',pb]].forEach(function(kv){var n=document.createElement('input');n.type='hidden';n.name=kv[0];n.value=kv[1];f.appendChild(n)});
  document.body.appendChild(f);f.submit();setTimeout(function(){f.parentNode&&f.parentNode.removeChild(f)},2000);
@@ -1256,8 +1260,8 @@ function renderChung(){
     h+='<td colspan="5" class="muted small" style="text-align:center">\uBD84\uC591\uAC00 \uBBF8\uD655\uC778 \u2014 <button class="btn o sm" onclick="editChungPrice(\''+it._id+'\')">\uAE08\uC561 \uC785\uB825</button></td>';
    }else{
     h+='<td class="num">'+chW(it.price)+'</td>';
-    h+='<td class="num">'+(+it.market>0?chW(it.market)+(it._pick&&it._pick.mkt&&it._pick.mkt.n?'<div class="sub muted">실거래 '+it._pick.mkt.n+'건 기준</div><div class="sub muted" style="font-size:10.5px">'+esc(it._pick.mkt.basis)+'</div>':''):'<span class="muted">\u2014</span>')+'</td>';
-    h+='<td class="num '+(c.gain>0?'gpos':(c.gain<0?'gneg':''))+'">'+(c.gain===null?'<span class="muted">\u2014</span>':chW(c.gain))+'</td>';
+    h+='<td class="num">'+(+it.market>0?chW(it.market)+(it._pick&&it._pick.mkt&&it._pick.mkt.n?'<div class="sub muted">실거래 '+it._pick.mkt.n+'건 기준</div><div class="sub muted" style="font-size:10.5px">'+esc(it._pick.mkt.basis)+'</div>':''):'<span class="muted">\u2014</span>'+chungMktWhy(it))+chungTop(it)+'</td>';
+    h+='<td class="num '+(c.gain>0?'gpos':(c.gain<0?'gneg':''))+'">'+(c.gain===null?'<span class="muted">\u2014</span>':chW(c.gain))+chungTopGain(it)+'</td>';
     if(c.pre){
      h+='<td class="num"><div>\uACC4\uC57D\uAE08 '+chW(c.down)+'</div>'
       +'<div class="sub muted">'+Math.round(c.mo/12*10)/10+'\uB144 \uB4A4 '+chW(c.need)+'</div>'
