@@ -1261,7 +1261,7 @@ function renderChung(){
    }else{
     h+='<td class="num">'+chW(it.price)+'</td>';
     h+='<td class="num">'+(+it.market>0?chW(it.market)+(it._pick&&it._pick.mkt&&it._pick.mkt.n?'<div class="sub muted">실거래 '+it._pick.mkt.n+'건 기준</div><div class="sub muted" style="font-size:10.5px">'+esc(it._pick.mkt.basis)+'</div>':''):'<span class="muted">\u2014</span>'+chungMktWhy(it))+chungTop(it)+'</td>';
-    h+='<td class="num '+(c.gain>0?'gpos':(c.gain<0?'gneg':''))+'">'+(c.gain===null?'<span class="muted">\u2014</span>':chW(c.gain))+chungTopGain(it)+'</td>';
+    h+='<td class="num '+(c.gain>0?'gpos':(c.gain<0?'gneg':''))+'">'+(c.gain===null?'<span class="muted">\u2014</span>':chW(c.gain))+'</td>';
     if(c.pre){
      h+='<td class="num"><div>\uACC4\uC57D\uAE08 '+chW(c.down)+'</div>'
       +'<div class="sub muted">'+Math.round(c.mo/12*10)/10+'\uB144 \uB4A4 '+chW(c.need)+'</div>'
