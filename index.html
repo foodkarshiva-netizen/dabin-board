@@ -1238,7 +1238,7 @@ function openChungNotice(it){
 function renderChung(){
  var box=document.getElementById('chungList');box.innerHTML='<div class="empty">\uBD88\uB7EC\uC624\uB294 \uC911\u2026</div>';
  db.collection('chungyak_cfg').doc('main').get().then(function(d){if(d.exists)CHUNGCFG=Object.assign({cash:36265,loanRate:4.5,stockRate:10,holdYears:2,monthlySave:800},d.data());return db.collection('chungyak').get()}).then(function(qs){
-  var arr=[];qs.forEach(function(d){var o=d.data()||{};o._id=d.id;arr.push(o)});
+  var arr=[];qs.forEach(function(d){var o=d.data()||{};o._id=d.id;if(o.group==='일반분양')return;arr.push(o)}); /* 2026-10-23 다빈: 청약 탭은 로또(무순위·임의공급·계약취소 재공급)만 — 일반분양은 안 보임 */
   var today=new Date().toISOString().slice(0,10);
   // 접수 안 끝난 것 먼저(접수일 빠른 순) → 끝난 것 나중(최근 순)
   arr.sort(function(a,b){
