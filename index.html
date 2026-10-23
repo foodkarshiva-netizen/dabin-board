@@ -71,6 +71,7 @@ nav button.on{color:var(--b)}
 .wakebtn.live{border-color:#9ed6b8;background:#f2fbf6}
 .wakebtn.live .ago{color:#1f8a4c}
 .wakebtn.all{background:var(--b2);color:#fff;border-color:var(--b2)}
+.wakebtn.sel{border-color:var(--b);background:#eef4ff;box-shadow:0 0 0 2px rgba(37,99,235,.22)}
 /* today */
 .todo{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:7px;background:#fff}
 .todo.done{opacity:.5}.todo.done .tt{text-decoration:line-through}
@@ -278,7 +279,7 @@ nav button .ic svg{width:24px;height:24px;display:block}
     <div id="dbPanel"></div>
     <div class="small muted" style="text-align:center;padding:2px 0"><span class="a" onclick="dchatMore()">↑ 이전 메시지 보기</span></div>
     <div class="chat" id="dchat"><div class="empty">불러오는 중…</div></div>
-    <div class="composer"><textarea id="dmsg" rows="2" placeholder="오더/메시지 입력 후 🔔 호출 — 세션이 깨어나 확인하고 답해요"></textarea><button class="btn ic" onclick="document.getElementById('dimg').click()" title="사진 첨부 — 여러 장 한 번에" aria-label="사진 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button><input type="file" id="dimg" accept="image/*" multiple style="display:none" onchange="dUpload(this)"><button class="btn ic" onclick="document.getElementById('dfile').click()" title="파일 첨부 (장당 10MB)" aria-label="파일 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn p snd" id="dsend" onclick="sendDMsg()" title="전송" aria-label="전송"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button></div>
+    <div class="composer"><textarea id="dmsg" rows="2" placeholder="받을 세션을 고르고 보내면 자동으로 호출돼요"></textarea><button class="btn ic" onclick="document.getElementById('dimg').click()" title="사진 첨부 — 여러 장 한 번에" aria-label="사진 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button><input type="file" id="dimg" accept="image/*" multiple style="display:none" onchange="dUpload(this)"><button class="btn ic" onclick="document.getElementById('dfile').click()" title="파일 첨부 (장당 10MB)" aria-label="파일 첨부"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button><input type="file" id="dfile" multiple style="display:none" onchange="dUpload(this)"><button class="btn p snd" id="dsend" onclick="sendDMsg()" title="전송" aria-label="전송"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button></div>
   </section>
   <section class="page" id="p-amemo">
     <div class="small muted" style="margin:0 2px 8px">AI는 [🔔 AI 호출]을 누를 때만 확인 답을 달아요(보통 1분 안) — [남기기]만 하면 저장만 됩니다. 관리보드 📝 메모와 같은 곳이에요.</div>
@@ -829,8 +830,8 @@ function renderDChat(){
  var c=document.getElementById('dchat');if(!c)return;
  var panel=document.getElementById('dbPanel');
  if(panel){var now=Date.now();var live=DSTATE.filter(function(s){return s._id&&String(s._id).charAt(0)!=='_'}).sort(function(a,b){return (b.lastTs||0)-(a.lastTs||0)});
-  var chips=live.map(function(s){var mn=Math.max(0,Math.round((now-(s.lastTs||0))/60000));var ago=mn<60?mn+'분 전':Math.round(mn/60)+'시간 전';var act=mn<35;return '<button class="wakebtn'+(act?' live':'')+'" onclick="dWake(\''+s._id+'\')"><b style="color:'+dColor(s._id)+'">'+esc(s.name||s._id)+'</b><span class="ago">'+(act?'활동 중 · ':'휴면 · ')+ago+'</span><span>🔔</span></button>';}).join('');
-  panel.innerHTML='<div class="wakebar">'+chips+'</div>'+(live.length?'':'<div class="small muted" style="margin:-6px 0 8px">등록된 세션 없음 — 세션에서 debate-chat.js check를 실행하면 표시돼요</div>');}
+  var chips=live.map(function(s){var mn=Math.max(0,Math.round((now-(s.lastTs||0))/60000));var ago=mn<60?mn+'분 전':Math.round(mn/60)+'시간 전';var act=mn<35;return '<button class="wakebtn'+(act?' live':'')+(D_SEL.indexOf(s._id)>=0?' sel':'')+'" onclick="dSelToggle(\''+s._id+'\')"><b style="color:'+dColor(s._id)+'">'+esc(s.name||s._id)+'</b><span class="ago">'+(act?'활동 중 · ':'휴면 · ')+ago+'</span>'+(D_SEL.indexOf(s._id)>=0?'<span>✓</span>':'')+'</button>';}).join('');
+  panel.innerHTML='<div class="small muted" style="margin:0 2px 4px">받을 세션을 눌러 고르세요 — 메시지를 보내면 고른 세션이 자동으로 호출돼요</div><div class="wakebar">'+chips+'</div>'+(live.length?'':'<div class="small muted" style="margin:-6px 0 8px">등록된 세션 없음 — 세션에서 debate-chat.js check를 실행하면 표시돼요</div>');}
  c.innerHTML=DCHAT.length?DCHAT.map(function(m){
   var me=m.who==='me';
   var ctrl=me?'<span class="a" onclick="editDMsg(\''+m.id+'\')">수정</span><span class="a" onclick="delDMsg(\''+m.id+'\')">삭제</span>':'';
@@ -915,7 +916,7 @@ function dSendFiles(fs){
   var nImg=metas.filter(function(f){return (f.mime||'').indexOf('image/')===0}).length;
   var doc={who:'me',text:t||(metas.length>1?((nImg===metas.length?'🖼️ 사진 ':'📎 파일 ')+metas.length+'장'):('📎 '+metas[0].name)),t:nowT(),ts:Date.now()};
   if(metas.length>1)doc.files=metas;else doc.file=metas[0];
-  return db.collection('debate_chat').add(doc);
+  return db.collection('debate_chat').add(doc).then(dCallSel);
  }).catch(function(e){alert('업로드 실패: '+e.message)})
   .then(function(){if(btn){btn.disabled=false;btn.innerHTML=lab||'전송'}});
 }
@@ -924,10 +925,13 @@ function dSendFiles(fs){
 /* 호출 신호는 debate_state/_wake 단일 문서로 — 데몬이 60초마다 이 문서 1건만 읽음(읽기한도 절약, 2026-09-30) */
 /* 호출 신호 병합(2026-10-02): 처리 안 된 호출이 있으면 sids를 합쳐서 기록 — 세션오더·소통 호출이 서로 덮어쓰지 않게 */
 function wakeMerge(sid,okMsg){var ref=db.collection('debate_state').doc('_wake');ref.get().then(function(d){var w=d.exists?d.data():{};var cur=((w.ts||0)>(w.done||0))?String(w.sids||'').split(',').filter(Boolean):[];if(cur.indexOf(sid)<0)cur.push(sid);return ref.set({sids:cur.join(','),ts:Date.now()},{merge:true});}).then(function(){if(okMsg)alert(okMsg)}).catch(function(e){alert('요청 실패: '+e.message)});}
+var D_SEL=(function(){try{return JSON.parse(localStorage.getItem('dSel')||'[]')}catch(e){return []}})();
+function dSelToggle(sid){var i=D_SEL.indexOf(sid);if(i>=0)D_SEL.splice(i,1);else D_SEL.push(sid);try{localStorage.setItem('dSel',JSON.stringify(D_SEL))}catch(e){}renderDChat()}
+function dCallSel(){if(!D_SEL.length){alert('메시지는 저장됐어요 — 받을 세션을 위에서 골라야 호출돼요');return}var ref=db.collection('debate_state').doc('_wake');ref.get().then(function(d){var w=d.exists?d.data():{};var cur=((w.ts||0)>(w.done||0))?String(w.sids||'').split(',').filter(Boolean):[];D_SEL.forEach(function(s){if(cur.indexOf(s)<0)cur.push(s)});return ref.set({sids:cur.join(','),ts:Date.now()},{merge:true})}).catch(function(e){alert('호출 실패: '+e.message)})}
 function dWake(sid){wakeMerge(sid,'호출 완료 — 곧 깨어나 확인 답부터 남겨요');}
 function tWake(){var el=document.getElementById('msg');if(el&&el.value.trim()){sendMsg();}if(T_TO==='fish'){alert('물고기와육고기 세션은 다른 PC라 바로 호출은 안 돼요 — 15분 안에 확인하고 답해요');return}wakeMerge(T_TO==='band'||T_TO==='yt'?T_TO:'talk',T_TO==='band'||T_TO==='yt'?tToName(T_TO)+' 세션 호출 완료 — 곧 확인 답부터 남겨요':'호출 완료 — 곧 확인 답부터 남겨요');}
 function dScrollBot(){var c=document.getElementById('dchat');if(!c||!c.offsetParent)return;c.scrollTop=c.scrollHeight;requestAnimationFrame(function(){c.scrollTop=c.scrollHeight});}
-function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('debate_chat').add({who:'me',text:t,t:nowT(),ts:Date.now()})}
+function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';db.collection('debate_chat').add({who:'me',text:t,t:nowT(),ts:Date.now()}).then(dCallSel)}
 function editDMsg(id){var m=DCHAT.filter(function(x){return x.id===id})[0];if(!m)return;var nv=prompt('메시지 수정',m.text||'');if(nv===null)return;nv=nv.trim();if(!nv){db.collection('debate_chat').doc(id).delete();return}db.collection('debate_chat').doc(id).update({text:nv})}
 function delDMsg(id){if(confirm('이 메시지를 삭제할까요?'))db.collection('debate_chat').doc(id).delete()}
 var SALESROWS=[];var SRCNAME={channel:'자체채널',ext:'외부유통',inner:'내부유통'};
