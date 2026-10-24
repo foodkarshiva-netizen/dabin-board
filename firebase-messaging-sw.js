@@ -12,7 +12,7 @@ messaging.onBackgroundMessage(function(payload){
   self.registration.showNotification(title, {
     body: d.body || '',
     icon: './icon-192.png',
-    badge: './icon-192.png',
+    badge: './badge-96.png',   // 상태바 작은 아이콘 — 투명 바탕 흰 'D'(안드로이드는 알파만 써서 컬러 아이콘은 흰 네모로 보임, 2026-10-24)
     tag: d.tag || 'dabin',
     renotify: true,
     data: { url: d.url || './?v=app' }
