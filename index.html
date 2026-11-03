@@ -1075,7 +1075,7 @@ function pGrpCur(g,W){var rev=0,net=0,any=false;g.rows.forEach(function(r){var c
 var DREPORT=null;
 function drTbl(title,obj){
  var hh='<div class="seclbl">'+title+' (총 '+wonS(obj.tot)+' / 순익 '+wonS(obj.prof)+' · '+obj.rows.length+'개사)</div><div class="pwrap"><table class="ptbl drtbl"><tr><th class="drk">#</th><th class="dnm">사명</th><th class="dmg">책임자</th><th class="dsl">매출</th><th class="dpf">순익</th></tr>';
- obj.rows.forEach(function(r){var neg=r.p<0;hh+='<tr><td class="drk">'+r.r+'</td><td class="dnm">'+esc(r.n)+'</td><td class="dmg">'+esc(r.m)+'</td><td class="dsl">'+wonS(r.s)+'</td><td class="dpf'+(neg?' neg':'')+'">'+wonS(r.p)+(neg?' ⚠️':'')+'</td></tr>';});
+ obj.rows.forEach(function(r){var neg=r.p<0;hh+='<tr><td class="drk">'+r.r+'</td><td class="dnm">'+esc(r.n)+'</td><td class="dmg">'+esc(r.m||(typeof POWN!=='undefined'&&POWN[r.n])||'-')+'</td><td class="dsl">'+wonS(r.s)+'</td><td class="dpf'+(neg?' neg':'')+'">'+wonS(r.p)+(neg?' ⚠️':'')+'</td></tr>';});
  hh+='</table></div>';
  if(obj.missing&&obj.missing.length)hh+='<div class="pnote">미작성: '+esc(obj.missing.join(' · '))+'</div>';
  return hh;
@@ -1129,6 +1129,7 @@ function drCashflowHTML(d){
  }
  if(!d||!d.cash)return '';
  var c=d.cash;
+ if(c.ing==null&&c.avail==null&&c.bank==null)return '<div class="card small muted">💰 자금흐름표 불러오는 중… (관리보드 연결)</div>'; /* 2026-11-03 값 없는 요약이 0원으로 보이던 것 */
  return '<div class="card" style="background:#f4f8ff;border-color:#d6e6ff"><div style="font-weight:800;margin-bottom:6px">💰 자금 요약</div><div class="ssum" style="grid-template-columns:1fr 1fr 1fr"><div class="ss"><span class="sl">잉여금</span><span class="sv">'+wonS(c.ing)+'</span></div><div class="ss net"><span class="sl">가용현금</span><span class="sv">'+wonS(c.avail)+'</span></div><div class="ss"><span class="sl">유동성</span><span class="sv"'+((c.liq||0)<0?' style="color:#c0392b"':'')+'>'+wonS(c.liq)+'</span></div></div><div class="small" style="margin-top:6px;line-height:1.6">미수 '+wonS((c.inMisu||0)+(c.exMisu||0))+' (내부 '+wonS(c.inMisu)+' / 외부 '+wonS(c.exMisu)+') · 미지급 '+wonS(c.mije)+' · 은행잔액 '+wonS(c.bank)+(c.mijeTop?'<br>주요 미지급: '+esc(c.mijeTop):'')+(c.misuTop?' / 미수채권: '+esc(c.misuTop):'')+'</div></div>';
 }
 function renderPartner(){
