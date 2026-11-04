@@ -71,7 +71,7 @@ nav button .nb{position:absolute;top:4px;left:50%;margin-left:5px;background:#ef
 .goal .gbar{position:relative;height:10px;background:#e5e7eb;border-radius:6px;margin:8px 0 6px;overflow:hidden}
 .goal .gbar .ga{position:absolute;left:0;top:0;bottom:0;background:var(--b2);border-radius:6px}
 .goal .gbar .gp{position:absolute;left:0;top:0;bottom:0;background:rgba(37,99,235,.25);border-radius:6px}
-.goal .gst{font-weight:800;font-size:12px}
+.goal .gst{font-weight:800;font-size:12px;white-space:nowrap}
 .goal .gst.ok{color:#15803d}.goal .gst.mid{color:#b45309}.goal .gst.no{color:#dc2626}
 @media(min-width:760px){.mOnly{display:none!important}}
 .ptbl th.srt{cursor:pointer;user-select:none}
@@ -817,7 +817,7 @@ function goalCalc(){if(typeof SALESROWS==='undefined'||!SALESROWS||!SALESROWS.le
  return {m:t.getMonth()+1,mtd:mtd.TN,days:days,dim:dim,avg:avg,proj:proj,pct:mtd.TN/GOAL_NET*100,ppct:proj/GOAL_NET*100,need:days<dim?(GOAL_NET-full.TN)/(dim-days):0}}
 function goalHTML(){var g=goalCalc();if(!g)return '';if(!g.days)return '<div class="rbox goal">🎯 '+g.m+'월 목표 순익 <b>'+wonS(GOAL_NET)+'</b><div class="small muted" style="margin-top:4px">하루치 실적이 쌓이면(2일부터) 월말 예상이 나와요</div></div>';
  var st=g.ppct>=100?['ok','✅ 달성 가능']:g.ppct>=85?['mid','⚠️ 근접 — 조금 부족']:['no','❌ 이대로면 미달'];
- return '<div class="rbox goal" onclick="go(\'sales\')"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px"><span>🎯 '+g.m+'월 목표 순익 <b style="font-size:14px">'+wonS(GOAL_NET)+'</b></span><span class="gst '+st[0]+'">'+st[1]+'</span></div>'+
+ return '<div class="rbox goal" onclick="go(\'sales\')"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px 8px;flex-wrap:wrap"><span style="white-space:nowrap">🎯 '+g.m+'월 순익 목표 <b style="font-size:14px">'+wonS(GOAL_NET)+'</b></span><span class="gst '+st[0]+'">'+st[1]+'</span></div>'+
   '<div class="gbar" title="진한 막대 = 현재 누적, 연한 막대 = 월말 예상"><span class="gp" style="width:'+Math.min(100,Math.max(0,g.ppct)).toFixed(1)+'%"></span><span class="ga" style="width:'+Math.min(100,Math.max(0,g.pct)).toFixed(1)+'%"></span></div>'+
   '<div class="small">월말 예상 <b style="font-size:15px">'+wonS(g.proj)+'</b> <span class="gst '+st[0]+'">목표의 '+g.ppct.toFixed(0)+'%</span></div>'+
   '<div class="small muted" style="margin-top:3px">현재 누적 '+wonS(g.mtd)+'('+g.pct.toFixed(0)+'%) · 일평균 순익 '+wonS(g.avg)+' × '+g.dim+'일 환산 (1~'+g.days+'일 실적)'+(g.ppct<100&&g.need>0?' · 남은 기간 하루 '+wonS(g.need)+'씩이면 달성':'')+'</div></div>'}
