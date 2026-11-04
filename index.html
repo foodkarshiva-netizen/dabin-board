@@ -513,9 +513,11 @@ TABS.forEach(function(t){var b=document.createElement('button');b.dataset.id=t[0
 var NB_CUR='',NB_TITLE=document.title;
 function nbGet(k){try{return +localStorage.getItem('nb_'+k)||0}catch(e){return 0}}
 function nbSet(k,v){try{localStorage.setItem('nb_'+k,String(v))}catch(e){}}
+/* 자동 점검의 '이상 없음' 보고(2줄 이하)는 새 답장으로 치지 않음 */
+function isRoutineOk(m){var x=String(m.text||'');return /✅\s*이상\s*없음/.test(x)&&x.split('\n').length<=2&&!/⚠|❗|🚨/.test(x)}
 function nbUpd(){var tot=0;[['talk',CHAT],['debate',DCHAT]].forEach(function(p){var k=p[0],arr=p[1]||[],seen=nbGet(k),mx=0;arr.forEach(function(m){if((m.ts||0)>mx)mx=m.ts||0});
  if(!seen||(NB_CUR===k&&!document.hidden)){seen=Math.max(Date.now(),mx);nbSet(k,seen)}
- var n=arr.filter(function(m){return m.who!=='me'&&(m.ts||0)>seen}).length;tot+=n;
+ var n=arr.filter(function(m){return m.who!=='me'&&(m.ts||0)>seen&&!isRoutineOk(m)}).length;tot+=n;
  var b=nav.querySelector('button[data-id="'+k+'"]');if(!b)return;var s=b.querySelector('.nb');
  if(n){if(!s){s=document.createElement('span');s.className='nb';b.appendChild(s)}s.textContent=n>=30?'30+':n}else if(s)s.remove()});
  document.title=(tot?'('+tot+') ':'')+NB_TITLE}
