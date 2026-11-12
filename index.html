@@ -1124,10 +1124,10 @@ function dSendFiles(fs){
 /* 호출 신호는 debate_state/_wake 단일 문서로 — 데몬이 60초마다 이 문서 1건만 읽음(읽기한도 절약, 2026-09-30) */
 /* 호출 신호 병합(2026-10-02): 처리 안 된 호출이 있으면 sids를 합쳐서 기록 — 세션오더·소통 호출이 서로 덮어쓰지 않게 */
 function wakeMerge(sid,okMsg){var ref=db.collection('debate_state').doc('_wake');ref.get().then(function(d){var w=d.exists?d.data():{};var cur=((w.ts||0)>(w.done||0))?String(w.sids||'').split(',').filter(Boolean):[];if(cur.indexOf(sid)<0)cur.push(sid);return ref.set({sids:cur.join(','),ts:Date.now()},{merge:true});}).then(function(){if(okMsg)alert(okMsg)}).catch(function(e){alert('요청 실패: '+e.message)});}
-var D_SEL=(function(){try{return JSON.parse(localStorage.getItem('dSel')||'[]')}catch(e){return []}})();
+var D_SEL=(function(){try{return JSON.parse(localStorage.getItem('dSel')||'[]')}catch(e){return []}})().slice(0,1); /* 2026-11-12 다빈: 받는 세션은 1곳만 */
 /* 2026-10-26: 다빈 메시지에 to:[받는 세션] — 세션은 debate-chat.js check에서 자기 앞 메시지만 읽는다 */
 function dSidName(s){for(var i=0;i<DSTATE.length;i++)if(DSTATE[i]._id===s)return DSTATE[i].name||s;return s}
-function dSelToggle(sid){var i=D_SEL.indexOf(sid);if(i>=0)D_SEL.splice(i,1);else D_SEL.push(sid);try{localStorage.setItem('dSel',JSON.stringify(D_SEL))}catch(e){}renderDChat()}
+function dSelToggle(sid){D_SEL=D_SEL.indexOf(sid)>=0?[]:[sid];try{localStorage.setItem('dSel',JSON.stringify(D_SEL))}catch(e){}renderDChat()}
 function dCallSel(){if(!D_SEL.length){alert('메시지는 저장됐어요 — 받을 세션을 위에서 골라야 호출돼요');return}var ref=db.collection('debate_state').doc('_wake');ref.get().then(function(d){var w=d.exists?d.data():{};var cur=((w.ts||0)>(w.done||0))?String(w.sids||'').split(',').filter(Boolean):[];D_SEL.forEach(function(s){if(cur.indexOf(s)<0)cur.push(s)});return ref.set({sids:cur.join(','),ts:Date.now()},{merge:true})}).catch(function(e){alert('호출 실패: '+e.message)})}
 function dScrollBot(){var c=document.getElementById('dchat');if(!c||!c.offsetParent)return;c.scrollTop=c.scrollHeight;requestAnimationFrame(function(){c.scrollTop=c.scrollHeight});}
 function sendDMsg(){var el=document.getElementById('dmsg');var t=el.value.trim();if(!t)return;el.value='';el.style.height='';document.getElementById('dchat').dataset.force='1';db.collection('debate_chat').add(Object.assign({who:'me',text:t,t:nowT(),ts:Date.now()},D_SEL.length?{to:D_SEL.slice()}:{})).then(dCallSel).catch(function(e){if(!el.value)el.value=t;alert('보내지 못했어요 — 글은 입력칸에 되돌려 놨어요: '+e.message)})}
