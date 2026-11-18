@@ -1486,7 +1486,7 @@ function renderChung(){
    // 접수일 — 크게
    h+='<td class="cdate"><div class="d1">'+esc(chungPeriod(it))+'</div><div class="d2 '+(dd==='\uC885\uB8CC'?'muted':'hot')+'">'+esc(dd)+'</div>'+(it.winDate?'<div class="d3">\uBC1C\uD45C '+esc(it.winDate.slice(5).replace('-','/'))+'</div>':'')+'</td>';
    // 단지
-   h+='<td class="cname"><div class="n1">'+(hot?'<span class="hotdot">\u2605</span> ':'')+esc(it.name||'')+'</div><div class="n2">'+esc(it.area||'')+' \u00B7 '+esc(it.kind||'')+(+it.units>0?' \u00B7 '+Number(it.units).toLocaleString()+'\uC138\uB300':'')+'</div>'+chungTypeNote(it)+(it.note?'<div class="n3">'+esc(it.note)+'</div>':'')+(why.length?'<div class="n3" style="color:#c0392b;font-weight:700;margin-top:4px">❌ 탈락 사유: '+why.map(esc).join(' · ')+'</div>':'')+'</td>';
+   h+='<td class="cname"><div class="n1">'+(hot?'<span class="hotdot">\u2605</span> ':'')+esc(it.name||'')+'</div><div class="n2">'+esc(it.area||'')+' \u00B7 '+esc(it.kind||'')+(+it.units>0?' · 단지 '+Number(it.units).toLocaleString()+'세대':'')+(+it.supply>0?' · 이번 공급 '+Number(it.supply).toLocaleString()+'세대':'')+'</div>'+chungTypeNote(it)+(it.note?'<div class="n3">'+esc(it.note)+'</div>':'')+(why.length?'<div class="n3" style="color:#c0392b;font-weight:700;margin-top:4px">❌ 탈락 사유: '+why.map(esc).join(' · ')+'</div>':'')+'</td>';
    if(noP){
     h+='<td colspan="5" class="muted small" style="text-align:center">\uBD84\uC591\uAC00 \uBBF8\uD655\uC778 \u2014 <button class="btn o sm" onclick="editChungPrice(\''+it._id+'\')">\uAE08\uC561 \uC785\uB825</button></td>';
    }else{
